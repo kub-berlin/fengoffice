@@ -373,11 +373,6 @@
   	  // Do we have it cached?
   	  if(isset($this->column_values[$column_name])) return $this->column_values[$column_name];
   	  
-  	  // We don't have it cached. Exists?
-  	  if(!$this->columnExists($column_name) && $this->isLazyLoadColumn($column_name)) {
-    	  return $this->loadLazyLoadColumnValue($column_name, $default);
-  	  } // if
-  	  
   	  // Failed to load column or column DNX
   	  return $default;
   	  
@@ -512,18 +507,6 @@
   	  return false;
   	  
   	} // loadFromRow
-  	
-  	/**
-  	* Load lazy load column value
-  	*
-  	* @access private
-  	* @param string $column_name
-  	* @param mixed $default
-  	* @return mixed
-  	*/
-  	private function loadLazyLoadColumnValue($column_name, $default = null) {
-  	  return $default;
-  	} // loadLazyLoadColumnValue
   	
   	/**
   	* Check if specific row exists in database
