@@ -9,6 +9,13 @@
   abstract class BaseMaxSystemPermissions extends DataManager {
   
     /**
+    * Cache for getColumns
+    *
+    * @var array
+    */
+    private $columns_cache;
+
+    /**
     * Column name => Column type map
     *
     * @var array
@@ -53,7 +60,11 @@
     * @return array
     */
     function getColumns() {
-      return get_table_columns(self::instance()->getTableName());
+      if (!isset($this->columns_cache)) {
+        $table_name = self::instance()->getTableName();
+        $this->columns_cache = get_table_columns($table_name);
+      }
+      return $this->columns_cache;
     } // getColumns
     
     /**
