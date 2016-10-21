@@ -597,7 +597,7 @@
   			
   		  // Get SQL
   		  $sql = $this->getInsertQuery();
-  		  if(!DB::execute($this->getInsertQuery())) return false;
+  		  if(!DB::execute($sql)) return false;
   		  
 				// If we have autoincrement field load it...
 				if(!$autoincrement_column_modified && $this->columnExists($autoincrement_column)) {
