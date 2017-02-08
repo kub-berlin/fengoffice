@@ -186,6 +186,7 @@ addLangs({
 	'email3': 'Correo 3',
 	'workWebsite': 'Sitio web de trabajo',
 	'workAddress': 'Dirección de trabajo',
+	'postalAddress': 'Dirección postal',
 	'workPhone1': 'Teléfono del trabajo 1',
 	'workPhone2': 'Teléfono del trabajo 2',
 	'homeWebsite': 'Sitio web particular',
@@ -590,7 +591,7 @@ addLangs({
 	'columns comma separated': 'Columnas (separadas por coma)',
 	'default value': 'Valor por defecto',
 	'checked': 'Marcado?',
-	'required': 'Requerido?',
+	'required': 'Requerido',
 	'multiple values': 'Múltiples valores?',
 	'visible by default': 'Visible por defecto?',
 	'add custom property': 'Agregar propiedad personalizada',
@@ -870,5 +871,6 @@ addLangs({
     'at least one dimension must be selected' : 'Debe seleccionar al menos una dimensión.',
     'confirm delete group' : '¿Está seguro que quiere eliminar este grupo?',
     'birthday' : 'Cumpleaños',
-    'job title' : 'Título'
+    'job title' : 'Título',
+    'last activity' : 'Last activity'
 });

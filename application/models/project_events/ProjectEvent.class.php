@@ -492,7 +492,7 @@ class ProjectEvent extends BaseProjectEvent {
 						
 						// for all-day events use beggining of day to prevent that it goes to other day.
 						if ($event->getTypeId() == 2) {
-							$new_st_date = $new_st_date->beginningOfDay()->advance(logged_user()->getTimezone() * -3600, false);
+							$new_st_date = $new_st_date->beginningOfDay()->advance(logged_user()->getUserTimezoneValue() * -1, false);
 						}
 					}
 					if ($new_due_date instanceof DateTimeValue){
@@ -509,7 +509,7 @@ class ProjectEvent extends BaseProjectEvent {
 						
 						// for all-day events use end of day to prevent that it goes to other day.
 						if ($event->getTypeId() == 2) {
-							$new_due_date = $new_due_date->endOfDay()->advance(logged_user()->getTimezone() * -3600, false);
+							$new_due_date = $new_due_date->endOfDay()->advance(logged_user()->getUserTimezoneValue() * -1, false);
 						}
 					}
 					

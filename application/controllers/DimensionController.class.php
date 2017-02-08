@@ -368,6 +368,14 @@ class DimensionController extends ApplicationController {
 		
 		$extra_cond = $name == "" ? "" : " AND name LIKE '%".$name."%'";
 		
+		$filter_ids = array_var($_REQUEST, 'filter_by_ids');
+		if ($filter_ids) {
+			$filter_ids_arr = array_filter(explode(',', $filter_ids));
+			if (is_array($filter_ids_arr) && count($filter_ids_arr) > 0) {
+				$extra_cond .= " AND id IN (".implode(',', $filter_ids_arr).") ";
+			}
+		}
+		
 		$dimension = Dimensions::getDimensionById($dimension_id);
 		
 		$use_member_cache= true;
@@ -422,12 +430,21 @@ class DimensionController extends ApplicationController {
 		$order = array_var($_REQUEST, 'order', 'id');
 		$parents = array_var($_REQUEST, 'parents' , true);
 		$ignore_context_filters = array_var($_REQUEST, 'ignore_context_filters');
+		$filter_ids = array_var($_REQUEST, 'filter_by_ids');
 		
 		$allowed_member_types_str = array_var($_REQUEST, 'allowed_member_types' , '');
 		if ($allowed_member_types_str != '') {
 			$allowed_member_types = explode(',', $allowed_member_types_str);
 		} else {
 			$allowed_member_types = array();
+		}
+		
+		$ids_filter_sql = "";
+		if ($filter_ids) {
+			$filter_ids_arr = array_filter(explode(',', $filter_ids));
+			if (is_array($filter_ids_arr) && count($filter_ids_arr) > 0) {
+				$ids_filter_sql = " AND id IN (".implode(',', $filter_ids_arr).") ";
+			}
 		}
 		
 		if(strlen($name) > 0 || $random){
@@ -463,7 +480,7 @@ class DimensionController extends ApplicationController {
 					$more_conds .= $filter_by_members_sql;
 				}
 				
-				$memberList = Members::findAll(array('conditions' => array("`dimension_id`=? AND archived_by_id=0 $search_name_cond $member_type_cond $more_conds", $dimension_id), 'order' => '`'.$order.'` ASC', 'offset' => $start, 'limit' => $limit_t));
+				$memberList = Members::findAll(array('conditions' => array("`dimension_id`=? AND archived_by_id=0 $ids_filter_sql $search_name_cond $member_type_cond $more_conds", $dimension_id), 'order' => '`'.$order.'` ASC', 'offset' => $start, 'limit' => $limit_t));
 				
 				//include all parents
 				//Check hierarchy
@@ -504,7 +521,7 @@ class DimensionController extends ApplicationController {
 				
 				$params["extra_condition"] = " AND m.archived_by_id=0 ";
 				if (count($allowed_member_types) > 0) {
-					$params["extra_condition"] .= " AND m.object_type_id IN (".implode(',', $allowed_member_types).")";
+					$params["extra_condition"] .= "$ids_filter_sql AND m.object_type_id IN (".implode(',', $allowed_member_types).")";
 				}
 				
 				$memberList = ContactMemberCaches::getAllMembersWithCachedParentId($params);
@@ -870,6 +887,7 @@ class DimensionController extends ApplicationController {
 		if (array_var($_REQUEST, 'show_associated_dimension_filters')) {
 			$options['allow_non_manageable'] = true;
 		}
+		$options['dont_select_associated_members'] = true;
 		
 		render_member_selectors(ProjectMessages::instance()->getObjectTypeId(), $genid, null, $options, null, null, false);
 		

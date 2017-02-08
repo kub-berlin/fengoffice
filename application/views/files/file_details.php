@@ -132,6 +132,9 @@ if (isset($file) && $file instanceof ProjectFile) {
 	 if (/* FIXME can_add(logged_user(), active_or_personal_project(), 'ProjectFiles') &&*/ $file->getType() != ProjectFiles::TYPE_WEBLINK) {
 		add_page_action(lang('copy file'), $file->getCopyUrl(), 'ico-copy');
 	}
+	
+	$null = null;
+	Hook::fire("view_document_add_actions", array('file' => $file), $null);
 
 ?>
 

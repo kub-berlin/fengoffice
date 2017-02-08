@@ -362,9 +362,12 @@ class FilesController extends ApplicationController {
 				
 				$url = array_var($file_data, 'url', '');
 				if ($url && strpos($url, ':') === false) {
-					$url = $this->protocol ."://". $url;
+					if (str_starts_with($url, '\\\\')) {
+						$url = "file:///". $url;
+					} else {
+						$url = $this->protocol ."://". $url;
+					}
 					$file->setUrl($url);
-					
 				}
 				
 				DB::beginWork();
@@ -518,7 +521,11 @@ class FilesController extends ApplicationController {
 				} else if ($file->getType() == ProjectFiles::TYPE_WEBLINK) {
 					$url = array_var($file_data, 'url', '');
 					if ($url && strpos($url, ':') === false) {
-						$url = $this->protocol ."://". $url;
+						if (str_starts_with($url, '\\\\')) {
+							$url = "file:///". $url;
+						} else {
+							$url = $this->protocol ."://". $url;
+						}
 						$file->setUrl($url);
 						$file->save();
 					}
@@ -868,7 +875,11 @@ class FilesController extends ApplicationController {
 				} else if ($file->getType() == ProjectFiles::TYPE_WEBLINK) {
 					$url = array_var($file_data, 'url', '');
 					if ($url && strpos($url, ':') === false) {
-						$url = $this->protocol . $url;
+						if (str_starts_with($url, '\\\\')) {
+							$url = "file:///". $url;
+						} else {
+							$url = $this->protocol ."://". $url;
+						}
 						$file->setUrl($url);
 						$file->save();
 					}
@@ -1984,25 +1995,15 @@ class FilesController extends ApplicationController {
 				}
 				
 				$ids[] = $o->getId();
-				$values = array(
+				$values = $o->getObject()->getArrayInfo();
+				
+				$more_values = array(
 					"id" => $o->getId(),
 					"ix" => $index++,
-					"object_id" => $o->getId(),
-					"ot_id" => $o->getObjectTypeId(),
-					"name" => $o->getObjectName(),
-					"type" => $o->getTypeString(),
 					"mimeType" => $o->getTypeString(),
-					"createdBy" => clean($o->getCreatedByDisplayName()),
-					"createdById" => $o->getCreatedById(),
-					"dateCreated" => $o->getCreatedOn() instanceof DateTimeValue ? ($o->getCreatedOn()->isToday() ? format_time($o->getCreatedOn()) : format_datetime($o->getCreatedOn())) : '',
-					"dateCreated_today" => $o->getCreatedOn() instanceof DateTimeValue ? $o->getCreatedOn()->isToday() : 0,
-					"updatedBy" => clean($o->getUpdatedByDisplayName()),
-					"updatedById" => $o->getUpdatedById(),
-					"dateUpdated" => $o->getUpdatedOn() instanceof DateTimeValue ? ($o->getUpdatedOn()->isToday() ? format_time($o->getUpdatedOn()) : format_datetime($o->getUpdatedOn())) : '',
-					"dateUpdated_today" => $o->getUpdatedOn() instanceof DateTimeValue ? $o->getUpdatedOn()->isToday() : 0,
+					"type" => $o->getTypeString(),
 					"icon" => $o->getTypeIconUrl(),
 					"size" => format_filesize($o->getFileSize()),
-					"url" => $o->getOpenUrl(),
 					"manager" => get_class($o->manager()),
 					"checkedOutByName" => $coName,
 					"checkedOutById" => $coId,
@@ -2014,6 +2015,7 @@ class FilesController extends ApplicationController {
 					"memPath" => json_encode($o->getMembersIdsToDisplayPath()),
 					"genid" => gen_id(),
 				);
+				$values = array_merge($values, $more_values);
 				if ($o->isMP3()) {
 					$values['isMP3'] = true;
 				}
@@ -2130,7 +2132,11 @@ class FilesController extends ApplicationController {
 				if ($file->getType() == ProjectFiles::TYPE_WEBLINK) {
 					$url = array_var($file_data, 'url', '');
 					if ($url && strpos($url, ':') === false) {
-						$url = $this->protocol . $url;
+						if (str_starts_with($url, '\\\\')) {
+							$url = "file:///". $url;
+						} else {
+							$url = $this->protocol ."://". $url;
+						}
 					}
 					$file->setUrl($url);
 					$revision = $file->getLastRevision();
@@ -2258,7 +2264,11 @@ class FilesController extends ApplicationController {
 	
 				$url = array_var($file_data, 'url', '');
 				if ($url && strpos($url, ':') === false) {
-					$url = $this->protocol ."://". $url;
+					if (str_starts_with($url, '\\\\')) {
+						$url = "file:///". $url;
+					} else {
+						$url = $this->protocol ."://". $url;
+					}
 					$file->setUrl($url);
 					
 				}
@@ -2536,7 +2546,7 @@ class FilesController extends ApplicationController {
 			return;
 		} // if
 			
-		if(!$file->canDelete(logged_user())) {
+		if(!$file->canEdit(logged_user())) {
 			flash_error(lang('no access permissions'));
 			ajx_current("empty");
 			return;
@@ -2552,6 +2562,13 @@ class FilesController extends ApplicationController {
 		tpl_assign('revision', $revision);
 		tpl_assign('file', $file);
 		tpl_assign('revision_data', $revision_data);
+		
+
+		// set layout for modal form
+		if (array_var($_REQUEST, 'modal')) {
+			$this->setLayout("json");
+			tpl_assign('modal', true);
+		}
 			
 		if(is_array(array_var($_POST, 'revision'))) {
 			try {
@@ -2564,7 +2581,11 @@ class FilesController extends ApplicationController {
 				ApplicationLogs::createLog($revision, ApplicationLogs::ACTION_EDIT);
 				
 				flash_success(lang('success edit file revision'));
-				ajx_current("back");
+				if (array_var($_REQUEST, 'modal')) {
+					evt_add("reload current panel");
+				} else {
+					ajx_current("back");
+				}
 			} catch(Exception $e) {
 				DB::rollback();
 				flash_error($e->getMessage());

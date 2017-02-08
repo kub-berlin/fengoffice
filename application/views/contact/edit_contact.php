@@ -304,8 +304,21 @@
 							<?php echo yes_no_widget('contact[autodetect_time_zone]', $genid.'userFormAutoDetectTimezone', user_config_option('autodetect_time_zone', null, $contact->getId()), 
 								lang('yes'), lang('no'), null, array('onclick' => "og.showSelectTimezone('$genid');$on_autodetect_click")) ?>
 							</div>
-							<div id="<?php echo $genid?>selecttzdiv" <?php if (user_config_option('autodetect_time_zone', null, $contact->getId())) echo 'style="float:left; display:none; "'; ?>>
-								<?php echo select_timezone_widget('contact[timezone]', array_var($contact_data, 'timezone'), array('id' => $genid.'userFormTimezone', 'class' => 'long')) ?>
+		
+							<?php $is_autodetecting_tz = user_config_option('autodetect_time_zone', null, $contact->getId()); ?>
+							<div id="<?php echo $genid?>autodetected_tz_div" class="desc" 
+								style="float:left; padding-top:8px; margin-left: 50px;<?php echo ($is_autodetecting_tz ? '' : 'display:none') ?>"><?php
+								
+								$tz_id = array_var($contact_data, 'user_timezone_id');
+								$zone = Timezones::getTimezoneById($tz_id);
+								if ($zone) {
+									$tz_country = Countries::getCountryNameByCode($zone['country_code']);
+									echo $tz_country . " - " . Timezones::getFormattedDescription($zone);
+								}
+							?></div>
+							
+							<div id="<?php echo $genid?>selecttzdiv" style="float:left; padding-top:5px; <?php if (user_config_option('autodetect_time_zone', null, $contact->getId())) echo 'display:none;'; ?>">
+								<?php echo timezone_selector('contact[user_timezone_id]', array_var($contact_data, 'user_timezone_id'), array('id' => $genid.'userFormTimezone')) ?>
 							</div>
 							
 						</div>

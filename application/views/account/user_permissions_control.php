@@ -84,25 +84,43 @@ foreach ( $dimensions as $dimension ) {
 	</td></tr></table>
 
 	  <div id="<?php echo $genid ?>member_permissions<?php echo $dimension->getId() ?>" class="permission-form-container" style="display: none;">
-		<div id="<?php echo $genid . "_" . $dimension->getId()?>member_name" style="font-weight: bold; font-size: 120%; padding-bottom: 5px"></div>
+		<div id="<?php echo $genid . "_" . $dimension->getId()?>member_name" class="permissions-target-name"></div>
 	
 		<table>
-			<col align=left />
-			<col align=center />
-			<tr style="border-bottom: 1px solid #888; margin-bottom: 5px">
-				<td style="vertical-align: middle"><span class="perm_all_checkbox_container"><?php 
-					echo checkbox_field($genid . $dimension->getId() . 'pAll', false, array('id' => $genid . $dimension->getId() .'pAll', 'onclick' => 'og.ogPermAllChecked("' . $genid . '", '. $dimension->getId() .', this.checked)')) 
-				?>
-					<label style="font-weight: bold" for="<?php echo $genid .$dimension->getId() ?>pAll" class="checkbox"><?php echo lang('all') ?></label>
-				</span></td>
-				<td align=center style="padding-left: 10px; padding-right: 10px; width: 100px;"><a href="#" class="internalLink radio-title-3"
-					onclick="og.ogPermSetLevel('<?php echo $genid ?>', '<?php echo $dimension->getId() ?>', 3);return false;"><?php echo lang('read write and delete') ?></a></td>
-				<td align=center style="padding-left: 10px; padding-right: 10px; width: 100px;"><a href="#" class="internalLink radio-title-2"
-					onclick="og.ogPermSetLevel('<?php echo $genid ?>', '<?php echo $dimension->getId() ?>', 2);return false;"><?php echo lang('read and write') ?></a></td>
-				<td align=center style="padding-left: 10px; padding-right: 10px; width: 100px;"><a href="#" class="internalLink radio-title-1"
-					onclick="og.ogPermSetLevel('<?php echo $genid ?>', '<?php echo $dimension->getId() ?>', 1);return false;"><?php echo lang('read only') ?></a></td>
-				<td align=center style="padding-left: 10px; padding-right: 10px; width: 100px;"><a href="#" class="internalLink radio-title-0"
-					onclick="og.ogPermSetLevel('<?php echo $genid ?>', '<?php echo $dimension->getId() ?>', 0);return false;"><?php echo lang('none no bars') ?></a></td>
+			<tr class="permissions-title-row">
+				<td></td>
+				<td align=center style="width: 120px;">
+					<a href="#" class="internalLink all-radio-sel radio-title-3" onclick="og.ogPermSetLevel('<?php echo $genid ?>', '<?php echo $dimension->getId() ?>', 3);return false;"><?php echo lang('read write and delete') ?></a>
+				</td>
+				<td align=center style="width: 120px;">
+					<a href="#" class="internalLink all-radio-sel radio-title-2" onclick="og.ogPermSetLevel('<?php echo $genid ?>', '<?php echo $dimension->getId() ?>', 2);return false;"><?php echo lang('read and write') ?></a>
+				</td>
+				<td align=center style="width: 120px;">
+					<a href="#" class="internalLink all-radio-sel radio-title-1" onclick="og.ogPermSetLevel('<?php echo $genid ?>', '<?php echo $dimension->getId() ?>', 1);return false;"><?php echo lang('read only') ?></a>
+				</td>
+				<td align=center style="width: 120px;">
+					<a href="#" class="internalLink all-radio-sel radio-title-0" onclick="og.ogPermSetLevel('<?php echo $genid ?>', '<?php echo $dimension->getId() ?>', 0);return false;"><?php echo lang('none no bars') ?></a>
+				</td>
+			</tr>
+			
+			<tr class="permissions-checkall-row">
+				<td><?php echo lang('check all').":"?></td>
+				<td align="center">
+					<input type="checkbox" class="all-radio-sel-chk" id="chk-3" title="<?php echo lang('set rwd permissions for all object types')?>"
+						onchange="og.ogPermSetLevelCheckbox(this, '<?php echo $genid ?>', '<?php echo $dimension->getId() ?>', 3);"/>
+				</td>
+				<td align="center">
+					<input type="checkbox" class="all-radio-sel-chk" id="chk-2" title="<?php echo lang('set rw permissions for all object types')?>"
+						onchange="og.ogPermSetLevelCheckbox(this, '<?php echo $genid ?>', '<?php echo $dimension->getId() ?>', 2);"/>
+				</td>
+				<td align="center">
+					<input type="checkbox" class="all-radio-sel-chk" id="chk-1" title="<?php echo lang('set r permissions for all object types')?>"
+						onchange="og.ogPermSetLevelCheckbox(this, '<?php echo $genid ?>', '<?php echo $dimension->getId() ?>', 1);"/>
+				</td>
+				<td align="center">
+					<input type="checkbox" class="all-radio-sel-chk" id="chk-0" title="<?php echo lang('set none permissions for all object types')?>"
+						onchange="og.ogPermSetLevelCheckbox(this, '<?php echo $genid ?>', '<?php echo $dimension->getId() ?>', 0);"/>
+				</td>
 			</tr>
 <?php
 	$row_cls = "";

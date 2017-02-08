@@ -79,9 +79,13 @@
 			<?php } ?>
 			
 			<div class="dataBlock" >
-				<?php echo label_tag(lang('date')) ?>
-				<?php $date = $timeslot->isNew() ? DateTimeValueLib::now() : new DateTimeValue($timeslot->getStartTime()->getTimestamp() + logged_user()->getTimezone()*3600); ?>
-				<?php echo pick_date_widget2('timeslot[date]', $date, $genid, 1000, false) ?>
+				<?php 
+					echo label_tag(lang('date'));
+					
+					$tz_offset = Timezones::getTimezoneOffsetToApply($timeslot);
+					$date = $timeslot->isNew() ? DateTimeValueLib::now() : new DateTimeValue($timeslot->getStartTime()->getTimestamp() + $tz_offset);
+					echo pick_date_widget2('timeslot[date]', $date, $genid, 1000, false);
+				?>
 			</div>
 			
 			<div class="dataBlock" >
@@ -116,9 +120,9 @@
 		<?php 
 			$listeners = array('on_selection_change' => 'og.reload_subscribers("'.$genid.'",'.$object->manager()->getObjectTypeId().')');
 			if ($timeslot->isNew()) {
-				render_member_selectors($timeslot->manager()->getObjectTypeId(), $genid, null, array('select_current_context' => true, 'listeners' => $listeners), null, null, false);
+				render_member_selectors($timeslot->manager()->getObjectTypeId(), $genid, null, array('select_current_context' => true, 'listeners' => $listeners, 'object' => $object), null, null, false);
 			} else {
-				render_member_selectors($timeslot->manager()->getObjectTypeId(), $genid, $timeslot->getMemberIds(), array('listeners' => $listeners), null, null, false);
+				render_member_selectors($timeslot->manager()->getObjectTypeId(), $genid, $timeslot->getMemberIds(), array('listeners' => $listeners, 'object' => $object), null, null, false);
 			} 
 			
 		?>

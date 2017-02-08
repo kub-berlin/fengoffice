@@ -425,4 +425,9 @@ return array(
 	'click to select country' => 'Click to select country',
 	'there are no custom properties defined message' => 'There are no custom properties defined for {0}.',
 	'there are no custom properties defined link' => 'Please refer to <a href="http://wiki.fengoffice.com/doku.php/custom_properties" target="_blank" class="wiki-link">this article</a> to learn how to add custom properties.',
+
+		'set rwd permissions for all object types' => 'Set full permissions to all object types.',
+		'set rw permissions for all object types' => 'Set read/write permissions to all object types.',
+		'set r permissions for all object types' => 'Set read-only permissions to all object types.',
+		'set none permissions for all object types' => 'Remove permissions in all object types',
 );

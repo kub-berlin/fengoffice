@@ -252,22 +252,18 @@ class MessageController extends ApplicationController {
 				if ($msg instanceof ProjectMessage){
 					$text = $msg->getText();
 					if (strlen($text) > 100) $text = substr_utf($text,0,100) . "...";
-					$object["messages"][$i] = array(
-					    "id" => $i,
+					
+					$general_info = $msg->getObject()->getArrayInfo();
+					
+					$info = array(
 						"ix" => $i,
-						"object_id" => $msg->getId(),
-						"ot_id" => $msg->getObjectTypeId(),
-						"type" => $msg->getObjectTypeName(),
-						"name" => $msg->getObjectName(),
 						"text" => html_to_text($text),
-						"date" => $msg->getUpdatedOn() instanceof DateTimeValue ? ($msg->getUpdatedOn()->isToday() ? format_time($msg->getUpdatedOn()) : format_datetime($msg->getUpdatedOn())) : '',
-						"is_today" => $msg->getUpdatedOn() instanceof DateTimeValue ? $msg->getUpdatedOn()->isToday() : 0,
-						"userId" => $msg->getCreatedById(),
-						"userName" => $msg->getCreatedByDisplayName(),
-						"updaterId" => $msg->getUpdatedById() ? $msg->getUpdatedById() : $msg->getCreatedById(),
-						"updaterName" => $msg->getUpdatedById() ? $msg->getUpdatedByDisplayName() : $msg->getCreatedByDisplayName(),
+						"is_today" => $general_info['dateUpdated_today'],
 						"memPath" => json_encode($msg->getMembersIdsToDisplayPath()),
 					);
+					$info = array_merge($info, $general_info);
+					
+					$object["messages"][$i] = $info;
 					$ids[] = $msg->getId();
 					
 					foreach ($custom_properties as $cp) {

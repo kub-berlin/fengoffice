@@ -131,7 +131,7 @@ class Notifier {
 	 * @return For each localization and timezone will return an array of user groups, with a maximum of 20 users per group.
 	 * @param $people array of users to separate in groups
 	 */
-	static function buildPeopleGroups($people, $ignore_lang_and_timezone=false) {
+	static function buildPeopleGroups($people, $object, $ignore_lang_and_timezone=false) {
 		$max_users_per_group = 20;
 		$groups = array();
 		
@@ -148,7 +148,9 @@ class Notifier {
 			$lang_groups = array();
 			foreach ($people as $user) {
 				if ($user instanceof Contact && !$user->getDisabled()) {
-					$key = $user->getLocale() ."|". $user->getTimezone();
+					$tz_offset = Timezones::getTimezoneOffsetToApply($object, $user);
+					$tz = $tz_offset/3600;
+					$key = $user->getLocale() ."|". $tz;
 					
 					if (!isset($lang_groups[$key])) $lang_groups[$key] = array();
 					$lang_groups[$key][] = $user;
@@ -193,8 +195,19 @@ class Notifier {
 		} else {
 			$sendername = owner_company()->getObjectName();
 			$senderemail = owner_company()->getEmailAddress();
+			
 			if (!is_valid_email($senderemail)) {
-				$senderemail = 'noreply@fengoffice.com';
+				$administrator = owner_company()->getCreatedBy();
+				if (!$administrator instanceof Contact) {
+					$administrator = Contacts::findOne(array("conditions" => "user_type IN (SELECT id FROM ".TABLE_PREFIX."permission_groups WHERE name IN ('Super Administrator','Administrator'))", "order" => "user_type"));
+				}
+				if ($administrator instanceof Contact) {
+					$senderemail = $administrator->getEmailAddress();
+				}
+				
+				if (!is_valid_email($senderemail)) {
+					$senderemail = 'noreply@example.com';
+				}
 			}
 			$senderid = 0;
 		}
@@ -319,7 +332,7 @@ class Notifier {
 		
 		$emails = array();
 		
-		$grouped_people = self::buildPeopleGroups($people);
+		$grouped_people = self::buildPeopleGroups($people, $object);
 		
 		foreach ($grouped_people as $pgroup) {
 			$lang = array_var($pgroup, 'lang');
@@ -541,6 +554,7 @@ class Notifier {
 					}
 					$recipients_field = config_option('notification_recipients_field', 'to');
 					$emails[] = array(
+							"object_id" => $object->getId(),
 							"$recipients_field" => $to_addresses,
 							"from" => self::prepareEmailAddress($senderemail, $sendername),
 							"subject" => $subject,
@@ -582,26 +596,42 @@ class Notifier {
 	 * @throws NotifierConnectionError
 	 */
 	static function forgotPassword(Contact $user, $token = null) {
-		$administrator = owner_company()->getCreatedBy();
+		if (! $user instanceof Contact) return;
+		
 		//$new_password = $user->resetPassword(true);
 		tpl_assign('user', $user);
 		//tpl_assign('new_password', $new_password);
 		tpl_assign('token',$token);
-		if (! $administrator instanceof Contact) return;
+		
+		$administrator = owner_company()->getCreatedBy();
+		if (!$administrator instanceof Contact) {
+			$administrator = Contacts::findOne(array("conditions" => "user_type IN (SELECT id FROM ".TABLE_PREFIX."permission_groups WHERE name IN ('Super Administrator','Administrator'))", "order" => "user_type"));
+		}
+		if (!$administrator instanceof Contact) return;
+		
+		$from_name = trim($administrator->getObjectName());
+		if (!$from_name) $from_name = owner_company()->getObjectName();
+		
+		$from_email = trim($administrator->getEmailAddress());
+		if (!$from_email) $from_email = owner_company()->getEmailAddress();
 
 		// send email in user's language
 		$locale = $user->getLocale();
 		Localization::instance()->loadSettings($locale, ROOT . '/language');
+		
 		$toemail = $user->getEmailAddress();
 		if (!$toemail) continue;
+		
 		self::queueEmail(
+			null,
 			array(self::prepareEmailAddress($toemail, $user->getObjectName())),
 			null,
 			null,
-			self::prepareEmailAddress('noreply@fengoffice.com', 'Feng Office'),
+			self::prepareEmailAddress($from_email, $from_name),
 			lang('reset password'),
 			tpl_fetch(get_template_path('forgot_password', 'notifier'))
 		); // send
+		
 		$locale = logged_user() instanceof Contact ? logged_user()->getLocale() : DEFAULT_LOCALIZATION;
 		Localization::instance()->loadSettings($locale, ROOT . '/language');
 	} // forgotPassword
@@ -618,19 +648,32 @@ class Notifier {
 		tpl_assign('user', $user);
 		tpl_assign('exp_days', $expiration_days);
 
-		$administrator = owner_company()->getCreatedBy();
-		
 		if (! $user instanceof Contact) return;
+		
+		$administrator = owner_company()->getCreatedBy();
+		if (!$administrator instanceof Contact) {
+			$administrator = Contacts::findOne(array("conditions" => "user_type IN (SELECT id FROM ".TABLE_PREFIX."permission_groups WHERE name IN ('Super Administrator','Administrator'))", "order" => "user_type"));
+		}
+		if (!$administrator instanceof Contact) return;
+		
+		$from_name = trim($administrator->getObjectName());
+		if (!$from_name) $from_name = owner_company()->getObjectName();
+		
+		$from_email = trim($administrator->getEmailAddress());
+		if (!$from_email) $from_email = owner_company()->getEmailAddress();
 		
 		$locale = $user->getLocale();
 		Localization::instance()->loadSettings($locale, ROOT . '/language');
+		
 		$toemail = $user->getEmailAddress();
 		if (!$toemail) continue;
+		
 		self::queueEmail(
+			null,
 			array(self::prepareEmailAddress($toemail, $user->getObjectName())),
 			null,
 			null,
-			self::prepareEmailAddress($administrator instanceof Contact ? $administrator->getEmailAddress() : "noreply@fengoffice.com", $administrator instanceof Contact ? $administrator->getObjectName() : "noreply@fengoffice.com"),
+			self::prepareEmailAddress($from_email, $from_name),
 			lang('password expiration reminder'),
 			tpl_fetch(get_template_path('password_expiration_reminder', 'notifier'))
 		); // send
@@ -660,6 +703,7 @@ class Notifier {
 		$toemail = $user->getEmailAddress();
 		if (!$toemail) continue;
 		self::queueEmail(
+			null,
 			array(self::prepareEmailAddress($toemail, $user->getObjectName())),
 			null,
 			null,
@@ -672,7 +716,8 @@ class Notifier {
 		Localization::instance()->loadSettings($locale, ROOT . '/language');
 	} // newUserAccount
         
-        static function newUserAccountLinkPassword(Contact $user, $raw_password, $token = null) {
+	
+    static function newUserAccountLinkPassword(Contact $user, $raw_password, $token = null) {
 		tpl_assign('new_account', $user);
 		tpl_assign('raw_password', $raw_password);
                 tpl_assign('type_notifier',"link_pass");
@@ -688,6 +733,7 @@ class Notifier {
 		$toemail = $user->getEmailAddress();
 		if (!$toemail) continue;
 		self::queueEmail(
+			null,
 			array(self::prepareEmailAddress($toemail, $user->getObjectName())),
 			null,
 			null,
@@ -724,7 +770,12 @@ class Notifier {
 				$several_event_subscribers = true;
 				$aux = array();
 				foreach ($people as $person){        //grouping people by different timezone
-					$time = $person->getTimezone();
+					if ($object instanceof ContentDataObject) {
+						$tz_offset = Timezones::getTimezoneOffsetToApply($object, $person);
+						$time = $tz_offset/3600;
+					} else {
+						$time = $person->getUserTimezoneValue()/3600;
+					}
 					if (isset ($aux["$time"])){
 						$aux["$time"][] = $person;
 					}else{
@@ -739,16 +790,17 @@ class Notifier {
 		} else {
 			$people = array();
 			$rem_user = $reminder->getUser();
-			file_put_contents(ROOT."/cache/rem.txt", "obj(".$object->getId().") - send reminder to: ".$rem_user->getObjectName());
+			
 			if ($rem_user instanceof Contact && $object->isSubscriber($rem_user)) {
 				$people = array($reminder->getUser());
 				if ($isEvent){
-					$string_date = format_datetime($date, 0, $reminder->getUser()->getTimezone());
+					$tz_offset = Timezones::getTimezoneOffsetToApply($object, $reminder->getUser());
+					$time = $tz_offset/3600;
+					
+					$string_date = format_datetime($date, 0, $time);
 				}else{
 					$string_date = $date->format("Y/m/d H:i:s");
 				}
-			} else {
-				file_put_contents(ROOT."/cache/rem.txt", "obj(".$object->getId().") - not a subscriber: ".$rem_user->getObjectName());
 			}
 		}
 		
@@ -863,7 +915,7 @@ class Notifier {
                                     foreach ($subscribers as $subscriber){
                                         $c++;
                                         if($c == $total_s && $total_s > 1){
-                                            $string_subscriber .= lang('and');
+                                            $string_subscriber .= " " . lang('and') . " ";
                                         }else if($c > 1){
                                             $string_subscriber .= ", ";
                                         }
@@ -876,10 +928,13 @@ class Notifier {
                                     tpl_assign('subscribers', $string_subscriber);// subscribers
                                 }
                                 
+                                $tz_offset = Timezones::getTimezoneOffsetToApply($object, $user);
+                                $tz = $tz_offset/3600;
+                                
                                 //start
                                 if ($object->getStart() instanceof DateTimeValue) {
-                                    $date = Localization::instance()->formatDescriptiveDate($object->getStart(), $user->getTimezone());
-                                    $time = Localization::instance()->formatTime($object->getStart(), $user->getTimezone());
+                                    $date = Localization::instance()->formatDescriptiveDate($object->getStart(), $tz);
+                                    $time = Localization::instance()->formatTime($object->getStart(), $tz);
                                     tpl_assign('start', $date);//start
                                     if ($object->getTypeId() != 2) {
                                         tpl_assign('time', $time);//time   
@@ -915,6 +970,7 @@ class Notifier {
 				$toemail = $user->getEmailAddress();
 				if (!$toemail) continue;
 				$emails[] = array(
+					"object_id" => $object->getId(),
 					"to" => array(self::prepareEmailAddress($toemail, $user->getObjectName())),
 					"from" => self::prepareEmailAddress($sender->getEmailAddress(), $sender->getObjectName()),
 					"subject" => $subject = $subject_mail,
@@ -971,15 +1027,19 @@ class Notifier {
 		$people = array($event->getCreatedBy());
 		$recepients = array();
 		foreach($people as $user) {
+			$tz_offset = Timezones::getTimezoneOffsetToApply($event, $user);
+			$tz_offset = $tz_offset/3600;
+			
 			$locale = $user->getLocale();
 			Localization::instance()->loadSettings($locale, ROOT . '/language');
-			$date = Localization::instance()->formatDescriptiveDate($event->getStart(), $user->getTimezone());
-			if ($event->getTypeId() != 2) $date .= " " . Localization::instance()->formatTime($event->getStart(), $user->getTimezone());
+			$date = Localization::instance()->formatDescriptiveDate($event->getStart(), $tz_offset);
+			if ($event->getTypeId() != 2) $date .= " " . Localization::instance()->formatTime($event->getStart(), $tz_offset);
 
 			tpl_assign('date', $date);
 			$toemail = $user->getEmailAddress();
 			if (!$toemail) continue;
 			self::queueEmail(
+				$event->getId(),
 				array(self::prepareEmailAddress($toemail, $user->getObjectName())),
 				null,
 				null,
@@ -1019,7 +1079,9 @@ class Notifier {
 		$locale = $milestone->getAssignedTo()->getLocale();
 		Localization::instance()->loadSettings($locale, ROOT . '/language');
 		if ($milestone->getDueDate() instanceof DateTimeValue) {
-			$date = Localization::instance()->formatDescriptiveDate($milestone->getDueDate(), $milestone->getAssignedTo()->getTimezone());
+			$tz_offset = Timezones::getTimezoneOffsetToApply($milestone, $milestone->getAssignedTo());
+			$tz = $tz_offset/3600;
+			$date = Localization::instance()->formatDescriptiveDate($milestone->getDueDate(), $tz);
 			tpl_assign('date', $date);
 		}
 		
@@ -1028,6 +1090,7 @@ class Notifier {
 			$email_address = trim($assigned_to->getEmailAddress());
 			if ($email_address != '') {
 				return self::queueEmail(
+					$milestone->getId(),
 					array(self::prepareEmailAddress($email_address, $assigned_to->getObjectName())),
 					null,
 					null,
@@ -1103,7 +1166,7 @@ class Notifier {
 			foreach ($subscribers as $subscriber){
 				$c++;
 				if($c == $total_s && $total_s > 1){
-					$string_subscriber .= lang('and');
+					$string_subscriber .= " " . lang('and') . " ";
 				}else if($c > 1){
 					$string_subscriber .= ", ";
 				}
@@ -1135,19 +1198,21 @@ class Notifier {
 			}
 		}
 
-		 
+		$tz_offset = Timezones::getTimezoneOffsetToApply($task, $task->getAssignedTo());
+		$tz = $tz_offset/3600;
+		
 		tpl_assign('contexts', $contexts);//workspaces
 		//start date, due date or start
 		if ($task->getStartDate() instanceof DateTimeValue) {
-			$date = Localization::instance()->formatDescriptiveDate($task->getStartDate(), $task->getAssignedTo()->getTimezone());
-			$time = Localization::instance()->formatTime($task->getStartDate(), $task->getAssignedTo()->getTimezone());
+			$date = Localization::instance()->formatDescriptiveDate($task->getStartDate(), $tz);
+			$time = Localization::instance()->formatTime($task->getStartDate(), $tz);
 			if($time > 0) $date .= " " . $time;
 			tpl_assign('start_date', $date);//start_date
 		}
 
 		if ($task->getDueDate() instanceof DateTimeValue) {
-			$date = Localization::instance()->formatDescriptiveDate($task->getDueDate(), $task->getAssignedTo()->getTimezone());
-			$time = Localization::instance()->formatTime($task->getDueDate(), $task->getAssignedTo()->getTimezone());
+			$date = Localization::instance()->formatDescriptiveDate($task->getDueDate(), $tz);
+			$time = Localization::instance()->formatTime($task->getDueDate(), $tz);
 			if($time > 0) $date .= " " . $time;
 			tpl_assign('due_date', $date);//due_date
 		}
@@ -1181,6 +1246,7 @@ class Notifier {
 			$assigned_to_email = trim($assigned_to->getEmailAddress());
 			if ($assigned_to_email != '') {
 				self::queueEmail(
+					$task->getId(),
 					array(self::prepareEmailAddress($assigned_to_email, $assigned_to->getObjectName())),
 					null,
 					null,
@@ -1269,18 +1335,21 @@ class Notifier {
 			}
 		}
 		tpl_assign('contexts', $contexts);//workspaces
+		
+		$tz_offset = Timezones::getTimezoneOffsetToApply($task, $task->getAssignedTo());
+		$tz = $tz_offset/3600;
 
 		//start date, due date or start
 		if ($task->getStartDate() instanceof DateTimeValue) {
-			$date = Localization::instance()->formatDescriptiveDate($task->getStartDate(), $task->getAssignedTo()->getTimezone());
-			$time = Localization::instance()->formatTime($task->getStartDate(), $task->getAssignedTo()->getTimezone());
+			$date = Localization::instance()->formatDescriptiveDate($task->getStartDate(), $tz);
+			$time = Localization::instance()->formatTime($task->getStartDate(), $tz);
 			if($time > 0) $date .= " " . $time;
 			tpl_assign('start_date', $date);//start_date
 		}
 
 		if ($task->getDueDate() instanceof DateTimeValue) {
-			$date = Localization::instance()->formatDescriptiveDate($task->getDueDate(), $task->getAssignedTo()->getTimezone());
-			$time = Localization::instance()->formatTime($task->getDueDate(), $task->getAssignedTo()->getTimezone());
+			$date = Localization::instance()->formatDescriptiveDate($task->getDueDate(), $tz);
+			$time = Localization::instance()->formatTime($task->getDueDate(), $tz);
 			if($time > 0) $date .= " " . $time;
 			tpl_assign('due_date', $date);//due_date
 		}
@@ -1317,7 +1386,7 @@ class Notifier {
 			foreach ($subscribers as $subscriber){
 				$c++;
 				if($c == $total_s && $total_s > 1){
-					$string_subscriber .= lang('and');
+					$string_subscriber .= " " . lang('and') . " ";
 				}else if($c > 1){
 					$string_subscriber .= ", ";
 				}
@@ -1343,6 +1412,7 @@ class Notifier {
 		}else{
 			if (!$task->getAssignedBy()->getDisabled()) {
 				$emails[] = array(
+							"object_id" => $task->getId(),
                             "to" => array(self::prepareEmailAddress($task->getAssignedBy()->getEmailAddress(), $task->getAssignedBy()->getObjectName())),
                             "from" => self::prepareEmailAddress($task->getUpdatedBy()->getEmailAddress(), $task->getUpdatedByDisplayName()),
                             "subject" => lang('work estimate title'),
@@ -1352,6 +1422,7 @@ class Notifier {
 			}
 			if (!$task->getAssignedTo()->getDisabled()) {
 				$emails[] = array(
+							"object_id" => $task->getId(),
                             "to" => array(self::prepareEmailAddress($task->getAssignedTo()->getEmailAddress(), $task->getAssignedTo()->getObjectName())),
                             "from" => self::prepareEmailAddress($task->getUpdatedBy()->getEmailAddress(), $task->getUpdatedByDisplayName()),
                             "subject" => lang('work estimate title'),
@@ -1412,7 +1483,7 @@ class Notifier {
 	 * @param string content-transfer-encoding,optional
 	 * @return bool successful
 	 */
-	static function sendEmail($to, $from, $subject, $body = false, $type = 'text/plain', $encoding = '8bit', $attachments = array()) {
+	static function sendEmail($to, $from, $subject, $body = false, $type = 'text/plain', $encoding = '8bit', $attachments = array(), $object_id = 0) {
 		$ret = false;
 		if (config_option('notification_from_address')) {
 			$from = config_option('notification_from_address');
@@ -1436,6 +1507,15 @@ class Notifier {
 			throw new NotifierConnectionError();
 		} // if
 
+		// init Swift logger
+		if (defined('LOG_SWIFT') && LOG_SWIFT > 0) {
+			$swift_logger = new Swift_Plugins_Loggers_ArrayLogger();
+			$mailer->registerPlugin(new Swift_Plugins_LoggerPlugin($swift_logger));
+			$swift_logger_level = LOG_SWIFT; // 0: no log, 1: log only errors, 2: log everything
+		} else {
+			$swift_logger_level = 0;
+		}
+
 		$smtp_address = config_option("smtp_address");
 		if (config_option("mail_transport") == self::MAIL_TRANSPORT_SMTP && $smtp_address) {
 			$pos = strrpos($from, "<");
@@ -1447,7 +1527,9 @@ class Notifier {
 				$sender_name = "";
 				$from_address = $from;
 			}
-			$from = array($smtp_address => $sender_name);
+			
+			$from_address = config_option("smtp_address");
+			
 		} else {
 			$pos = strrpos($from, "<");
 			if ($pos !== false) {
@@ -1457,10 +1539,21 @@ class Notifier {
 				$sender_name = "";
 				$sender_address = $from;
 			}
-			$from = array($sender_address => $sender_name);
+			
 			$from_address = $sender_address;
 		}
 		
+		if (trim($sender_name) == "") {
+			$sender_name = owner_company()->getObjectName();
+		}
+
+		$from_name = config_option("notification_from_name");
+		if (trim($from_name) != "") {
+			$sender_name = $from_name;
+		}
+
+		$from = array($from_address => $sender_name);
+
 		if (Plugins::instance()->isActivePlugin('mail') && config_option('use_mail_accounts_to_send_nots')) {
 			$ma = MailAccounts::instance()->findOne(array("conditions" => "email_addr = '$from_address'"));
 			if ($ma instanceof MailAccount) {
@@ -1501,11 +1594,38 @@ class Notifier {
 			$message->addTo(array_var($address, 0), array_var($address, 1));
 		}
 		$result = $mailer->send($message);
+
+		if ($swift_logger_level >= 2 || ($swift_logger_level > 0 && !$result)) {
+			file_put_contents(CACHE_DIR."/swift_log_notifier.txt", "\n".gmdate("Y-m-d H:i:s")." DEBUG:\n" . $swift_logger->dump() . "----------------------------------------------------------------------------", FILE_APPEND);
+			$swift_logger->clear();
+		}
+
+		if ($result) {
+			// save notification history when notifications are not sent by cron
+			self::saveNotificationHistory(array(
+				'to' => json_encode($to),
+				'cc' => '',
+				'bcc' => '',
+				'from' => json_encode($from),
+				'subject' => $subject,
+				'body' => $body,
+				'attachments' => json_encode($attachments),
+				'timestamp' => DateTimeValueLib::now()->toMySQL(),
+				'object_id' => $object_id,
+			));
+		}
 		
 		return $result;
 	} // sendEmail
 	
-	static function queueEmail($to, $cc, $bcc, $from, $subject, $body = false, $type = 'text/html', $encoding = '8bit', $attachments = array()) {
+	static function queueEmail($object_id, $to, $cc, $bcc, $from, $subject, $body = false, $type = 'text/html', $encoding = '8bit', $attachments = array()) {
+		
+		$queue_this_email = true;
+		Hook::fire('put_email_in_queue', $email_data, $queue_this_email);
+		if (!$queue_this_email) {
+			return;
+		}
+		
 		$cron = CronEvents::getByName('send_notifications_through_cron');
 		if ($cron instanceof CronEvent && $cron->getEnabled()) {
 			$qm = new QueuedEmail();
@@ -1538,25 +1658,14 @@ class Notifier {
 			if ($qm->columnExists('attachments')) {
 				$qm->setColumnValue('attachments', json_encode($attachments));
 			}
+			// related object id
+			$qm->setObjectId($object_id);
+			
 			$qm->save();
 		} else {
 			// not using cron
 			try {
-				$sent_ok = self::sendEmail($to, $from, $subject, $body, $type, $encoding, $attachments);
-				if ($sent_ok) {
-					// save notification history when notifications are not sent by cron
-					self::saveNotificationHistory(array(
-						'to' => $to,
-						'cc' => $cc,
-						'bcc' => $bcc,
-						'from' => $from,
-						'subject' => $subject,
-						'body' => $body,
-						'attachments' => json_encode($attachments),
-						'timestamp' => DateTimeValueLib::now()->toMySQL(),
-					));
-				}
-				
+				$sent_ok = self::sendEmail($to, $from, $subject, $body, $type, $encoding, $attachments, $object_id);
 			} catch (Exception $e) {
 				// save log in server
 				if (defined('EMAIL_ERRORS_LOGDIR') && file_exists(EMAIL_ERRORS_LOGDIR) && is_dir(EMAIL_ERRORS_LOGDIR)) {
@@ -1570,6 +1679,7 @@ class Notifier {
 	static function queueEmails($emails) {
 		foreach ($emails as $email) {
 			self::queueEmail(
+				array_var($email, 'object_id'),
 				array_var($email, 'to'),
 				array_var($email, 'cc'),
 				array_var($email, 'bcc'),
@@ -1586,19 +1696,23 @@ class Notifier {
 	static function sendQueuedEmails() {
 		$date = DateTimeValueLib::now();
 		$date->add("d", -2);
+		
 		$emails = QueuedEmails::getQueuedEmails($date);
 		if (count($emails) <= 0) return 0;
 		
 		Env::useLibrary('swift');
+		
 		$default_mailer = self::getMailer();
 		$mailer = $default_mailer;
 		if(!($mailer instanceof Swift_Mailer)) {
 			throw new NotifierConnectionError();
-		} // if
+		}
+		
 		$fromSMTP = config_option("mail_transport", self::MAIL_TRANSPORT_MAIL) == self::MAIL_TRANSPORT_SMTP && config_option("smtp_authenticate", false);
 		$count = 0;
 		foreach ($emails as $email) {
 			try {
+				if (defined('DEBUG_NOTIFICATIONS') && DEBUG_NOTIFICATIONS) file_put_contents(CACHE_DIR."/debug_notifications", "Start queued_email_id=".$email->getId()."\n", FILE_APPEND);
 				
 				$body = $email->getBody();
 				$subject = $email->getSubject();
@@ -1614,7 +1728,10 @@ class Notifier {
 						$sender_name = "";
 						$from_address = $email->getFrom();
 					}
-					$from = array(config_option("smtp_address") => $sender_name);
+					
+					$from_address = config_option("smtp_address");
+					if (defined('DEBUG_NOTIFICATIONS') && DEBUG_NOTIFICATIONS) file_put_contents(CACHE_DIR."/debug_notifications", "using config smtp address\n", FILE_APPEND);
+					
 				} else {
 					$pos = strrpos($email->getFrom(), "<");
 					if ($pos !== false) {
@@ -1624,9 +1741,22 @@ class Notifier {
 						$sender_name = "";
 						$sender_address = $email->getFrom();
 					}
-					$from = array($sender_address => $sender_name);
+					
 					$from_address = $sender_address;
+					if (defined('DEBUG_NOTIFICATIONS') && DEBUG_NOTIFICATIONS) file_put_contents(CACHE_DIR."/debug_notifications", "using user email in from address\n", FILE_APPEND);
 				}
+				
+				if (trim($sender_name) == "") {
+					$sender_name = owner_company()->getObjectName();
+				}
+
+				$from_name = config_option("notification_from_name");
+				if (trim($from_name) != "") {
+					$sender_name = $from_name;
+				}
+
+				$from = array($from_address => $sender_name);
+				
 				
 				// if exists an email account defined for the sender => use it to send the notification
 				if (Plugins::instance()->isActivePlugin('mail') && config_option('use_mail_accounts_to_send_nots')) {
@@ -1635,7 +1765,8 @@ class Notifier {
 						
 						$mu = new MailUtilities();
 						$from = array($ma->getEmailAddress() => ($sender_name != "" ? $sender_name : $ma->getFromName()));
-					
+						if (defined('DEBUG_NOTIFICATIONS') && DEBUG_NOTIFICATIONS) file_put_contents(CACHE_DIR."/debug_notifications", "using mail account in from address\n", FILE_APPEND);
+						
 						$mailer = self::getMailer(array(
 								'smtp_server' => $ma->getSmtpServer(),
 								'smtp_port' => $ma->getSmtpPort(),
@@ -1648,6 +1779,8 @@ class Notifier {
 					}
 				}
 				
+				if (defined('DEBUG_NOTIFICATIONS') && DEBUG_NOTIFICATIONS) file_put_contents(CACHE_DIR."/debug_notifications", print_r(array('from'=>$from,'subject'=>$subject),1)."\n", FILE_APPEND);
+
 				$message = Swift_Message::newInstance($subject)
 				  ->setFrom($from)
 				  ->setBody($body)
@@ -1681,18 +1814,44 @@ class Notifier {
 					$message->addBcc(array_var($address, 0), array_var($address, 1));
 				}
 				$result = $mailer->send($message);
+
+				// set the real from in the email object
+				foreach ($from as $f_add => $f_name) {
+					$fr = $f_name == '' ? $f_add : "$f_name <$f_add>";
+					$email->setFrom($fr);
+					if (DEBUG_NOTIFICATIONS) file_put_contents(CACHE_DIR."/debug_notifications", "Real from: $fr\n");
+				}
+				
+				if (DEBUG_NOTIFICATIONS) file_put_contents(CACHE_DIR."/debug_notifications", print_r(array('to'=>$to, 'cc'=>$cc, 'bcc'=>$bcc),1)."\n");
 				
 				if ($result) {
 					DB::beginWork();
 					// save notification history after cron sent the email
-					self::saveNotificationHistory(array('email_object' => $email));
+					self::saveNotificationHistory(array(
+						'to' => json_encode($to),
+						'cc' => json_encode($cc),
+						'bcc' => json_encode($bcc),
+						'from' => json_encode($from),
+						'subject' => $subject,
+						'body' => $body,
+						'attachments' => json_encode($attachments),
+						'timestamp' => DateTimeValueLib::now()->toMySQL(),
+						'object_id' => DB::escape($email->getObjectId()),
+					));
+
 					// delte from queued_emails
 					$email->delete();
 					DB::commit();
 				}
 				$count++;
+				
+				if (DEBUG_NOTIFICATIONS) file_put_contents(CACHE_DIR."/debug_notifications", "End sending queued email ".$email->getId()."\n");
+				
 			} catch (Exception $e) {
-				DB::rollback();
+				if (DEBUG_NOTIFICATIONS) file_put_contents(CACHE_DIR."/debug_notifications", "Error sending queued_email ".$email->getId()."\n".$e->getMessage()."\n");
+				if ($result) {
+					DB::rollback();
+				}
 				
 				// save log in server
 				if (defined('EMAIL_ERRORS_LOGDIR') && file_exists(EMAIL_ERRORS_LOGDIR) && is_dir(EMAIL_ERRORS_LOGDIR)) {
@@ -1781,6 +1940,12 @@ class Notifier {
 				$mail_transport->setUsername($smtp_username);
 				$mail_transport->setPassword($smtp_password);
 			}
+
+			$local_domain = parse_url(ROOT_URL);
+			if(is_array($local_domain) && array_key_exists('host', $local_domain) && $local_domain['host'] !== ''){
+				$mail_transport->setLocalDomain($local_domain['host']);
+			}
+
 			return Swift_Mailer::newInstance($mail_transport);
 			
 			// Somethings wrong here...
@@ -1855,10 +2020,13 @@ class Notifier {
 					$priority_data = self::getTaskPriorityData($dep_task);
 					tpl_assign('priority', $priority_data);
 					
-					$start_date = self::getTaskDateFormatted($dep_task, 'start_date', $assigned_user->getTimezone());
+					$tz_offset = Timezones::getTimezoneOffsetToApply($dep_task, $assigned_user);
+					$tz = $tz_offset/3600;
+					
+					$start_date = self::getTaskDateFormatted($dep_task, 'start_date', $tz);
 					tpl_assign('start_date', $start_date);
 					
-					$due_date = self::getTaskDateFormatted($dep_task, 'due_date', $assigned_user->getTimezone());
+					$due_date = self::getTaskDateFormatted($dep_task, 'due_date', $tz);
 					tpl_assign('due_date', $due_date);
 					
 					$attachments = array();
@@ -1876,6 +2044,7 @@ class Notifier {
 					
 					$recipients_field = config_option('notification_recipients_field', 'to');
 					$emails[] = array(
+						"object_id" => $object->getId(),
 						"$recipients_field" => $to_addresses,
 						"from" => self::prepareEmailAddress($senderemail, $sendername),
 						"subject" => $subject,
@@ -2024,6 +2193,7 @@ class Notifier {
 				DB::escape($email->getBody()), 
 				DB::escape($email->getAttachments()), 
 				DB::escape($email->getTimestamp()),
+				DB::escape($email->getObjectId()),
 			);
 		} else {
 			// if notification is sent inmediately after an action (not by cron)
@@ -2038,10 +2208,11 @@ class Notifier {
 				DB::escape(array_var($parameters, 'body', '')), 
 				DB::escape(array_var($parameters, 'attachments', '')), 
 				DB::escape(array_var($parameters, 'timestamp', '')),
+				DB::escape(array_var($parameters, 'object_id', '')),
 			);
 		}
 		// columns to set
-		$columns_sql = "`queued_email_id`, `sent_date`, `to`, `cc`, `bcc`, `from`, `subject`, `body`, `attachments`, `timestamp`";
+		$columns_sql = "`queued_email_id`, `sent_date`, `to`, `cc`, `bcc`, `from`, `subject`, `body`, `attachments`, `timestamp`, `object_id`";
 		
 		// sql query
 		$sql = "INSERT INTO ".TABLE_PREFIX."sent_notifications ($columns_sql)

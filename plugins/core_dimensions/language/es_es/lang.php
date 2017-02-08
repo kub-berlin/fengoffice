@@ -17,6 +17,7 @@
 	'color' => 'Color',
 	'custom property is disabled' => 'Esta propiedad ha sido deshabilitada.',
 	'enable' => 'Habilitar',
+	'after' => 'después',
 	
 	'modify subtasks dates' => '¿Modificar fechas de subtareas?',
 	'success update subtasks dates' => 'Las fechas de las subtareas fueron modificadas exitosamente.',

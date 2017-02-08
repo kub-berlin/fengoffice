@@ -35,13 +35,18 @@ if (array_var($_REQUEST, 'modal')) {
 				}
 		?>
 			<tr style='height:30px;'>
-				<td style="padding:3px 10px 0 10px;"><b><?php echo $parameter['name']; ?></b></td>
+				<td style="padding:3px 10px 0 10px;"><span class="bold"><?php
+					$parameter_name = $parameter['name'];
+					Hook::fire('template_param_instantiation_name', array('param' => $parameter, 'template' => $template), $parameter_name);
+					echo $parameter_name;
+				?></span></td>
 				<td align="left">
 					<?php if($parameter['type'] == 'string'){ ?>
 						<input id="parameterValues[<?php echo $parameter['name'] ?>]" name="parameterValues[<?php echo $parameter['name'] ?>]" class="title" value="<?php echo $default_value?>"/>
-					<?php }else if($parameter['type'] == 'date'){ ?>
-						<?php echo pick_date_widget2('parameterValues['.$parameter['name'].']')?>
-					<?php }else{ ?>
+					<?php } else if ($parameter['type'] == 'date'){
+								echo pick_date_widget2('parameterValues['.$parameter['name'].']');
+							
+						  } else if($parameter['type'] == 'user') { ?>
 						<select name="<?php echo 'parameterValues['.$parameter['name'].']'; ?>">
 						<?php
 							$context = active_context();
@@ -70,7 +75,11 @@ if (array_var($_REQUEST, 'modal')) {
 							 
 						?>
 						</select>
-					<?php } ?>
+					<?php } else {
+								$null = null;
+								Hook::fire('render_param_to_instantiate', array('param' => $parameter), $null);
+						  }
+					?>
 				</td>
 			</tr>
 		<?php }//foreach ?>

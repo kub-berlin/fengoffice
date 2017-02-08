@@ -138,7 +138,7 @@ foreach ($all_type_codes as $type_code) {
 			$is_alt = !$is_alt;
 			?>
 			<div class="<?php echo ($is_alt ? 'alt-row' : '')?> info-content-item">
-				<strong><?php echo lang('webpage')?>: </strong><?php echo trim($webpage->getUrl()) ?>
+				<strong><?php echo lang('webpage')?>: </strong><a href="<?php echo $webpage->getFixedUrl() ?>" target="_blank"><?php echo trim($webpage->getUrl()) ?></a>
 			</div>
 	<?php }
 	}

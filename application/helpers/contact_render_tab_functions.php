@@ -26,7 +26,7 @@ function render_contact_data_tab($genid, $contact, $renderContext, $contact_data
 			'birthday'=> $contact->getBirthday(),
 			'comments' => $contact->getCommentsField(),
 			'picture_file' => $contact->getPictureFile(),
-			'timezone' => $contact->getTimezone(),
+			'user_timezone_id' => $contact->getUserTimezoneId(),
 			'company_id' => $contact->getCompanyId(),
 		); 
 		 
@@ -68,7 +68,7 @@ function render_company_data_tab($genid, $company, $renderContext, $company_data
 			
 		$company_data = array(
 			'first_name' => $company->getFirstName(),
-			'timezone' => $company->getTimezone(),
+			'user_timezone_id' => $company->getUserTimezoneId(),
 			'email' => $company->getEmailAddress(),
 			'comments' => $company->getCommentsField(),
 		); // array

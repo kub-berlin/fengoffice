@@ -181,6 +181,8 @@ CREATE TABLE `<?php echo $table_prefix ?>objects` (
   `trashed_by_id` int(10) unsigned default NULL,
   `archived_on` datetime NOT NULL default '0000-00-00 00:00:00',
   `archived_by_id` int(10) unsigned default NULL,
+  `timezone_id` int(10) unsigned NOT NULL,
+  `timezone_value` int(10) NOT NULL,
   PRIMARY KEY  (`id`),
   KEY `created_on` (`created_on`),
   KEY `updated_on` (`updated_on`),
@@ -330,6 +332,7 @@ CREATE TABLE `<?php echo $table_prefix ?>contacts` (
   `personal_member_id` int(10) unsigned,
   `disabled` tinyint(1) NOT NULL default 0,
   `default_billing_id` int(10) NOT NULL default 0,
+  `user_timezone_id` int(10) unsigned NOT NULL default 0,
   PRIMARY KEY  (`object_id`),
   KEY `first_name` USING BTREE (`first_name`,`surname`),
   KEY `surname` USING BTREE (`surname`,`first_name`),
@@ -760,9 +763,10 @@ CREATE TABLE  `<?php echo $table_prefix ?>timeslots` (
   `description` text <?php echo $default_collation ?> NOT NULL,
   `paused_on` datetime NOT NULL default '0000-00-00 00:00:00',
   `subtract` int(10) unsigned NOT NULL default '0',
-  `fixed_billing` float NOT NULL default '0',
-  `hourly_billing` float NOT NULL default '0',
-  `is_fixed_billing` float NOT NULL default '0',
+  `fixed_billing` DECIMAL(20,3) NOT NULL default '0',
+  `hourly_billing` DECIMAL(20,3) NOT NULL default '0',
+  `is_fixed_billing` tinyint(1) unsigned NOT NULL default '0',
+  `rate_currency_id` int(10) unsigned NOT NULL DEFAULT '0',
   `billing_id` int(10) unsigned NOT NULL default '0',
   PRIMARY KEY  (`object_id`),
   KEY `rel_obj_id` (`rel_object_id`) USING BTREE,
@@ -879,6 +883,7 @@ CREATE TABLE `<?php echo $table_prefix ?>custom_properties` (
   `visible_by_default` tinyint(1) NOT NULL DEFAULT 0,
   `is_special` tinyint(1) NOT NULL DEFAULT 0,
   `is_disabled` tinyint(1) NOT NULL DEFAULT 0,
+  `show_in_lists` tinyint(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`)
 ) ENGINE=<?php echo $engine ?> <?php echo $default_charset ?>;
 
@@ -901,6 +906,7 @@ CREATE TABLE `<?php echo $table_prefix ?>queued_emails` (
   `body` text <?php echo $default_collation ?>,
   `attachments` text,
   `timestamp` datetime NOT NULL default '0000-00-00 00:00:00',
+  `object_id` int(10) NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`)
 ) ENGINE=<?php echo $engine ?> <?php echo $default_charset ?>;
 
@@ -1239,6 +1245,7 @@ CREATE TABLE `<?php echo $table_prefix ?>sent_notifications` (
  `body` text <?php echo $default_collation ?>,
  `attachments` text <?php echo $default_collation ?>,
  `timestamp` datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
+ `object_id` int(10) NOT NULL DEFAULT 0,
  PRIMARY KEY (`id`)
 ) ENGINE=<?php echo $engine ?> <?php echo $default_charset ?>;
 
@@ -1278,3 +1285,43 @@ CREATE TABLE IF NOT EXISTS `<?php echo $table_prefix ?>object_type_dependencies`
   `dependant_object_type_id` INTEGER UNSIGNED NOT NULL,
   PRIMARY KEY (`object_type_id`,`dependant_object_type_id`)
 ) ENGINE=<?php echo $engine ?> <?php echo $default_charset ?>;
+
+
+
+CREATE TABLE IF NOT EXISTS `<?php echo $table_prefix ?>object_type_hierarchies` (
+  `id` INTEGER UNSIGNED NOT NULL AUTO_INCREMENT,
+  `parent_object_type_id` INTEGER UNSIGNED NOT NULL DEFAULT 0,
+  `child_object_type_id` INTEGER UNSIGNED NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`)
+) ENGINE = <?php echo $engine ?>;
+
+CREATE TABLE IF NOT EXISTS `<?php echo $table_prefix ?>object_type_hierarchy_options` (
+  `hierarchy_id` INTEGER UNSIGNED NOT NULL DEFAULT 0,
+  `dimension_id` INTEGER UNSIGNED NOT NULL DEFAULT 0,
+  `member_type_id` INTEGER UNSIGNED NOT NULL DEFAULT 0,
+  `option` varchar(255) COLLATE utf8_unicode_ci NOT NULL DEFAULT '',
+  `value` text COLLATE utf8_unicode_ci,
+  PRIMARY KEY (`hierarchy_id`, `dimension_id`, `member_type_id`, `option`)
+) ENGINE = <?php echo $engine ?>;
+
+
+CREATE TABLE IF NOT EXISTS `<?php echo $table_prefix ?>countries` (
+  `code` char(10) <?php echo $default_collation ?> NOT NULL DEFAULT '',
+  `name` varchar(255) <?php echo $default_collation ?> NOT NULL DEFAULT '',
+  PRIMARY KEY `code` (`code`),
+  KEY `name` (`name`)
+) ENGINE = <?php echo $engine ?> <?php echo $default_charset ?>;
+
+CREATE TABLE IF NOT EXISTS `<?php echo $table_prefix ?>timezones` (
+  `id` int(10) NOT NULL AUTO_INCREMENT,
+  `country_code` char(10) <?php echo $default_collation ?> NOT NULL DEFAULT '',
+  `name` varchar(255) <?php echo $default_collation ?> NOT NULL DEFAULT '',
+  `has_dst` tinyint(1) NOT NULL DEFAULT '0',
+  `gmt_offset` int(10) NOT NULL DEFAULT '0',
+  `gmt_dst_offset` int(10) NOT NULL DEFAULT '0',
+  `using_dst` tinyint(1) NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  KEY `idx_country_code` (`country_code`),
+  KEY `idx_zone_name` (`name`)
+) ENGINE = <?php echo $engine ?> <?php echo $default_charset ?>;
+

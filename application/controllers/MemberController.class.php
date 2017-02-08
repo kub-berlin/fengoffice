@@ -25,15 +25,15 @@ class MemberController extends ApplicationController {
 		$ot = ObjectTypes::findById(array_var($_REQUEST, 'type_id'));
 		$dim = Dimensions::findById(array_var($_REQUEST, 'dim_id'));
 		
-		evt_add("refresh member list parameters", array(
+		$config = array(
 			'object_type_id' => array_var($_REQUEST, 'type_id'),
 			'dimension_id' => array_var($_REQUEST, 'dim_id'),
 			'dimension_code' => $dim instanceof Dimension ? $dim->getCode() : '',
 			'object_type_name' => $ot instanceof ObjectType ? $ot->getName() : '',
-		));
+		);
 		
 		require_javascript("og/MemberManager.js");
-		ajx_current("panel", "members", null, null, true);
+		ajx_current("panel", "members", null, $config, true);
 		ajx_replace(true);
 	}
 	
@@ -416,6 +416,7 @@ class MemberController extends ApplicationController {
 			"totalCount" => $total,
 			"start" => $start,
 			"dimension_id" => $dimension->getId(),
+			"object_type_id" => $member_type_id,
 			"dimension_name" => $dimension->getName(),
 			"object_type_name" => $ot instanceof ObjectType ? $ot->getName() : $dimension->getName(),
 			"members" => array(),
@@ -440,7 +441,8 @@ class MemberController extends ApplicationController {
 				$all_parents = $m->getAllParentMembersInHierarchy();
 				foreach ($all_parents as $parent) {
 					if (!isset($path_ids[$dimension->getId()])) $path_ids[$dimension->getId()] = array();
-					$path_ids[$dimension->getId()][$parent->getId()] = $parent->getId();
+					if (!isset($path_ids[$dimension->getId()][$parent->getObjectTypeId()])) $path_ids[$dimension->getId()][$parent->getObjectTypeId()] = array();
+					$path_ids[$dimension->getId()][$parent->getObjectTypeId()][] = $parent->getId();
 					break;
 				}
 				$info['mem_path'] = json_encode($path_ids);
@@ -868,11 +870,21 @@ class MemberController extends ApplicationController {
 			throw new Exception(lang('you cant add member without security permissions', $ot_name));
 		}*/
 		
+		$previous_data = array();
+		
 		try {
 			DB::beginWork();
-			
 			if (!$is_new) {
 				$old_parent = $member->getParentMemberId();
+				
+				$previous_data['original_member'] = Members::findById($member->getId());
+				$previous_data['custom_properties'] = MemberCustomPropertyValues::instance()->getAllCustomPropertyValues($member->getId());
+				
+				$prev_assocs = MemberPropertyMembers::getAllAssociatedMemberIds($member->getId());
+				$prev_assocs_rev = MemberPropertyMembers::getAllAssociatedMemberIds($member->getId(), true);
+				foreach ($prev_assocs_rev as $a_id => $mem_ids) $prev_assocs[$a_id] = $mem_ids;
+				
+				$previous_data['associations'] = $prev_assocs;
 			}
 			
 			if (!isset($member_data['color']) && array_var($member_data, 'parent_member_id') > 0) {
@@ -1070,7 +1082,7 @@ class MemberController extends ApplicationController {
 			
 			
 			$ret = null;
-			Hook::fire('after_member_save', array('member' => $member, 'is_new' => $is_new), $ret);
+			Hook::fire('after_member_save', array('member' => $member, 'previous_data' => $previous_data, 'is_new' => $is_new), $ret);
 			
 			if ($is_new) {
 				// set all permissions for the creator

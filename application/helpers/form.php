@@ -640,6 +640,7 @@
   */
   function select_timezone_widget($name, $value = null, $attributes = null) {
     $selected_value = (float) $value;
+    /*
     $all_timezones = Timezones::getTimezones();
     
     $options = array();
@@ -650,7 +651,81 @@
     } // if
     
     return select_box($name, $options, $attributes);
+*/
+    return '<input type="hidden" name="'.$name.'" value="'.$value.'" />';
   } // select_timezone_widget
+  
+  
+  /**
+  * Render timezone selector
+  *
+  * @param string $name Name of the select box
+  * @param integer $value Id of the timezone.
+  * @param array $attributes Array of additional attributes
+  * @return string
+  */
+  function timezone_selector($name, $value = null, $attributes = null) {
+  	
+  	$genid = gen_id();
+  	if (!isset($attributes['id'])) {
+  		$attributes['id'] = $genid . 'timezoneSelector';
+  	}
+  	
+  	$sel_country = null;
+  	$selected_zone = Timezones::getTimezoneById($value);
+  	if (is_array($selected_zone)) {
+  		$sel_country = $selected_zone['country_code'];
+  	}
+  	
+  	$country_options = array();
+  	$countries = Countries::getAll();
+  	foreach ($countries as $code => $country_name) {
+  		$option_attributes = $code == $sel_country ? array('selected' => true) : null;
+  		$country_options[] = option_tag($country_name, $code, $option_attributes);
+  	}
+  	
+  	$country_selector_html = select_box('country_code', $country_options, 
+  			array('id' => $genid.'countrySelector', 'onchange' => "og.onTzSelectorCountryChange(this, '".$attributes['id']."');"));
+  	
+  	$html = '<div id="'.$genid.'country_sel_container" class="country-combo-container">' . $country_selector_html . '</div>';
+  	
+  	$options = array();
+  	if ($sel_country) {
+  		$zones = Timezones::getTimezonesByCountryCode($sel_country);
+  		foreach ($zones as $zone) {
+  			$option_attributes = $zone['id'] == $value ? array('selected' => true) : null;
+  			$zone_description = Timezones::getFormattedDescription($zone);
+  			
+  			$options[] = option_tag($zone_description, $zone['id'], $option_attributes);
+  		}
+  	}
+  	
+  	$html .= '<div id="'.$genid.'timezone_sel_container" class="tz-combo-container">' . select_box($name, $options, $attributes) . '</div>';
+  	
+  	return $html;
+  	
+  }
+  
+  
+  function timezone_selector_hidden($object, $genid, $attributes = null) {
+  	
+  	$formatted = Timezones::getFormattedDescription($object->getTimezoneId(), true);
+  	$formatted_offset = Timezones::getFormattedOffset($object->getTimezonevalue());
+  	
+  	$html .= "";
+  	if (!array_var($attributes, 'hide_label')) {
+	  	$html .= "<label style='height:25px;'>".lang('timezone')."</label>";
+  	}
+  	
+  	$html .= "<div id='".$genid."tz_text' style='float:left;'>" . $formatted['name']." ($formatted_offset)</div>";
+  	$html .= "<input id='".$genid."tz_edited' value='0' name='timezone_edited' type='hidden'/>";
+  	
+  	$html .= "<div id='".$genid."tz_selector' style='display:none;'>". timezone_selector('timezone_id', $object->getTimezoneId()) ."</div>";
+  	$html .= '&nbsp;<a href="#" onclick="og.showHiddenTimezoneSelector(\''.$genid.'\')" id="'.$genid.'tz_edit_link" class="db-ico link-ico ico-edit"></a>';
+  	
+  	return $html;
+  }
+  
   
   function number_field($name, $value = null, $attributes = null) {
   	//if (!is_numeric($value)) $value = 0;

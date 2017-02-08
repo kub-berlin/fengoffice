@@ -39,9 +39,16 @@
 			<?php } else {?>
 				<td style="padding-right:10px"><b><?php echo lang("n/a") ?></b></td>
 			<?php } ?>
-			<td style="padding-right:10px"><?php echo format_datetime($timeslot->getStartTime())?>
+			<td style="padding-right:10px"><?php
+				$tz_offset = Timezones::getTimezoneOffsetToApply($timeslot);
+				$tz = $tz_offset/3600;
+				echo format_datetime($timeslot->getStartTime(), null, $tz);
+			?>
 				&nbsp;-&nbsp;<?php echo $timeslot->isOpen() ? ('<b>' . lang('work in progress') . '</b>') : 
-				( (format_date($timeslot->getEndTime()) != format_date($timeslot->getStartTime()))?  format_datetime($timeslot->getEndTime()): format_time($timeslot->getEndTime())) ?></td>
+				( (format_date($timeslot->getEndTime()) != format_date($timeslot->getStartTime())) ? 
+						format_datetime($timeslot->getEndTime(), null, $tz) : 
+						format_time($timeslot->getEndTime(), null, $tz) );
+			?></td>
 			<td style="padding-right:10px">
 				<?php 
 					echo DateTimeValue::FormatTimeDiff($timeslot->getStartTime(), $timeslot->getEndTime(), "hm", 60, $timeslot->getSubtract());

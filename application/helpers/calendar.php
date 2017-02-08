@@ -2,9 +2,12 @@
 
 function getEventLimits($event, $date, &$event_start, &$event_duration, &$end_modified) {
 	$end_modified = false;
+	
+	$tz_value = Timezones::getTimezoneOffsetToApply($event, logged_user());
+	
 	if ($event instanceof ProjectEvent) {
-		$event_start = new DateTimeValue($event->getStart()->getTimestamp() + 3600 * logged_user()->getTimezone());
-		$event_duration = new DateTimeValue($event->getDuration()->getTimestamp() + 3600 * logged_user()->getTimezone());
+		$event_start = new DateTimeValue($event->getStart()->getTimestamp() + $tz_value);
+		$event_duration = new DateTimeValue($event->getDuration()->getTimestamp() + $tz_value);
 	
 	} else if ($event instanceof ProjectTask) {/* @var $event ProjectTask */
 		
@@ -14,9 +17,9 @@ function getEventLimits($event, $date, &$event_start, &$event_duration, &$end_mo
 		$work_day_start->setMinute(substr($wsd, strpos($wsd, ':')+1));
 		
 		if ($event->getStartDate() instanceof DateTimeValue) {
-			$event_start = new DateTimeValue($event->getStartDate()->getTimestamp() + 3600 * logged_user()->getTimezone());
+			$event_start = new DateTimeValue($event->getStartDate()->getTimestamp() + $tz_value);
 		} else if ($event->getTimeEstimate() > 0 && $event->getDueDate() instanceof DateTimeValue) {
-			$event_start = new DateTimeValue($event->getDueDate()->getTimestamp() + 3600 * logged_user()->getTimezone());
+			$event_start = new DateTimeValue($event->getDueDate()->getTimestamp() + $tz_value);
 			$event_start->advance($event->getTimeEstimate() * -60);
 		} else {
 			$event_start = $work_day_start;
@@ -28,7 +31,7 @@ function getEventLimits($event, $date, &$event_start, &$event_duration, &$end_mo
 		$work_day_end->setMinute(substr($wed, strpos($wed, ':')+1));
 		
 		if ($event->getDueDate() instanceof DateTimeValue) {
-			$event_duration = new DateTimeValue($event->getDueDate()->getTimestamp() + 3600 * logged_user()->getTimezone());
+			$event_duration = new DateTimeValue($event->getDueDate()->getTimestamp() + $tz_value);
 		} else if ($event->getTimeEstimate() > 0 && $event->getStartDate() instanceof DateTimeValue) {
 			$event_duration = new DateTimeValue($event_start->getTimestamp());
 			$event_duration->advance($event->getTimeEstimate() * 60);

@@ -24,6 +24,9 @@
 		  </td>
 		</tr>
 <?php
+
+	$tz_offset = Timezones::getTimezoneOffsetToApply($timeslot);
+
 	if (can_manage_time(logged_user())) {
 		echo '<tr><td style="vertical-align:middle;"><span class="bold">' . lang("person") . ':&nbsp;</span></td>';
 		
@@ -55,7 +58,7 @@
 			<td align='left'>
 				<table><tr><td>
 				<?php 
-					$start_time = new DateTimeValue($timeslot->getStartTime()->getTimestamp() + logged_user()->getTimezone() * 3600) ;
+					$start_time = new DateTimeValue($timeslot->getStartTime()->getTimestamp() + $tz_offset) ;
 					echo pick_date_widget2('timeslot[start_value]',$start_time, $genid, 20);
 				?>
 				</td><td>
@@ -74,9 +77,9 @@
 				<?php 
 					if ($timeslot->getEndTime() == null){
 						$dt = DateTimeValueLib::now();
-						$end_time = new DateTimeValue($dt->getTimestamp() + logged_user()->getTimezone() * 3600);
+						$end_time = new DateTimeValue($dt->getTimestamp() + $tz_offset);
 					} else {
-						$end_time = new DateTimeValue($timeslot->getEndTime()->getTimestamp() + logged_user()->getTimezone() * 3600) ;
+						$end_time = new DateTimeValue($timeslot->getEndTime()->getTimestamp() + $tz_offset) ;
 					}
 					echo pick_date_widget2('timeslot[end_value]',$end_time, $genid, 40);
 				?>

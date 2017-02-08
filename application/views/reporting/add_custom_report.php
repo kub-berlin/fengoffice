@@ -81,9 +81,9 @@ echo select_box('objectTypeSel', $options, array('id' => 'objectTypeSel' ,'oncha
 	<?php
 		$listeners = array('on_selection_change' => 'og.reload_subscribers("'.$genid.'",'.$object->manager()->getObjectTypeId().')');
 		if ($object->isNew()) {
-			render_member_selectors($object->manager()->getObjectTypeId(), $genid, null, array('select_current_context' => true, 'listeners' => $listeners), null, null, false);
+			render_member_selectors($object->manager()->getObjectTypeId(), $genid, null, array('select_current_context' => true, 'listeners' => $listeners, 'object' => $object), null, null, false);
 		} else {
-			render_member_selectors($object->manager()->getObjectTypeId(), $genid, $object->getMemberIds(), array('listeners' => $listeners), null, null, false);
+			render_member_selectors($object->manager()->getObjectTypeId(), $genid, $object->getMemberIds(), array('listeners' => $listeners, 'object' => $object), null, null, false);
 		}
 	?>
 	  </div>
@@ -115,7 +115,7 @@ echo select_box('objectTypeSel', $options, array('id' => 'objectTypeSel' ,'oncha
 
 <script>
 	og.loadReportingFlags();
-	og.reportObjectTypeChanged('<?php echo $genid?>', '<?php echo array_var($report_data, 'order_by') ?>', '<?php echo array_var($report_data, 'order_by_asc') ?>', '<?php echo (isset($columns) ? implode(',', $columns) : '') ?>');
+	og.reportObjectTypeChanged('<?php echo $genid?>', '<?php echo array_var($report_data, 'order_by') ?>', '<?php echo array_var($report_data, 'order_by_asc') ?>', '<?php echo (isset($columns) ? implode(',', $columns) : '') ?>', false);
 	<?php if(isset($conditions)){ ?>
 		<?php foreach($conditions as $condition){ ?>
 		    og.addCondition('<?php echo $genid?>',<?php echo $condition->getId() ?>, <?php echo $condition->getCustomPropertyId() ?> , '<?php echo $condition->getFieldName() ?>', '<?php echo $condition->getCondition() ?>', '<?php echo $condition->getValue() ?>', '<?php echo $condition->getIsParametrizable() ?>');		

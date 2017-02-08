@@ -70,6 +70,7 @@ return array(
         'status' => 'Status',
         'options' => 'Options',
         'active' => 'Active',
+		'inactive' => 'Inactive',
         'completed' => 'Completed',
         'administrator' => 'Administrator',
         'error' => 'Error',
@@ -449,4 +450,9 @@ return array(
 	'all tasks' => 'All tasks',
 	'general' => 'General',
 	'friendly date' => 'Friendly date',
+
+	'set rwd permissions for all object types' => 'Set full permissions to all object types.',
+	'set rw permissions for all object types' => 'Set read/write permissions to all object types.',
+	'set r permissions for all object types' => 'Set read-only permissions to all object types.',
+	'set none permissions for all object types' => 'Remove permissions in all object types',
 );

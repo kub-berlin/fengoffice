@@ -25,6 +25,111 @@ class MoreController extends ApplicationController {
 		ajx_set_no_toolbar();
 	}
 	
+	function users_list() {
+		ajx_current("empty");
+		
+		if (!can_manage_security(logged_user())) {
+			flash_error(lang('no access permissions'));
+			return;
+		}
+		
+		// Get all variables from request
+		$start = array_var($_GET,'start', 0);
+		$limit = array_var($_GET,'limit', config_option('files_per_page'));
+		$order = array_var($_GET,'sort');
+		$order_dir = array_var($_GET,'dir');
+		
+		$only_count = array_var($_GET, 'count_results') && array_var($_GET, 'only_result');
+		
+		if (!in_array(strtoupper($order_dir), array('ASC','DESC'))) {
+			$order_dir = 'ASC';
+		}
+		
+		switch($order) {
+			case 'last_activity':
+			case 'role':
+				$order_sql = "ORDER BY $order $order_dir";
+				break;
+			case 'name':
+				$order_sql = "ORDER BY c.first_name $order_dir, c.surname $order_dir";
+				break;
+			case 'company':
+				$order_sql = "ORDER BY comp_fname $order_dir, comp_surname $order_dir";
+				break;
+			case 'status':
+				$order_sql = "ORDER BY c.disabled $order_dir, c.first_name ASC, c.surname ASC";
+				break;
+			default:
+				$order_sql = "ORDER BY c.first_name $order_dir, c.surname $order_dir";
+		}
+		
+		$filter_conditions = "";
+		$status_filter = array_var($_GET, 'status_filter');
+		if (is_null($status_filter)) {
+			$status_filter = array_var($_SESSION, 'users_list_current_status_filter', 'enabled');
+		}
+		$_SESSION['users_list_current_status_filter'] = $status_filter;
+		
+		if ($status_filter == 'enabled') {
+			$filter_conditions = " AND c.disabled=0";
+		} else if ($status_filter == 'disabled') {
+			$filter_conditions = " AND c.disabled=1";
+		}
+		
+		$columns_sql = "c.object_id, c.first_name, c.surname, c.last_activity, p.name as role, c.disabled,
+					comp.first_name as comp_fname, comp.surname as comp_surname, c.picture_file_small";
+		
+		$main_sql = "FROM ".TABLE_PREFIX."contacts c
+				INNER JOIN ".TABLE_PREFIX."permission_groups p ON p.id=c.user_type
+				LEFT JOIN ".TABLE_PREFIX."contacts comp ON comp.object_id=c.company_id
+				WHERE c.user_type>0 $filter_conditions";
+		
+		$order_limit_sql = "
+				$order_sql
+				LIMIT $start, $limit";
+		
+		$users_data = array();
+		
+		if (!$only_count) {
+			$sql = "SELECT $columns_sql 
+				$main_sql
+				$order_limit_sql
+			";
+			$rows = DB::executeAll($sql);
+			foreach ($rows as $r) {
+				$dtval = DateTimeValueLib::dateFromFormatAndString(DATE_MYSQL, $r['last_activity']);
+				$picture_url = trim($r['picture_file_small'])!='' ? get_url('files', 'get_public_file', array('id' => $r['picture_file_small'])) : get_image_url('default-avatar.png');
+				
+				$users_data[] = array(
+						'object_id' => $r['object_id'],
+						'name' => trim($r['first_name'].' '.$r['surname']),
+						'role' => $r['role'],
+						'last_activity' => format_datetime($dtval),
+						'company' => trim($r['comp_fname'].' '.$r['comp_surname']),
+						'status' => $r['disabled'] ? lang('inactive') : lang('active'),
+						'disabled' => $r['disabled'] ? '1' : '',
+						'type_controller' => 'contact',
+						'picture' => $picture_url,
+				);
+			}
+		}
+		
+		$count_sql = "SELECT count(c.object_id) as total $main_sql";
+		$total_row = DB::executeOne($count_sql);
+		$total = $total_row['total'];
+		
+		$object = array(
+			"totalCount" => $total,
+			"start" => $start,
+			"users" => $users_data,
+		);
+		
+		ajx_extra_data($object);
+		
+		
+		//tpl_assign("listing", $object);
+	}
+	
 	function system_modules() {
 		if (!can_manage_configuration(logged_user())) {
 			flash_error(lang('no access permissions'));

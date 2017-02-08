@@ -181,7 +181,7 @@
   				}
   				
   				$sql = "
-  					SELECT om.member_id
+  					SELECT om.member_id, m.object_type_id, om.is_optimization
   					FROM ".TABLE_PREFIX."object_members om
   					INNER JOIN ".TABLE_PREFIX."members m ON om.member_id = m.id
   					$cache_sql
@@ -191,20 +191,10 @@
   					ORDER BY om.member_id
   					$SQL_LIMIT
   				";
-  				$db_res = DB::execute($sql);
-  				$rows = $db_res->fetchAll();
+  				return DB::executeAll($sql);
   			} else {
   				return array();
   			}
-  		
-  			$member_ids = array();
-  			if(count($rows) > 0){
-  				foreach ($rows as $row){
-  					$member_ids[] = $row['member_id'];
-  				}
-  			}
-  				
-  			return $member_ids;
   		}
      
   		

@@ -233,3 +233,95 @@
 			ALTER TABLE `".TABLE_PREFIX."contact_emails` ADD INDEX (`email_address`);
 		");
 	}
+	
+	function mail_update_20_21() {
+		DB::execute("
+			UPDATE `".TABLE_PREFIX."contact_config_options` SET default_value='5'
+			WHERE `name`='max_spam_level' AND default_value='0';
+		");
+	}
+	
+	function mail_update_21_22() {
+		// normalize mail_contents - imap folder association
+		DB::execute("
+			CREATE TABLE IF NOT EXISTS `".TABLE_PREFIX."mail_content_imap_folders` (
+			  `account_id` int(10) unsigned NOT NULL,
+			  `message_id` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
+			  `folder` varchar(100) COLLATE utf8_unicode_ci NOT NULL,
+			  `uid` varchar(255) collate utf8_unicode_ci NOT NULL default '',
+  			  `object_id` int(10) unsigned NOT NULL default 0,
+			  PRIMARY KEY (`account_id`,`message_id`,`folder`),
+			  KEY `account_id_folder_object_id` (`account_id`,`folder`,`object_id`)
+			) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+		");
+	}
+
+	function mail_update_22_23() {
+
+		// normalize mail_contents - imap folder association
+		DB::execute("
+				DROP TABLE `".TABLE_PREFIX."mail_content_imap_folders`;
+			");
+
+		DB::execute("
+			CREATE TABLE IF NOT EXISTS `".TABLE_PREFIX."mail_content_imap_folders` (
+			  `account_id` int(10) unsigned NOT NULL,
+			  `message_id` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
+			  `folder` varchar(100) COLLATE utf8_unicode_ci NOT NULL,
+			  `uid` varchar(255) collate utf8_unicode_ci NOT NULL default '',
+  			  `object_id` int(10) unsigned NOT NULL default 0,
+			  PRIMARY KEY (`account_id`,`folder`,`object_id`),
+			  KEY `account_id_folder_object_id` (`account_id`,`folder`,`object_id`)
+			) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+		");
+
+
+
+		// fill the new table
+		DB::execute("
+				INSERT INTO ".TABLE_PREFIX."mail_content_imap_folders (account_id, message_id, folder, uid, object_id)
+					SELECT account_id, message_id, imap_folder_name, uid, object_id
+					FROM ".TABLE_PREFIX."mail_contents
+					WHERE imap_folder_name!=''
+				ON DUPLICATE KEY UPDATE ".TABLE_PREFIX."mail_content_imap_folders.account_id=".TABLE_PREFIX."mail_content_imap_folders.account_id;
+			");
+
+		if (!check_column_exists(TABLE_PREFIX."mail_account_imap_folder", "last_uid_in_folder")) {
+			DB::execute("
+				ALTER TABLE `" . TABLE_PREFIX . "mail_account_imap_folder` ADD COLUMN `last_uid_in_folder` varchar(255) collate utf8_unicode_ci NOT NULL default '';
+			");
+		}
+
+
+		DB::execute("
+			CREATE TABLE IF NOT EXISTS `".TABLE_PREFIX."tmp_table_last_uid_in_folder` (
+			  `account_id` int(10) unsigned NOT NULL,
+			  `folder` varchar(100) COLLATE utf8_unicode_ci NOT NULL,
+			  `object_id` int(10) unsigned NOT NULL default 0,
+			  PRIMARY KEY (`account_id`,`folder`,`object_id`)
+			) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+		");
+
+		// fill the new table
+		DB::execute("
+			INSERT INTO ".TABLE_PREFIX."tmp_table_last_uid_in_folder (account_id, folder, object_id)
+					SELECT account_id,folder,max(object_id) FROM `".TABLE_PREFIX."mail_content_imap_folders` GROUP BY `account_id`,`folder`
+				ON DUPLICATE KEY UPDATE account_id=account_id;
+		");
+
+		// fill the new table
+		DB::execute("
+			UPDATE `".TABLE_PREFIX."mail_account_imap_folder` ma SET ma.last_uid_in_folder=(
+				SELECT `uid` FROM `".TABLE_PREFIX."mail_content_imap_folders` mcif
+				WHERE mcif.`object_id` =(
+					SELECT `object_id` FROM `".TABLE_PREFIX."tmp_table_last_uid_in_folder` tmp
+					WHERE tmp.account_id=ma.account_id AND tmp.folder=ma.folder_name
+				)LIMIT 1
+			);
+		");
+
+		DB::execute("
+				DROP TABLE `".TABLE_PREFIX."tmp_table_last_uid_in_folder`;
+			");
+	}
+	

@@ -80,7 +80,7 @@ $(function() {
 		?>og.addCustomPropertyRow('<?php echo $genid?>');<?php
 
 	} else {
-		foreach ($custom_properties as $cp) { /* @var $cp CustomProperty */
+		foreach ($custom_properties as $cp) {/* @var $cp CustomProperty */
 			$cp_name = escape_character($cp->getName());
 
 			if ($cp->getIsSpecial() && trim($cp->getCode()) != "") {
@@ -101,12 +101,13 @@ $(function() {
 				'is_special' => $cp->getColumnValue('is_special') ? '1' : '',
 				'is_disabled' => $cp->getColumnValue('is_disabled') ? '1' : '',
 				'visible_by_default' => $cp->getVisibleByDefault() ? '1' : '',
+				'show_in_lists' => $cp->getShowInLists() ? '1' : '',
 				'is_required' => $cp->getIsRequired() ? '1' : '',
 				'is_multiple_values' => $cp->getIsMultipleValues() ? '1' : '',
 			);
 			Hook::fire('additional_custom_property_fields', $cp, $prop);
 ?>
-		var prop = Ext.util.JSON.decode('<?php echo json_encode($prop)?>');
+		var prop = Ext.util.JSON.decode('<?php echo (defined('JSON_HEX_APOS') ? json_encode($prop, JSON_HEX_APOS) : json_encode($prop)) ?>');
 		og.addCustomPropertyRow('<?php echo $genid?>', prop);
 
 	<?php }

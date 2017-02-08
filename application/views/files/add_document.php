@@ -28,9 +28,12 @@
 		$ckEditorContent = '';
 		$filename ='';
 	} else {
-		$content = $file->getFileContentWithRealUrls() ;		
-		require_once LIBRARY_PATH . "/htmlpurifier/HTMLPurifier.standalone.php";
-		$ckEditorContent = HTMLPurifier::instance()->purify($content, array('HTML.Trusted' => true));
+		if (defined('SANDBOX_URL')) {
+			$ckEditorContent = $file->getFileContentWithRealUrls();
+		} else {
+			$ckEditorContent = purify_html($file->getFileContentWithRealUrls());
+		}
+		
 		$filename = $file->getName();
 	}
 
@@ -122,7 +125,7 @@ var editor = CKEDITOR.replace('<?php echo $genid ?>ckeditor', {
 		}
 	},
 	fillEmptyBlocks: false,
-	removePlugins: 'scayt,liststyle,tabletools,magicline',
+	removePlugins: 'scayt,liststyle,magicline',
 	entities_additional : '#336,#337,#368,#369'
 });
 

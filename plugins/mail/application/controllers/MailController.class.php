@@ -42,12 +42,15 @@ class MailController extends ApplicationController {
 	private function build_original_mail_info($original_mail, $type = 'plain') {
 		$loc = new Localization();
 		$loc->setDateTimeFormat("D, d M Y H:i:s O");
+		
+		$offset_hours = logged_user()->getUserTimezoneHoursOffset();
+		
 		if ($type == 'plain') {
 			$cc_cell = $original_mail->getCc() == '' ? '' : "\n".lang('mail CC').": ".$original_mail->getCc();
-			$str = "\n\n----- ".lang('original message')."-----\n".lang('mail from').": ".$original_mail->getFrom()."\n".lang('mail to').": ".$original_mail->getTo()."$cc_cell\n".lang('mail sent').": ".$loc->formatDateTime($original_mail->getSentDate(), logged_user()->getTimezone())."\n".lang('mail subject').": ".$original_mail->getSubject()."\n\n";
+			$str = "\n\n----- ".lang('original message')."-----\n".lang('mail from').": ".$original_mail->getFrom()."\n".lang('mail to').": ".$original_mail->getTo()."$cc_cell\n".lang('mail sent').": ".$loc->formatDateTime($original_mail->getSentDate(), $offset_hours)."\n".lang('mail subject').": ".$original_mail->getSubject()."\n\n";
 		} else {
 			$cc_cell = $original_mail->getCc() == '' ? '' : "<tr><td>".lang('mail CC').": ".$original_mail->getCc()."</td></tr>";
-			$str = "<br><br><table><tr><td>----- ".lang('original message')." -----</td></tr><tr><td>".lang('mail from').": ".$original_mail->getFrom()."</td></tr><tr><td>".lang('mail to').": ".$original_mail->getTo()."</td></tr>$cc_cell<tr><td>".lang('mail sent').": ".$loc->formatDateTime($original_mail->getSentDate(), logged_user()->getTimezone())."</td></tr><tr><td>".lang('mail subject').": ".$original_mail->getSubject()."</td></tr></table><br>";
+			$str = "<br><br><table><tr><td>----- ".lang('original message')." -----</td></tr><tr><td>".lang('mail from').": ".$original_mail->getFrom()."</td></tr><tr><td>".lang('mail to').": ".$original_mail->getTo()."</td></tr>$cc_cell<tr><td>".lang('mail sent').": ".$loc->formatDateTime($original_mail->getSentDate(), $offset_hours)."</td></tr><tr><td>".lang('mail subject').": ".$original_mail->getSubject()."</td></tr></table><br>";
 		}		 
 		return $str;
 	}
@@ -113,6 +116,9 @@ class MailController extends ApplicationController {
 				$re_body = purify_html($original_mail->getBodyHtml());
 			} else {
 				$html_content = $original_mail->getBodyHtml();
+				// first remove html comments
+				$html_content = preg_replace('/<!--(.*)-->/Uis', '', $html_content);
+				// remove unwanted definitions
 				if(substr_count($html_content, "<style>") != substr_count($html_content, "</style>") && substr_count($html_content, "/* Font Definitions */") >= 1) {
 					$p1 = strpos($html_content, "/* Font Definitions */", 0);
 					$html_content1 = substr($html_content, 0, $p1);
@@ -563,16 +569,6 @@ class MailController extends ApplicationController {
 				if (count($attachments) > 0) {
 					$i = 0;
 					$str = "";
-				/*	foreach ($attachments as $att) {
-						$str .= "--000000000000000000000000000$i\n";
-						$str .= "Name: ".$att['name'] .";\n";
-						$str .= "Type: ".$att['type'] .";\n";
-						//$str .= "Encoding: ".$att['type'] .";\n";
-						$str .= base64_encode($att['data']) ."\n";
-						$str .= "--000000000000000000000000000$i--\n";
-						$i++;
-					}
-				*/
 					
 					$str = "#att_ver 2\n";
 					foreach ($attachments as $att) {
@@ -703,17 +699,7 @@ class MailController extends ApplicationController {
 				$object_controller->link_to_new_object($mail);
 				$object_controller->add_subscribers($mail);
 				
-				/*
-				if (array_var($mail_data, 'link_to_objects') != ''){
-					$lto = explode('|', array_var($mail_data, 'link_to_objects'));
-					foreach ($lto as $object_string){
-						$split_object = explode('-', $object_string);
-						$object = Objects::findObject($split_object[1]);
-						if ($object instanceof ContentDataObject){
-							$mail->linkObject($object);
-						}
-					}
-				}*/ 
+				
 				
 				//subscribe user
 				$user = Contacts::findById($account->getContactId());
@@ -722,32 +708,6 @@ class MailController extends ApplicationController {
 				}
 				
 				
-				
-				/*if (user_config_option('create_contacts_from_email_recipients') && can_manage_contacts(logged_user())) {
-					// automatically create contacts
-					foreach ($to as $recipient) {
-						$recipient_name = trim($recipient[0]);
-						$recipient_address = trim($recipient[1]);
-						if (!$recipient_address) continue;
-						$contact = Contacts::getByEmail($recipient_address);
-						if (!$contact instanceof Contact) {
-							try {
-								$contact = new Contact();
-								$contact->addEmail($recipient_address, 'personal');
-								if ($recipient_name && $recipient_name != $recipient_address) {
-									$contact->setFirstName($recipient_name);
-								} else {
-									$index = strpos($recipient_address, "@");
-									$recipient_name = substr($recipient_address, 0, $index);
-									$contact->setFirstName($recipient_name);
-								}
-								$contact->save();
-							} catch (Exception $e) {
-								Logger::log($e->getMessage());
-							}
-						}
-					}
-				}*/
 				$mail->addToSharingTable();
 				$mail->orderConversation();
 				DB::commit();
@@ -1009,7 +969,7 @@ class MailController extends ApplicationController {
 						//if user selected the option to keep a copy of sent mails on the server						
 						if ($sentOK && config_option("sent_mails_sync") && $account->getSyncServer() != null && $account->getSyncSsl()!=null && $account->getSyncSslPort()!=null && $account->getSyncFolder()!=null && $account->getSyncAddr()!=null && $account->getSyncPass()!=null){							
 							$check_sync_box = MailUtilities::checkSyncMailbox($account->getSyncServer(), $account->getSyncSsl(), $account->getOutgoingTrasnportType(), $account->getSyncSslPort(), $account->getSyncFolder(), $account->getSyncAddr(), $account->getSyncPass());
-							if ($check_sync_box) MailUtilities::sendToServerThroughIMAP($account->getSyncServer(), $account->getSyncSsl(), $account->getOutgoingTrasnportType(), $account->getSyncSslPort(), $account->getSyncFolder(), $account->getSyncAddr(), $account->getSyncPass(), $complete_mail);
+							if ($check_sync_box) MailUtilities::sendToServerThroughIMAP($account->getSyncServer(), $account->getSyncSsl(), $account->getOutgoingTrasnportType(), $account->getSyncSslPort(), $account->getSyncFolder(), $account->getSyncAddr(), $account->getSyncPass(), $complete_mail, $mail->getId());
 						}
 					} catch (Exception $e) {
 						Logger::log("Could not save sent mail in server through imap: ".$e->getMessage()."\nmail_id=".$mail->getId());
@@ -1287,8 +1247,20 @@ class MailController extends ApplicationController {
 			ini_set('memory_limit', $old_memory_limit);
 		} else {
 			MailUtilities::parseMail($email->getContent(), $decoded, $parsedEmail, $warnings);
-			if (isset($parsedEmail['Attachments'])) {
-				$attachments = $parsedEmail['Attachments'];
+			$parsed_attachments = array_var($parsedEmail, "Attachments", array());
+			$parsed_attachments = array_merge($parsed_attachments, array_var($parsedEmail, "Related", array()));
+
+			if ($parsedEmail['Type'] == 'text' && $parsedEmail['SubType'] == 'calendar') {
+				$attach = array(
+						'Data' => $parsedEmail['Data'],
+						'Type' => 'text/calendar',
+						'FileName' => 'event.ics'
+				);
+				$parsed_attachments[] = $attach;
+			}
+			
+			if (!empty($parsed_attachments)) {
+				$attachments = $parsed_attachments;
 			} else if ($email->getHasAttachments() && !in_array($parsedEmail['Type'], array('html', 'text', 'delivery-status')) && isset($parsedEmail['FileName'])) {
 				// the email is the attachment
 				$attach = array(
@@ -1485,9 +1457,20 @@ class MailController extends ApplicationController {
 			
 		} else {
 			MailUtilities::parseMail($email->getContent(), $decoded, $parsedEmail, $warnings);
+			$parsed_attachments = array_var($parsedEmail, "Attachments", array());
+			$parsed_attachments = array_merge($parsed_attachments, array_var($parsedEmail, "Related", array()));
 			
-			if (isset($parsedEmail["Attachments"]) && isset($parsedEmail["Attachments"][$attId])) {
-				$attachment = $parsedEmail["Attachments"][$attId];
+			if ($parsedEmail['Type'] == 'text' && $parsedEmail['SubType'] == 'calendar') {
+				$attach = array(
+						'Data' => $parsedEmail['Data'],
+						'Type' => 'text/calendar',
+						'FileName' => 'event.ics'
+				);
+				$parsed_attachments[] = $attach;
+			}
+			
+			if (isset($parsed_attachments[$attId])) {
+				$attachment = $parsed_attachments[$attId];
 				
 			} else {
 				
@@ -1502,8 +1485,7 @@ class MailController extends ApplicationController {
 				} else {
 					// check if attachments are emails and if they have their own attachments
 					$more_attachments = array();
-					$attachments = array_var($parsedEmail, 'Attachments', array());
-					foreach ($attachments as &$attach) {
+					foreach ($parsed_attachments as &$attach) {
 							
 						// if attachment is an email => get the email attachments
 						if (array_var($attach, 'Type') == 'message') {
@@ -1687,13 +1669,16 @@ class MailController extends ApplicationController {
 			tpl_assign('modal', true);
 		}
 		
+		$only_attachments = array_var($_REQUEST, 'only_attachments');
+		
 		MailUtilities::parseMail($email->getContent(), $decoded, $parsedEmail, $warnings);
 		if (array_var($_POST,'submit')){
 			$members = json_decode(array_var($_POST, 'members'));
-			$this->do_classify_mail($email, $members);
+			
+			$classify_conv = user_config_option('classify_mail_with_conversation');
+			$this->do_classify_mail($email, $members, null, $classify_conv, false, $only_attachments);
+
 			// update mail list
-
-
 			if (user_config_option('mails classification filter') == 'unclassified' && count($members)>0
 				|| user_config_option('mails classification filter') == 'classified' && count($members)==0) {
 				evt_add("remove from email list", array('ids' => array($email->getId())));
@@ -1706,6 +1691,7 @@ class MailController extends ApplicationController {
 		} 
 		tpl_assign('email', $email);
 		tpl_assign('parsedEmail', $parsedEmail);
+		tpl_assign('only_attachments', $only_attachments);
 	}
 	
 	/**
@@ -1715,7 +1701,7 @@ class MailController extends ApplicationController {
 	 * @param $process_conversation boolean, if true all the conversation will be classified
 	 * @param $after_receiving boolean, indicates wheather the function was called after receiving the email or if only the user is classiffying the email 
 	 */
-	function do_classify_mail($email, $members, $classification_data = null, $process_conversation = true, $after_receiving = false) {
+	function do_classify_mail($email, $members, $classification_data = null, $process_conversation = true, $after_receiving = false, $only_attachments = false) {
 		try {
 			$ctrl = new ObjectController();
 			$create_task = false;//array_var($classification_data, 'create_task') == 'checked';
@@ -1739,13 +1725,26 @@ class MailController extends ApplicationController {
 					DB::beginWork();
 				}
 				
+				$previous_member_ids = $email->getMemberIds();
+				
 				if (count($members) > 0) {
 					$account_owner = logged_user() instanceof contact ? logged_user() : Contacts::findById($email->getAccount()->getContactId());
-					$ctrl->add_to_members($email, $members, $account_owner);
+					
+					if (!$only_attachments) {
+						// if this is executed after receving don't check permissions, because members can be filtered by the user who triggered the mail download
+						if ($after_receiving) {
+							$member_objects = Members::findAll(array("conditions" => "id IN(".implode(',', $members).")"));
+							$email->addToMembers($member_objects);
+							$email->addToSharingTable();
+						} else {
+							$ctrl->add_to_members($email, $members, $account_owner);
+						}
+					}
 					
 					if ($after_receiving && $email->getHasAttachments() && user_config_option('auto_classify_attachments')
 						|| !$after_receiving && $email->getHasAttachments() && 
-							(user_config_option('mail_drag_drop_prompt')=='classify' || user_config_option('mail_drag_drop_prompt')=='prompt' && intval(array_var($_REQUEST, 'classify_attachments')) > 0) ) {
+							(user_config_option('mail_drag_drop_prompt')=='classify' || $only_attachments || 
+							user_config_option('mail_drag_drop_prompt')=='prompt' && intval(array_var($_REQUEST, 'classify_attachments')) > 0) ) {
 							
 						if (count($members) > 0) {
 							$member_instances = Members::findAll(array('conditions' => 'id IN ('.implode(',',$members).')'));
@@ -1753,9 +1752,16 @@ class MailController extends ApplicationController {
 							$this->classifyFile($classification_data, $email, $parsedEmail, $member_instances, false, !$after_receiving);
 						}
 					}
-					
+					$new_member_ids = $members;
 				} else {
 					$email->removeFromMembers(logged_user() instanceof contact ? logged_user() : Contacts::findById($email->getAccount()->getContactId(), $email->getMembers()));
+					$new_member_ids = array();
+				}
+				
+				// save log only when classifying from user interface
+				if (!$after_receiving) {
+					$log_data = (count($previous_member_ids) == 0 ? "" : "from:".implode(',', $previous_member_ids).";") . "to:".implode(',', $new_member_ids);
+					ApplicationLogs::createLog($email, ApplicationLogs::ACTION_MOVE, true, true, true, $log_data);
 				}
 				
 				if ($process_conversation) {
@@ -1770,13 +1776,16 @@ class MailController extends ApplicationController {
 							}
 							
 							$account_owner = logged_user() instanceof contact ? logged_user() : Contacts::findById($conv_email->getAccount()->getContactId());
-							$ctrl->add_to_members($conv_email, $members, $account_owner);
+							if (!$only_attachments) {
+								$ctrl->add_to_members($conv_email, $members, $account_owner);
+							}
 							MailUtilities::parseMail($conv_email->getContent(), $decoded, $parsedEmail, $warnings);
 							
 							if ($conv_email->getHasAttachments()) {
 								if ($after_receiving && user_config_option('auto_classify_attachments')
 									|| !$after_receiving && 
-										(user_config_option('mail_drag_drop_prompt')=='classify' || user_config_option('mail_drag_drop_prompt')=='prompt' && intval(array_var($_REQUEST, 'classify_attachments')) > 0)) {
+										(user_config_option('mail_drag_drop_prompt')=='classify' || $only_attachments || 
+											user_config_option('mail_drag_drop_prompt')=='prompt' && intval(array_var($_REQUEST, 'classify_attachments')) > 0)) {
 										
 									$this->classifyFile($classification_data, $conv_email, $parsedEmail, $member_instances, false, !$after_receiving);
 								}
@@ -2927,18 +2936,19 @@ class MailController extends ApplicationController {
 				INNER JOIN ".TABLE_PREFIX."members m ON m.id=om.member_id 
 				WHERE om.object_id = '".$msg->getId()."' AND om.is_optimization = 0 AND m.dimension_id<>$persons_dim_id"));
 		
+		$tz_offset = Timezones::getTimezoneOffsetToApply($msg);
+		$tz_offset = $tz_offset / 3600;
+		
+		$general_info = $msg->getObject()->getArrayInfo();
+		
 		$properties = array(
-		    "id" => $msg->getId(),
 			"ix" => $i,
-			"object_id" => $msg->getId(),
-			"ot_id" => $msg->getObjectTypeId(),
-			"type" => 'email',
 			"hasAttachment" => $msg->getHasAttachments(),
 			"accountId" => $msg->getAccountId(),
 			"accountName" => ($msg->getAccount() instanceof MailAccount ? $msg->getAccount()->getName() : lang('n/a')),
 			"subject" => $msg->getSubject(),
 			"text" => $text,
-			"date" => $msg->getReceivedDate() instanceof DateTimeValue ? ($msg->getReceivedDate()->isToday() ? format_time($msg->getReceivedDate()) : format_datetime($msg->getReceivedDate())) : lang('n/a'),
+			"date" => $msg->getReceivedDate() instanceof DateTimeValue ? ($msg->getReceivedDate()->isToday() ? format_time($msg->getReceivedDate(), null, $tz_offset) : format_datetime($msg->getReceivedDate(), null, $tz_offset)) : lang('n/a'),
 			"rawdate" => $msg->getReceivedDate() instanceof DateTimeValue ? $msg->getReceivedDate()->getTimestamp() : 0,
 			"userId" => ($msg->getAccount() instanceof MailAccount  && $msg->getAccount()->getOwner() instanceof Contact ? $msg->getAccount()->getOwner()->getId() : 0),
 			"userName" => ($msg->getAccount() instanceof MailAccount  && $msg->getAccount()->getOwner() instanceof Contact ? $msg->getAccount()->getOwner()->getObjectName() : lang('n/a')),
@@ -2951,7 +2961,15 @@ class MailController extends ApplicationController {
 			"to" => $msg->getTo(),
 			"memPath" => json_encode($msg->getMembersIdsToDisplayPath()),
 			"memberIds" => implode(",", $mail_member_ids),
+			"status_ico" => "",
 		);
+		$properties = array_merge($properties, $general_info);
+		
+		$is_replied_or_fwd = MailContents::conversationIsRepliedOrForwarded($msg);
+		if ($is_replied_or_fwd) {
+			$properties["status_ico"] = $is_replied_or_fwd == "replied" ? "ico-mail-replied" : "ico-sent";
+		}
+		
 		
 		if ($show_as_conv) {
 			$properties["conv_total"] = $conv_total;

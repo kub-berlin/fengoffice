@@ -47,12 +47,16 @@
 		'root_perm_genid' => $root_permissions_genid,
 	);
 	
+	debug_log("Before save_permissions", "permissions_debug.log");
+	
 	// save permissions
 	try {
 		$result = save_permissions($pg_id, $is_guest, $perms, true, false, false, false, array(), $only_member_permissions);
 	} catch (Exception $e) {
 		Logger::log("Error saving permissions (1): ".$e->getMessage()."\n".$e->getTraceAsString());
 	}
+	
+	debug_log("Before sharing table update", "permissions_debug.log");
 	
 	// update sharing table
 	try {
@@ -121,6 +125,8 @@
 		Logger::log("Error saving permissions (2): ".$e->getMessage()."\n".$e->getTraceAsString());
 	}
 	
+	debug_log("Before member cache update", "permissions_debug.log");
+	
 	// save tree
 	try {
 		DB::beginWork();
@@ -155,6 +161,8 @@
 		DB::rollback();
 		Logger::log("Error saving permissions (3): ".$e->getMessage()."\n".$e->getTraceAsString());
 	}
+	
+	debug_log("Before firing hooks", "permissions_debug.log");
 	
 	// fire hooks
 	try {

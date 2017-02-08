@@ -177,7 +177,7 @@ function intersectCSVs($csv1, $csv2){
 	return implode(',', $final);
 }
 
-function allowed_users_to_assign($context = null, $filter_by_permissions = true, $return_company_array = true) {
+function allowed_users_to_assign($context = null, $filter_by_permissions = true, $return_company_array = true, $for_task_list_filters=false) {
 	if ($context == null) {
 		$context = active_context();
 	}
@@ -200,7 +200,7 @@ function allowed_users_to_assign($context = null, $filter_by_permissions = true,
 				}
 			}
 			//get users with can_task_assignee permissions
-			if($root_context){
+			if($root_context && $for_task_list_filters){
 				$tmp_contacts = get_users_with_system_permission('can_task_assignee');
 			}else{
 				$tmp_contacts = allowed_users_in_context(ProjectTasks::instance()->getObjectTypeId(), $context, ACCESS_LEVEL_READ);
@@ -1562,6 +1562,10 @@ function buildTree ($nodeList , $parentField = "parent", $childField = "children
 			
 			<?php if( isset ($options['loadUrl']) ) : ?>
 				config.loadUrl = '<?php echo $options['loadUrl'] ?>';
+			<?php endif; ?>
+
+			<?php if( isset ($options['filter_by_ids'])) : ?>
+				config.filter_by_ids = '<?php implode(',', $options['filter_by_ids']) ?>' ;
 			<?php endif; ?>
 
 			<?php if( isset($options['use_ajax_member_tree']) && $options['use_ajax_member_tree'] ) {?>

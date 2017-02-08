@@ -203,6 +203,20 @@
   </td>   
   {{/if}} 
 
+
+  {{#each task.custom_properties}}
+	
+	{{#if (isTasksColumnCPVisible id)}}
+		<td class="task-cp-container">
+			<span class="nobr">
+				{{{value}}}
+			</span>
+		</td>
+	{{/if}}
+	 
+  {{/each}} 
+
+
   <td>
     {{#if show_quick_actions_container}}
     {{#each task_actions}}

@@ -1,4 +1,4 @@
-og.MemberManager = function() {
+og.MemberManager = function(config) {
 	var actions;
 	this.doNotRemove = true;
 	this.needRefresh = false;
@@ -7,10 +7,10 @@ og.MemberManager = function() {
 		'total_tasks', 'completed_tasks', 'task_completion_p', 'total_estimated_time', 'total_worked_time', 'time_worked_p'
   	];
 	
-	this.dimension_id = og.member_list_params.dimension_id;
-	this.dimension_code = og.member_list_params.dimension_code;
-	this.object_type_id = og.member_list_params.object_type_id;
-	this.object_type_name = og.member_list_params.object_type_name;
+	this.dimension_id = config.dimension_id;
+	this.dimension_code = config.dimension_code;
+	this.object_type_id = config.object_type_id;
+	this.object_type_name = config.object_type_name;
 	this.groups_info = null;
 	
 	// prepare reader fields for any member type
@@ -86,6 +86,7 @@ og.MemberManager = function() {
 				totalProperty: 'totalCount',
 				id: 'id',
 				dimension_id: 'dimension_id',
+				object_type_id: 'object_type_id',
 				dimension_name: 'dimension_name',
 				groups_info: 'groups_info',
 				fields: this.fields
@@ -106,8 +107,9 @@ og.MemberManager = function() {
 					
 					this.groups_info = d.groups_info;
 					this.dimension_id = d.dimension_id;
+					this.object_type_id = d.object_type_id;
 					
-					var man = Ext.getCmp('member-manager-' + d.dimension_id);
+					var man = Ext.getCmp('member-manager-' + d.dimension_id + '-' + d.object_type_id);
 					og.eventManager.fireEvent('after grid panel load', {man:man, data:d});
 					
 					og.eventManager.fireEvent('replace all empty breadcrumb', null);
@@ -115,7 +117,7 @@ og.MemberManager = function() {
 				},
 				'datachanged': function() {
 					if (this.dimension_id > 0) {
-						var man = Ext.getCmp('member-manager-'+this.dimension_id);
+						var man = Ext.getCmp('member-manager-'+this.dimension_id+'-'+this.object_type_id);
 						if (man) {
 							var has_associations = man.columnModelHasDimensionAssociations();
 							if (has_associations) {
@@ -232,14 +234,17 @@ og.MemberManager = function() {
 			var mpath = Ext.util.JSON.decode(r.data.mem_path);
 			if (mpath){
 				var obj = mpath[r.data.dimension_id];
-				for (var k in obj) {
-					mem_id = k;
-					break;
+				for (var ot in obj) {
+					var mem_ids = obj[ot];
+					if (mem_ids.length > 0) {
+						mem_id = mem_ids[0];
+						break;
+					}
 				}
 			}
 		}
 		if (mem_id) {
-			var man = Ext.getCmp('member-manager-'+r.data.dimension_id);
+			var man = Ext.getCmp('member-manager-'+r.data.dimension_id+'-'+r.data.object_type_id);
 			if (man.store.groups_info && man.store.groups_info.groups && man.store.groups_info.groups[mem_id]) {
 				return man.store.groups_info.groups[mem_id].name;
 			}			
@@ -256,7 +261,7 @@ og.MemberManager = function() {
 			value = splitted[0];
 		}
 		
-		var man = Ext.getCmp('member-manager-'+r.data.dimension_id);
+		var man = Ext.getCmp('member-manager-'+r.data.dimension_id+'-'+r.data.object_type_id);
 		if (man.store.groups_info && man.store.groups_info.groups && man.store.groups_info.groups[value]) {
 			return man.store.groups_info.groups[value].name;
 		}
@@ -269,10 +274,10 @@ og.MemberManager = function() {
 			var assoc_id = p.id.replace('dimassoc_', '');
 			var assoc_def = null;
 			
-			if (og.dimension_member_associations[og.member_list_params.dimension_id] && 
-					og.dimension_member_associations[og.member_list_params.dimension_id][og.member_list_params.object_type_id]) {
+			if (og.dimension_member_associations[config.dimension_id] && 
+					og.dimension_member_associations[config.dimension_id][config.object_type_id]) {
 				
-		  		d_associations = og.dimension_member_associations[og.member_list_params.dimension_id][og.member_list_params.object_type_id];
+		  		d_associations = og.dimension_member_associations[config.dimension_id][config.object_type_id];
 		  	  	if (d_associations) {
 			  		for (var i=0; i<d_associations.length; i++) {
 			  	  		var assoc = d_associations[i];
@@ -295,7 +300,12 @@ og.MemberManager = function() {
 					var val = values[j];
 					if (val == '0' || val == '') continue;
 					
-					mem_obj[assoc_def.assoc_dimension_id][val] = val;
+					mem_obj[assoc_def.assoc_dimension_id] = {};
+					if (!mem_obj[assoc_def.assoc_dimension_id][assoc_def.assoc_object_type_id]) {
+						mem_obj[assoc_def.assoc_dimension_id][assoc_def.assoc_object_type_id] = [];
+					}
+					mem_obj[assoc_def.assoc_dimension_id][assoc_def.assoc_object_type_id].push(val);
+					
 				}
 				
 				mem_path += "<div class='breadcrumb-container' style='display: inline-block;'>";
@@ -442,7 +452,7 @@ og.MemberManager = function() {
 		if (!parseInt(cps[i].disabled)) {
 			cm_info.push({
 				id: 'cp_' + cps[i].id,
-				hidden: parseInt(cps[i].visible_def) == 0,
+				hidden: parseInt(cps[i].show_in_lists) == 0,
 				header: cps[i].name,
 				dataIndex: 'cp_' + cps[i].id,
 				align: cps[i].cp_type=='numeric' ? 'right' : 'left',
@@ -569,7 +579,7 @@ og.MemberManager = function() {
 		layout: 'fit',
 		cm: cm,
 		stateful: og.preferences['rememberGUIState'],
-		id: 'member-manager-'+this.dimension_id,
+		id: 'member-manager-'+this.dimension_id + "-" + this.object_type_id,
 		stripeRows: true,
 		closable: true,
 		loadMask: true,

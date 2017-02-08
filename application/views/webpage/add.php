@@ -87,9 +87,9 @@
 		<?php 
 		$listeners = array('on_selection_change' => 'og.reload_subscribers("'.$genid.'",'.$webpage->manager()->getObjectTypeId().')');
 		if ($webpage->isNew()) {
-			render_member_selectors($webpage->manager()->getObjectTypeId(), $genid, null, array('select_current_context' => true, 'listeners' => $listeners), null, null, false); 
+			render_member_selectors($webpage->manager()->getObjectTypeId(), $genid, null, array('select_current_context' => true, 'listeners' => $listeners, 'object' => $object), null, null, false); 
 		} else {
-			render_member_selectors($webpage->manager()->getObjectTypeId(), $genid, $webpage->getMemberIds(), array('listeners' => $listeners), null, null, false); 
+			render_member_selectors($webpage->manager()->getObjectTypeId(), $genid, $webpage->getMemberIds(), array('listeners' => $listeners, 'object' => $object), null, null, false); 
 		} ?>
 		</div>
 		

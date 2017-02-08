@@ -26,7 +26,8 @@
 	    'fixed_billing' => DATA_TYPE_FLOAT, 
 	    'hourly_billing' => DATA_TYPE_FLOAT, 
 	    'is_fixed_billing' => DATA_TYPE_BOOLEAN, 
-	    'billing_id' => DATA_TYPE_INTEGER
+	    'billing_id' => DATA_TYPE_INTEGER,
+    	'rate_currency_id' => DATA_TYPE_INTEGER,
     );
   
     /**

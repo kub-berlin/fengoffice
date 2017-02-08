@@ -32,13 +32,16 @@
   		
 		$res = DB::execute("SELECT parent_object_type_id FROM ".TABLE_PREFIX."dimension_object_type_hierarchies WHERE `dimension_id` = $dimension_id AND `child_object_type_id` = $child_object_type_id");
   		$dimension_obj_type_hierarchy = $res->fetchAll();
+  		if (is_null($dimension_obj_type_hierarchy)) $dimension_obj_type_hierarchy = array();
   		
   		$parents = array();
   		if ($recursive) {
 	  		foreach ($dimension_obj_type_hierarchy as $obj_type_hierarchy) {
-	  			$child = $obj_type_hierarchy['parent_object_type_id'];
+	  			$parent = $obj_type_hierarchy['parent_object_type_id'];
 	  			$parents [] = $parent;
-	  			$parents = array_unique(array_merge($parents, self::getAllParentObjectTypeIds($dimension_id, $parent, $recursive)));
+	  			if ($parent != $child_object_type_id) {
+	  				$parents = array_unique(array_merge($parents, self::getAllParentObjectTypeIds($dimension_id, $parent, $recursive)));
+	  			}
 	  		}
 		}else{
 			foreach ($dimension_obj_type_hierarchy as $obj_type_hierarchy) {

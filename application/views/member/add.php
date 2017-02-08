@@ -108,12 +108,6 @@
 		
 			<li><a href="#<?php echo $genid?>member_data"><?php echo lang('details') ?></a></li>
 			
-			<?php foreach ($categories as $category) { ?>
-			<li style="<?php echo array_var($category, 'style')?>" class="<?php echo array_var($category, 'class')?>">
-				<a href="#<?php echo $category['id'] ?>" id="<?php echo array_var($category, 'link_id')?>"><?php echo $category['name'] ?></a>
-			</li>
-			<?php } ?>
-			
 			<?php if ($current_dimension->getDefinesPermissions() && can_manage_security(logged_user())) {?>
 			<li><a href="#<?php echo $genid?>member_permissions_div" id="<?php echo $genid?>permissions_tab"><?php echo lang('permissions') ?></a></li>
 			<?php } ?>
@@ -122,6 +116,11 @@
 			<li id="<?php echo $genid?>add_custom_properties_li"><a href="#<?php echo $genid?>add_custom_properties_div"><?php echo lang('custom properties') ?></a></li>
 			<?php } ?>
 			
+			<?php foreach ($categories as $category) { ?>
+			<li style="<?php echo array_var($category, 'style')?>" class="<?php echo array_var($category, 'class')?>">
+				<a href="#<?php echo $category['id'] ?>" id="<?php echo array_var($category, 'link_id')?>"><?php echo $category['name'] ?></a>
+			</li>
+			<?php } ?>
 		</ul>
 		
 		<div id="<?php echo $genid?>member_data" class="form-tab">

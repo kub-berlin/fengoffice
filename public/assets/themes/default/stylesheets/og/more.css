@@ -82,6 +82,19 @@
 	margin: 10px 0;
 }
 
+.user-groups-container .x-grid3-row.users-list-row-disabled {
+	background-color: #e8e8e8;
+}
+.user-groups-container .x-grid3-row.users-list-row-disabled.x-grid3-row-over {
+	background: #ddd;
+}
+.user-groups-container .x-grid3-row.users-list-row-disabled a, .user-groups-container .x-grid3-row.users-list-row-disabled {
+	color: #777;
+}
+.user-groups-container .x-grid3-row.users-list-row-disabled a span.bold {
+	font-weight: normal;
+}
+
 /**** system modules ****/
 .system-modules-container {
 	background-color: white;

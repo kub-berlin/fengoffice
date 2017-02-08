@@ -101,10 +101,7 @@ og.loadMemberPermissions = function(genid, dim_id, member_id) {
 		og.setReadOnlyObjectTypeRow(genid, dim_id, allowed_ot[dim_id][i], !og.canEditPermissionObjType(genid, member_id, allowed_ot[dim_id][i]));
 	}
 
-	//Update the 'All' checkbox if all permissions are set
-	var chk = document.getElementById(genid + dim_id + 'pAll');
-	if (chk)
-		chk.checked = og.hasAllPermissions(genid, member_id, member_perms);
+	og.permSetCheckboxesSelected(member_perms);
 	
 	og.eventManager.fireEvent('on load member permissions for user', {genid:genid, dim_id:dim_id, member_id:member_id});
 }
@@ -137,10 +134,24 @@ og.ogPermValueChanged = function(genid, dim_id, obj_type){
 
 	og.markMemberPermissionModified(genid, dim_id, member_id);
 
-	//Update the 'All' checkbox if all permissions are set
-	var chk = document.getElementById(genid + dim_id + 'pAll');
-	if (chk)
-		chk.checked = og.hasAllPermissions(genid, member_id, member_perms);
+	og.permSetCheckboxesSelected(member_perms);
+}
+
+// checks the "select all" checkbox if all permissions of its type are selected
+og.permSetCheckboxesSelected = function(perms, base_cls) {
+	var assigned_vals = [];
+	for (var i=0; i<perms.length; i++) {
+		var tmp = perms[i];
+		var v = Boolean(tmp.d) ? 3 : (Boolean(tmp.w) ? 2 : (Boolean(tmp.r) ? 1 : 0));
+		if (assigned_vals.indexOf(v) == -1) assigned_vals.push(v);
+	}
+	
+	if (!base_cls) base_cls = "all-radio-sel-chk";
+	
+	$("."+base_cls).removeAttr('checked');
+	if (assigned_vals.length == 1) {
+		$("."+base_cls+"#chk-"+assigned_vals[0]).attr('checked','checked');
+	}
 }
 
 og.hasAllPermissions = function(genid, member_id, member_permissions) {
@@ -193,10 +204,14 @@ og.ogPermSetLevel = function(genid, dim_id, level){
 
 	og.markMemberPermissionModified(genid, dim_id, member_id);
 	
-	//Update the 'All' checkbox if all permissions are set
-	var chk = document.getElementById(genid + dim_id + 'pAll');
-	if (chk)
-		chk.checked = level == 3;
+	$(".all-radio-sel-chk").removeAttr('checked');
+	$(".all-radio-sel-chk#chk-"+level).attr('checked','checked');
+}
+
+og.ogPermSetLevelCheckbox = function(checkbox, genid, dim_id, radio_id) {
+	var is_checked = $(checkbox).attr('checked') == 'checked';
+	var id = is_checked ? radio_id : 0;
+	og.ogPermSetLevel(genid, dim_id, id);
 }
 
 //Action to execute when the 'All' checkbox is checked or unchecked
@@ -944,10 +959,7 @@ og.userPermissions.loadPGPermissions = function(genid, pg_id) {
 		document.getElementById(genid + 'rg_' + val + '_' + allowed_ot[i]).checked = 1;
 	}
 
-	//Update the 'All' checkbox if all permissions are set
-	var chk = document.getElementById(genid + 'pAll');
-	if (chk)
-		chk.checked = og.userPermissions.hasAllPermissions(genid, pg_id);
+	og.permSetCheckboxesSelected(permissions);
 }
 
 og.userPermissions.hasAllPermissions = function(genid, pg_id) {
@@ -988,10 +1000,14 @@ og.userPermissions.ogPermSetLevel = function(genid, level){
 
 	og.userPermissions.setCheckedPG(genid, pg_id);
 	
-	//Update the 'All' checkbox if all permissions are set
-	var chk = document.getElementById(genid + 'pAll');
-	if (chk)
-		chk.checked = level == 3;
+	$(".all-radio-sel-chk").removeAttr('checked');
+	$(".all-radio-sel-chk#chk-"+level).attr('checked','checked');
+}
+
+og.userPermissions.ogPermSetLevelCheckbox = function(checkbox, genid, radio_id) {
+	var is_checked = $(checkbox).attr('checked') == 'checked';
+	var id = is_checked ? radio_id : 0;
+	og.userPermissions.ogPermSetLevel(genid, id);
 }
 
 //Action to execute when the value of an element of the displayed permission changes
@@ -1018,10 +1034,7 @@ og.userPermissions.ogPermValueChanged = function(genid, obj_type){
 
 	og.userPermissions.setCheckedPG(genid, pg_id);
 
-	//Update the 'All' checkbox if all permissions are set
-	var chk = document.getElementById(genid + 'pAll');
-	if (chk)
-		chk.checked = og.userPermissions.hasAllPermissions(genid, pg_id);
+	og.permSetCheckboxesSelected(permissions);
 }
 
 //Action to execute when the 'All' checkbox is checked or unchecked

@@ -808,6 +808,15 @@
 	margin: 4px 0;
 }
 
+.object-view-member-path-container .member-path-dim-block {
+	heigth: 25px;
+}
+.object-view-member-path-container .member-path-dim-block .dname {
+	padding-top: 0;
+	width: 200px;
+	margin-top: 3px;
+}
+
 .member-path-dim-block .dname {
 	font-weight: bold;
 }

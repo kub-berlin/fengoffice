@@ -554,18 +554,24 @@ class ObjectController extends ApplicationController {
 		$object->clearReminders(logged_user(), true);
 		$typesC = array_var($_POST, 'reminder_type');
 		if (!is_array($typesC)) return;
+		
 		$durationsC = array_var($_POST, 'reminder_duration');
 		$duration_typesC = array_var($_POST, 'reminder_duration_type');
 		$subscribersC = array_var($_POST, 'reminder_subscribers');
+		
 		foreach ($typesC as $context => $types) {
 			$durations = $durationsC[$context];
 			$duration_types = $duration_typesC[$context];
 			$subscribers = $subscribersC[$context];
+			
 			for ($i=0; $i < count($types); $i++) {
 				$type = $types[$i];
 				$duration = $durations[$i];
 				$duration_type = $duration_types[$i];
 				$minutes = $duration * $duration_type;
+				
+				Hook::fire('validate_reminder_minutes', array('context' => $context, 'i' => $i, 'request'=>$_POST), $minutes);
+				
 				$reminder = new ObjectReminder();
 				$reminder->setMinutesBefore($minutes);
 				$reminder->setType($type);
@@ -1530,8 +1536,7 @@ class ObjectController extends ApplicationController {
 				$reminder->delete();
 				continue;
 			}
-			// convert time to the user's locale
-			$timezone = logged_user()->getTimezone();
+			
 			if ($date->getTimestamp() + 5*60 < DateTimeValueLib::now()->getTimestamp()) {
 				// don't show popups older than 5 minutes
 				//$reminder->delete();
@@ -1616,7 +1621,6 @@ class ObjectController extends ApplicationController {
 			'email' => $email,
 			'contact_id' => isset($contact) ? $contact->getId() : null,
 			'password_generator' => 'random',
-			'timezone' => isset($contact) ? $contact->getTimezone() : 0,
 			'create_contact' => !isset($contact),
 			'company_id' => $compId,
 			'send_email_notification' => true,
@@ -1681,7 +1685,7 @@ class ObjectController extends ApplicationController {
 
 	function get_cusotm_property_columns() {
 		$grouped = array();
-		$cp_rows = DB::executeAll("SELECT cp.id, cp.name as cp_name, cp.code as cp_code, ot.name as obj_type, cp.visible_by_default as visible_def, cp.type as cp_type, cp.values as cp_values, cp.default_value as cp_default_value, cp.is_special as cp_special
+		$cp_rows = DB::executeAll("SELECT cp.id, cp.name as cp_name, cp.code as cp_code, ot.name as obj_type, cp.visible_by_default as visible_def, cp.type as cp_type, cp.values as cp_values, cp.default_value as cp_default_value, cp.is_special as cp_special, cp.show_in_lists
 				FROM ".TABLE_PREFIX."custom_properties cp INNER JOIN ".TABLE_PREFIX."object_types ot on ot.id=cp.object_type_id 
 				ORDER BY ot.name");
 		
@@ -1698,7 +1702,7 @@ class ObjectController extends ApplicationController {
 					if (!is_null($label_value)) $cp_name = $label_value;
 				}
 				
-				$grouped[$row['obj_type']][] = array('id' => $row['id'], 'name' => $cp_name, 'code' => $row['cp_code'], 'visible_def' => $row['visible_def'], 'cp_type' => $row['cp_type'], 'cp_values' => $row['cp_values'], 'cp_default_value' => $row['cp_default_value']);
+				$grouped[$row['obj_type']][] = array('id' => $row['id'], 'name' => $cp_name, 'code' => $row['cp_code'], 'visible_def' => $row['visible_def'], 'cp_type' => $row['cp_type'], 'cp_values' => $row['cp_values'], 'cp_default_value' => $row['cp_default_value'], 'show_in_lists' => $row['show_in_lists']);
 			}
 		}
 		Hook::fire("get_cusotm_property_columns", array(), $grouped);
@@ -2190,13 +2194,13 @@ class ObjectController extends ApplicationController {
 		// --
 		
 		// Permissions filter
-		if (isset($template_id) && $template_id > 0) {
+		if (logged_user()->isAdministrator() || isset($template_id) && $template_id > 0) {
 			// editing template items do not check permissions
 			$sql_permissions = "";
 		} else {
 			$sql_permissions = "
 				AND EXISTS (SELECT sh.object_id FROM ".TABLE_PREFIX."sharing_table sh WHERE sh.object_id=o.id AND sh.group_id IN ($logged_user_pg_ids))
-						";
+			";
 		}
 		
 		// Main select

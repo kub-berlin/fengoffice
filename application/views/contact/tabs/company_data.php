@@ -7,9 +7,9 @@
 			<div id="<?php echo $genid ?>add_company_select_context_div"><?php 
 				$listeners = array('on_selection_change' => 'og.reload_subscribers("'.$genid.'",'.$object->manager()->getObjectTypeId().')');
 				if ($company->isNew()) {
-					render_member_selectors($company->manager()->getObjectTypeId(), $genid, null, array('select_current_context' => true, 'listeners' => $listeners), null, null, false);
+					render_member_selectors($company->manager()->getObjectTypeId(), $genid, null, array('select_current_context' => true, 'listeners' => $listeners, 'object' => $object), null, null, false);
 				} else {
-					render_member_selectors($company->manager()->getObjectTypeId(), $genid, $company->getMemberIds(), array('listeners' => $listeners), null, null, false); 
+					render_member_selectors($company->manager()->getObjectTypeId(), $genid, $company->getMemberIds(), array('listeners' => $listeners, 'object' => $object), null, null, false); 
 				} ?>
 			</div>
 			<?php endif ;?>
@@ -80,8 +80,8 @@
 			</div>
 			
 			<div class="input-container">
-				<?php echo label_tag(lang('timezone'), 'clientFormTimezone', false)?>
-    			<?php echo select_timezone_widget('company[timezone]', array_var($company_data, 'timezone'), array('id' => 'clientFormTimezone', 'class' => 'long')) ?>
+				<?php echo label_tag(lang('timezone'), 'clientFormTimezone', false); ?>
+				<?php echo timezone_selector('company[user_timezone_id]', array_var($company_data, 'user_timezone_id'), array('id' => 'clientFormTimezone')) ?>
     			<div class="clear"></div>
 			</div>
 	        

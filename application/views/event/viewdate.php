@@ -42,9 +42,6 @@ $genid = gen_id();
 
 	//today in gmt 0
 	$today = DateTimeValueLib::now();
-		
-	//user today 
-//	$today->add('h', logged_user()->getTimezone());
 	
 	$currentday = $today->format("j");
 	$currentmonth = $today->format("n");
@@ -86,8 +83,11 @@ $genid = gen_id();
 		}
 		foreach ($tmp_tasks as $task) {
 			$added = false;
+			
+			$tz_value = Timezones::getTimezoneOffsetToApply($task, logged_user());
+			
 			if($task->getDueDate() instanceof DateTimeValue){
-				$due_date = new DateTimeValue($task->getDueDate()->getTimestamp() + ($task->getUseDueTime() ? logged_user()->getTimezone() * 3600 : 0));
+				$due_date = new DateTimeValue($task->getDueDate()->getTimestamp() + ($task->getUseDueTime() ? $tz_value : 0));
 				if ($dtv->getTimestamp() == mktime(0,0,0, $due_date->getMonth(), $due_date->getDay(), $due_date->getYear())) {
 					if ($task->getUseDueTime() && ($task->getStartDate() instanceof DateTimeValue || $task->getTimeEstimate() > 0)) {
 						$result[] = $task;
@@ -98,7 +98,7 @@ $genid = gen_id();
 				}
 			}
 			if($task->getStartDate() instanceof DateTimeValue){
-				$start_date = new DateTimeValue($task->getStartDate()->getTimestamp() + ($task->getUseStartTime() ? logged_user()->getTimezone() * 3600 : 0));
+				$start_date = new DateTimeValue($task->getStartDate()->getTimestamp() + ($task->getUseStartTime() ? $tz_value : 0));
 				if (!$added && $dtv->getTimestamp() == mktime(0,0,0, $start_date->getMonth(), $start_date->getDay(), $start_date->getYear())) {
 					if ($task->getUseStartTime() && ($task->getDueDate() instanceof DateTimeValue|| $task->getTimeEstimate() > 0)) {
 						$result[] = $task;
@@ -183,24 +183,29 @@ $genid = gen_id();
 								$divtype = '';
 								$div_prefix = '';
 								$draw_div = true;
+								
 								if ($event instanceof ProjectMilestone ){
 									$div_prefix = 'd_ms_div_';
 									$subject = clean($event->getObjectName());
 									$img_url = image_url('/16x16/milestone.png');
 									$divtype = '<span class="italic">' . lang('milestone') . '</span> - ';
 									$tipBody = clean($event->getDescription());
+									
 								}elseif ($event instanceof ProjectTask){
 									$start_of_task = false;
 									$end_of_task = false;
+									
+									$tz_value = Timezones::getTimezoneOffsetToApply($event, logged_user());
+									
 									if ($event->getDueDate() instanceof DateTimeValue) {
-										$due_date = new DateTimeValue($event->getDueDate()->getTimestamp() + logged_user()->getTimezone() * 3600);
+										$due_date = new DateTimeValue($event->getDueDate()->getTimestamp() + $tz_value);
 										if ($dtv->getTimestamp() == mktime(0,0,0, $due_date->getMonth(), $due_date->getDay(), $due_date->getYear())){
 											$end_of_task = true;
 											$start_of_task = true;
 										}
 									}
 									if ($event->getStartDate() instanceof DateTimeValue) {
-										$start_date = new DateTimeValue($event->getStartDate()->getTimestamp() + logged_user()->getTimezone() * 3600);
+										$start_date = new DateTimeValue($event->getStartDate()->getTimestamp() + $tz_value);
 										if ($dtv->getTimestamp() == mktime(0,0,0, $start_date->getMonth(), $start_date->getDay(), $start_date->getYear())){
 											$start_of_task = true;
 											$end_of_task = true;
@@ -224,12 +229,14 @@ $genid = gen_id();
 									$subject = $event->getObjectName();									
 									$divtype = '<span class="italic">' . $tip_title . '</span> - ';
 									$tipBody = lang('assigned to') .': '. clean($event->getAssignedToName()) . (trim(clean($event->getText())) != '' ? '<br><br>' . html_to_text($event->getText()) : '');
+									
 								}elseif ($event instanceof ProjectEvent){
 									$div_prefix = 'd_ev_div_';
 									$subject = clean($event->getObjectName());
 									$img_url = image_url('/16x16/calendar.png');
 									$divtype = '<span class="italic">' . lang('event') . '</span> - ';
-									$tipBody = (trim(clean($event->getDescription())) != '' ? '<br>' . clean($event->getDescription()) : '');									
+									$tipBody = (trim(clean($event->getDescription())) != '' ? '<br>' . clean($event->getDescription()) : '');
+									
 								}elseif ($event instanceof Contact ) {
 									$div_prefix = 'd_bd_div_';
 									$objType = 'contact';
@@ -461,18 +468,20 @@ $genid = gen_id();
 												
 												$event_duration->add('s', 1);
 												$ev_duration = DateTimeValueLib::get_time_difference($event_start->getTimestamp(), $event_duration->getTimestamp()); 
+												
+												$tz_value = Timezones::getTimezoneOffsetToApply($event, logged_user());
 
 												if ($event instanceof ProjectEvent) {
-													$real_start = new DateTimeValue($event->getStart()->getTimestamp() + 3600 * logged_user()->getTimezone());
-													$real_duration = new DateTimeValue($event->getDuration()->getTimestamp() + 3600 * logged_user()->getTimezone());
+													$real_start = new DateTimeValue($event->getStart()->getTimestamp() + $tz_value);
+													$real_duration = new DateTimeValue($event->getDuration()->getTimestamp() + $tz_value);
 												} else if ($event instanceof ProjectTask) {
 													if ($event->getStartDate() instanceof DateTimeValue) {
-														$real_start = new DateTimeValue($event->getStartDate()->getTimestamp() + 3600 * logged_user()->getTimezone());
+														$real_start = new DateTimeValue($event->getStartDate()->getTimestamp() + $tz_value);
 													} else {
 														$real_start = $event_start;
 													}
 													if ($event->getDueDate() instanceof DateTimeValue) {
-														$real_duration = new DateTimeValue($event->getDueDate()->getTimestamp() + 3600 * logged_user()->getTimezone());
+														$real_duration = new DateTimeValue($event->getDueDate()->getTimestamp() + $tz_value);
 													} else {
 														$real_duration = $event_duration;
 													}

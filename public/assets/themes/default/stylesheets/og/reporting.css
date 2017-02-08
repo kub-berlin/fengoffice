@@ -492,6 +492,9 @@ tr.list-totals-row {
 .report tr.list-totals-row {
 	border: 1px solid #aaa;
 }
+.report tr.list-totals-row.simple-row {
+	background-color: #fff;
+}
 
 tr.list-totals-row.level-0 {
 	background-color: #E0E0E0;
@@ -517,12 +520,15 @@ tr.list-totals-row td.textrow, tr.list-totals-row td.x-grid3-td-name {
 	text-align: left;
 }
 tr.list-totals-row.level-0 td.textrow {
+	min-width: 200px;
 	padding: 8px 2px;
 }
 tr.list-totals-row.level-1 td.textrow {
+	min-width: 200px;
 	padding: 5px 15px;
 }
 tr.list-totals-row.level-2 td.textrow {
+	min-width: 200px;
 	padding: 3px 25px;
 }
 tr.list-totals-row.level-0 td, tr.list-totals-row.level-1 td, tr.list-totals-row.level-2 td {
@@ -565,4 +571,8 @@ tr.list-totals-row td.x-grid3-col.x-grid3-cell.x-grid3-td-name {
 }
 .custom-report-info-block.no-border {
 	border: 0px none;
+}
+
+.report-row-tbody.alt {
+	background-color:#F4F8F9;
 }

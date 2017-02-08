@@ -5,6 +5,9 @@ require_javascript("og/modules/addTaskForm.js");
  * This section builds the actions menu 
  */
 if (isset($task_list) && $task_list instanceof ProjectTask) {
+	$tz_offset = Timezones::getTimezoneOffsetToApply($task_list);
+	$tz_offset = $tz_offset/3600;
+	
 	if (!$task_list->isTrashed()){
 		if (!$task_list->isCompleted() && ($task_list->canEdit(logged_user()) || $task_list->getAssignedTo() == logged_user())) {
 			add_page_action(lang('do complete'), $task_list->getCompleteUrl(rawurlencode(get_url('task','view',array('id'=>$task_list->getId())))) , 'ico-complete', null, null, true);
@@ -101,7 +104,7 @@ if ($task_list->getAssignedTo()){
 		. clean($task_list->getAssignedBy()->getObjectName()) . '</a>';
 		if ($task_list->getAssignedOn() instanceof DateTimeValue) {
 			$description .= ' <span style="font-weight:bold">' . lang("on") . ': </span>'
-			. format_date($task_list->getAssignedOn());
+			. format_date($task_list->getAssignedOn(), null, $tz_offset);
 		}
 	}
 }

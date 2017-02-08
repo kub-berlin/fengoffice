@@ -100,6 +100,38 @@
     	return self::count("member_id = '$member_id' OR property_member_id = '$member_id'") > 0;
     }
     
+    
+    
+    
+    static function getAllAssociatedMemberIds($member_id, $invert = false, $is_active = true){
+    	 
+    	$key = $invert ? 'member_id' : 'property_member_id';
+    	$val = $invert ? 'property_member_id' : 'member_id';
+    	
+    	$sql = "SELECT `$val`, `association_id` FROM `".TABLE_PREFIX."member_property_members` WHERE $key = $member_id AND `is_active` = $is_active";
+    	 
+    	$rows = DB::executeAll($sql);
+    	
+    	$persons_dim = Dimensions::findByCode('feng_persons')->getid();
+    	
+    	$member_ids = array();
+    	if ($rows){
+    		foreach ($rows as $row){
+    			$aid = $row['association_id'];
+    			$a = DimensionMemberAssociations::findById($aid);
+    			if ($a->getAssociatedDimensionMemberAssociationId() == $persons_dim) continue;
+    			
+    			if (!isset($member_ids[$aid])) $member_ids[$aid] = array();
+    			
+    			if (!in_array($row[$val], $member_ids[$aid])) {
+    				$member_ids[$aid][]= $row[$val];
+    			}
+    		}
+    	}
+    	
+    	return $member_ids;
+    }
+    
   } // MemberPropertyMembers 
 
 ?>

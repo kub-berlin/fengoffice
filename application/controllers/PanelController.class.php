@@ -27,6 +27,8 @@ class PanelController extends ApplicationController {
 			
 			$res = DB::execute ( $sql );
 			while ( $row = $res->fetchRow () ) {
+				 $url_params = trim($row['url_params']) == '' ? array() : json_decode($row['url_params'], true);
+				 
 				 $object = array (
 					"title" => lang($row ['title']), 
 					"id" => $row ['id'], 
@@ -35,7 +37,7 @@ class PanelController extends ApplicationController {
 				 	"defaultController" => $row['default_controller'] ,
 					"defaultContent" => array (
 						"type" => "url", 
-						"data" => get_url ( $row ['default_controller'], $row ['default_action'] ) 
+						"data" => get_url ( $row ['default_controller'], $row ['default_action'], $url_params ) 
 					),
 					"enabled" => $row ['enabled'], 
 					"type" => $row ['type'],
@@ -50,7 +52,7 @@ class PanelController extends ApplicationController {
 				if ( $row ['initial_controller'] && $row['initial_action'] ) {
 					$object["initialContent"] = array (
 						"type" => "url", 
-						"data" => get_url ( $row ['initial_controller'], $row ['initial_action'] ) 
+						"data" => get_url ( $row ['initial_controller'], $row ['initial_action'], $url_params ) 
 					);
 				}
 				if ($row['id'] == 'more-panel' && config_option('getting_started_step') >= 99) {

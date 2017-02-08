@@ -491,42 +491,38 @@ og.TasksTopToolbar = function(config) {
                 this.displayOptions.show_subtasks_structure
 			];
 
+	for (var cp_order=0; cp_order < ogTasks.custom_properties.length; cp_order++) {
+		var cp = ogTasks.custom_properties[cp_order];
+		var opt_key = 'tasksShowCP_'+cp.id;
+		this.displayOptions[opt_key] = {
+			id: opt_key,
+	        text: cp.name,
+			checked: (ogTasks.userPreferences[opt_key] == 1),
+			checkHandler: function() {
+				ogTasks.userPreferences[this.id] = (this.checked ? 1 : 0);
+				var url = og.getUrl('account', 'update_user_preference', {name: this.id, value:(this.checked ? 1 : 0)});
+				og.openLink(url,{
+					hideLoading:true, 
+					callback: function(success, data) {
+						ogTasks.redrawGroups = false;
+						ogTasks.draw();
+						ogTasks.redrawGroups = true;					
+					}
+				});
+				
+			}
+		}
+		menu_items.push(this.displayOptions[opt_key]);
+	}
+	
 	// dimension columns
 	for (did in og.dimensions) {
 		if (isNaN(did)) continue;
-		var key = 'lp_dim_' + did + '_show_as_column';
-		if (og.preferences['listing_preferences'][key]) {
-			menu_items.push({
-				text: og.dimensions_info[did].name,
-				value: parseInt(did),
-				checked: (ogTasks.userPreferences.showDimensionCols.indexOf(parseInt(did)) != -1),
-				checkHandler: function() {
-					var dim_index = ogTasks.userPreferences.showDimensionCols.indexOf(parseInt(this.value));
-					if(dim_index != -1){
-						ogTasks.userPreferences.showDimensionCols.splice(dim_index, 1);
-					}else{
-						ogTasks.userPreferences.showDimensionCols.push(parseInt(this.value));
-					}
-
-					var url = og.getUrl('account', 'update_user_preference', {name: 'tasksShowDimensionCols', value:ogTasks.userPreferences.showDimensionCols.toString()});
-					og.openLink(url,{hideLoading:true});
-					
-					if (ogTasks.userPreferences.showDimensionCols.indexOf(parseInt(this.value)) != -1) {
-						og.breadcrumbs_skipped_dimensions[this.value] = this.value.toString();
-					} else {
-						og.breadcrumbs_skipped_dimensions[this.value] = 0;
-					}
-					
-					ogTasks.redrawGroups = false;
-					ogTasks.draw();
-					ogTasks.redrawGroups = true;
-				}
-			});
-			if (ogTasks.userPreferences.showDimensionCols.indexOf(parseInt(did)) != -1) {
-				og.breadcrumbs_skipped_dimensions[did] = did;
-			} else {
-				og.breadcrumbs_skipped_dimensions[did] = 0;
-			}
+		
+		tmp_menu_items = ogTasks.createDimensionColumnMenuItems(did);
+		
+		if (tmp_menu_items && tmp_menu_items.length > 0) {
+			menu_items = menu_items.concat(tmp_menu_items);
 		}
 	}
 	
@@ -590,7 +586,6 @@ og.TasksTopToolbar = function(config) {
 				scope: this,
 				post: filters,
 				callback: function(success, data) {
-					//console.log(html.current.data);
 					var html = data.current.data;
 					
 					var printWindow = ogTasks.createPrintWindow();
@@ -653,6 +648,17 @@ Ext.extend(og.TasksTopToolbar, Ext.Toolbar, {
             show_subtasks_structure : this.show_menu.items[0].menu.items.items[14].checked,
             show_dimension_cols : ogTasks.userPreferences.showDimensionCols
 		}
+		
+		var show_cp_config = {};
+		var the_menu_items = this.show_menu.items[0].menu.items.items;
+		for (var x=0; x<the_menu_items.length; x++) {
+			var mitem = the_menu_items[x];
+			if (mitem.id.indexOf('tasksShowCP_') == 0) {
+				var cpid = mitem.id.replace('tasksShowCP_', '');
+				show_cp_config[cpid] = mitem.checked;
+			}
+		}
+		draw_options.tasksShowCP = show_cp_config;
 		
 		if (ogTasks.additional_task_list_columns) {
 			for (var i=0; i<ogTasks.additional_task_list_columns.length; i++) {

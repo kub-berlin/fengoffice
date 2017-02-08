@@ -215,6 +215,7 @@ addLangs({
 	'email3': 'Email 3',
 	'workWebsite': 'Work website',
 	'workAddress': 'Work address',
+	'postalAddress': 'Postal address',
 	'workPhone1': 'Work phone 1',
 	'workPhone2': 'Work phone 2',
 	'homeWebsite': 'Home website',
@@ -273,7 +274,7 @@ addLangs({
 	'all emails': 'All emails',
 	'unclassified emails': 'Unclassified emails',
 	'view options': 'View options',
-	'check mails' : 'Check mails',
+	'check mails' : 'Check mail',
 	'emails' : 'Emails',
 	'create an email' : 'Create an Email',
 	'checking email accounts' : 'Checking email accounts...',
@@ -639,7 +640,7 @@ addLangs({
     'object type not supported': 'This object type is not supported for templates', 
     'confirm delete timeslot' : 'Are you sure you want to permanently delete this timeslot?',
     'confirm delete permanently this member': 'Are you sure you want to delete this {0}?',
-    'confirm delete with keyword': 'Enter \"DELETE\" to confirm',
+    'confirm delete with keyword': 'Type \"DELETE\" to confirm',
     
     'confirm delete permanently company': 'Are you sure you want to permanently delete this company?\nNote that all company users will also be deleted.',
     'confirm move to trash company': 'Are you sure you want to delete this company?\nNote that all company users will also be deleted.',
@@ -699,7 +700,7 @@ addLangs({
     'columns comma separated': 'Columns (comma separated)',
     'default value' : 'Default value',
     'checked': 'Checked?',
-    'required' : 'Required?',
+    'required' : 'Required',
     'multiple values' : 'Multiple values?',
     'visible by default' : 'Visible by default?',
     'add custom property' : 'Add custom property',
@@ -969,5 +970,6 @@ addLangs({
 	'at least one dimension must be selected': 'At least one dimension must be selected.',
 	'confirm delete group': 'Are you sure you want to delete this group?',
 	'push' : 'Push',
-	'move tasks forward' : 'Move tasks forward'
+	'move tasks forward' : 'Move tasks forward',
+    'last activity' : 'Last activity'
 });

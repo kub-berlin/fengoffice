@@ -1,5 +1,7 @@
 <?php 
 	$genid = gen_id();
+	$tz_offset = Timezones::getTimezoneOffsetToApply($object);
+	$tz_offset = $tz_offset/3600;
 ?>
 <div class="history" style="height:100%;background-color:white">
 <div class="coInputHeader">
@@ -32,12 +34,12 @@
 				$isAlt = !$isAlt;
 				echo '<tr' . ($isAlt? ' class="altRow"' : '') . '><td  style="padding:5px;padding-right:15px;">';
 				if ($log->getCreatedOn()->getYear() != DateTimeValueLib::now()->getYear())
-					$date = format_time($log->getCreatedOn(), "M d Y, H:i");
+					$date = format_time($log->getCreatedOn(), "M d Y, H:i", $tz_offset);
 				else{
 					if ($log->isToday())
-						$date = lang('today') . format_time($log->getCreatedOn(), ", H:i:s");
+						$date = lang('today') . format_time($log->getCreatedOn(), ", H:i:s", $tz_offset);
 					else
-						$date = format_time($log->getCreatedOn(), "M d, H:i");
+						$date = format_time($log->getCreatedOn(), "M d, H:i", $tz_offset);
 				}
 				if($log->getAction()==ApplicationLogs::ACTION_LOGIN  /*FIXME || ($log->getRelObjectManager() == 'Timeslots' && ($log->getAction()==ApplicationLogs::ACTION_OPEN || $log->getAction()==ApplicationLogs::ACTION_CLOSE))*/) {
 					echo $date . ' </td><td style="padding:5px;padding-right:15px;"><a class="internalLink" href="' . ($log->getTakenBy() instanceof Contact ? $log->getTakenBy()->getCardUserUrl() : '#') . '">'  . clean($log->getTakenByDisplayName()) . '</a></td><td style="padding:5px;padding-right:15px;"> ' . $log->getText();
@@ -78,12 +80,12 @@
 				$isAlt = !$isAlt;
 				echo '<tr' . ($isAlt? ' class="altRow"' : '') . '><td  style="padding:5px;padding-right:15px;">';
 				if ($log->getCreatedOn()->getYear() != DateTimeValueLib::now()->getYear())
-					$date = format_time($log->getCreatedOn(), "M d Y, H:i");
+					$date = format_time($log->getCreatedOn(), "M d Y, H:i", $tz_offset);
 				else{
 					if ($log->isToday())
-						$date = lang('today') . format_time($log->getCreatedOn(), ", H:i:s");
+						$date = lang('today') . format_time($log->getCreatedOn(), ", H:i:s", $tz_offset);
 					else
-						$date = format_time($log->getCreatedOn(), "M d, H:i");
+						$date = format_time($log->getCreatedOn(), "M d, H:i", $tz_offset);
 				}
 				echo $date . ' </td><td style="padding:5px;padding-right:15px;"><a class="internalLink" href="' . ($log->getTakenBy() instanceof Contact ? $log->getTakenBy()->getCardUserUrl() : '#') . '">'  . clean($log->getTakenByDisplayName()) . '</a></td><td style="padding:5px;padding-right:15px;"> ' . $log->getText();
 				echo '</td></tr>';

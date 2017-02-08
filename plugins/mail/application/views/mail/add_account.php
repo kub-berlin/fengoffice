@@ -430,7 +430,7 @@ if (strlen($loc) > 2) $loc = substr($loc, 0, 2);
             var editor = CKEDITOR.replace('<?php echo $genid ?>ckeditor', {
                 height: (h-200) + 'px',
             	allowedContent: true,
-                enterMode: CKEDITOR.ENTER_DIV,
+                enterMode: CKEDITOR.ENTER_BR,
                 shiftEnterMode: CKEDITOR.ENTER_BR,
                 disableNativeSpellChecker: false,
                 language: '<?php echo $loc ?>',
@@ -449,7 +449,8 @@ if (strlen($loc) > 2) $loc = substr($loc, 0, 2);
                                 editor.resetDirty();
                         }
                     },
-                removePlugins: 'magicline',
+                fillEmptyBlocks: false,
+            	removePlugins: 'scayt,liststyle,magicline',
                 entities_additional : '#39,#336,#337,#368,#369'
             });
 

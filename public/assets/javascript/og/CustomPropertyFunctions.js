@@ -115,6 +115,9 @@ og.addCustomPropertyRow = function(genid, property, id_suffix) {
 		if (property.visible_by_default) {
 			$(pre_id + " #visible_by_default").attr('checked', 'checked');
 		}
+		if (property.show_in_lists) {
+			$(pre_id + " #show_in_lists").attr('checked', 'checked');
+		}
 
 		$(pre_id + ' #type option[value="' + property.type + '"]').prop('selected', true);
 		
@@ -164,6 +167,10 @@ og.addCustomPropertyRow = function(genid, property, id_suffix) {
 				}
 			}
 		}
+	} else {
+		// when adding new custom property set visible_by_default and show_in_lists checked
+		$(pre_id + " #visible_by_default").attr('checked', 'checked');
+		$(pre_id + " #show_in_lists").attr('checked', 'checked');
 	}
 	
 	og.admin_cp_count[genid] = cp_count + 1;
@@ -213,7 +220,8 @@ og.saveObjectTypeCustomProperties = function(genid, save_url) {
 				is_disabled: $(pre_id + " #is_disabled").attr('value'),
 				is_required: $(pre_id + " #is_required").attr('checked') == 'checked',
 				is_multiple_values: $(pre_id + " #is_multiple_values").attr('checked') == 'checked',
-				visible_by_default: $(pre_id + " #visible_by_default").attr('checked') == 'checked'
+				visible_by_default: $(pre_id + " #visible_by_default").attr('checked') == 'checked',
+				show_in_lists: $(pre_id + " #show_in_lists").attr('checked') == 'checked'
 		}
 
 		// set additional parameters foreach cp

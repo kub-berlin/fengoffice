@@ -295,7 +295,7 @@ class ReportingController extends ApplicationController {
 		$user = Contacts::findById(array_var($report_data, 'user'));
 		
 		$now = DateTimeValueLib::now();
-		$now->advance(logged_user()->getTimezone()*3600, true);
+		$now->advance(logged_user()->getUserTimezoneValue(), true);
 		switch (array_var($report_data, 'date_type')){
 			case 1: //Today
 				$st = DateTimeValueLib::make(0,0,0,$now->getMonth(),$now->getDay(),$now->getYear());
@@ -327,10 +327,10 @@ class ReportingController extends ApplicationController {
 		}
 		
 		if ($st instanceof DateTimeValue) {
-			$st->add('h',-logged_user()->getTimezone());
+			$st->add('s',-logged_user()->getUserTimezoneValue());
 		}
 		if ($et instanceof DateTimeValue) {
-			$et->add('h',-logged_user()->getTimezone());
+			$et->add('s',-logged_user()->getUserTimezoneValue());
 		}
 				
 		$timeslotType = array_var($report_data, 'timeslot_type', 0);
@@ -419,8 +419,8 @@ class ReportingController extends ApplicationController {
 		tpl_assign('timeslotsArray', array());                        
 		tpl_assign('grouped_timeslots', $grouped_timeslots);
 		if (array_var($report_data, 'date_type') == 6) {
-			$st->advance(logged_user()->getTimezone()*3600, true);
-			$et->advance(logged_user()->getTimezone()*3600, true);
+			$st->advance(logged_user()->getUserTimezoneValue(), true);
+			$et->advance(logged_user()->getUserTimezoneValue(), true);
 		}
 		tpl_assign('start_time', $st);
 		tpl_assign('end_time', $et);
@@ -484,8 +484,8 @@ class ReportingController extends ApplicationController {
 
 		$st = $start->beginningOfDay();
 		$et = $end->endOfDay();
-		$st = new DateTimeValue($st->getTimestamp() - logged_user()->getTimezone() * 3600);
-		$et = new DateTimeValue($et->getTimestamp() - logged_user()->getTimezone() * 3600);
+		$st = new DateTimeValue($st->getTimestamp() - logged_user()->getUserTimezoneValue());
+		$et = new DateTimeValue($et->getTimestamp() - logged_user()->getUserTimezoneValue());
 
 //		$timeslots = Timeslots::getTimeslotsByUserWorkspacesAndDate($st, $et, 'ProjectTasks', null, $workspacesCSV, array_var($report_data, 'task_id',0));
 		$timeslots = array();
@@ -1081,7 +1081,7 @@ class ReportingController extends ApplicationController {
 		
 		//user current date
 		$now_date = DateTimeValueLib::now();
-		$now_date->advance(logged_user()->getTimezone() * 3600);
+		$now_date->advance(logged_user()->getUserTimezoneValue());
 		$now = $now_date->format('Y-m-d_H:i:s');
 		
 		download_file($file_path, $file_type, $file_name, true, true, $size);
@@ -1629,6 +1629,7 @@ class ReportingController extends ApplicationController {
 				$fields[] = array('id' => 'home_address', 'name' => lang('home_address'), 'type' => 'text');
 				$fields[] = array('id' => 'work_address', 'name' => lang('work_address'), 'type' => 'text');
 				$fields[] = array('id' => 'other_address', 'name' => lang('other_address'), 'type' => 'text');
+				$fields[] = array('id' => 'postal_address', 'name' => lang('postal_address'), 'type' => 'text');
 			}
 			if (!array_var($_REQUEST, 'noaddcol')) {
 				Hook::fire('custom_reports_additional_columns', array('object_type' => $ot), $fields);

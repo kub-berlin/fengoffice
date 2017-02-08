@@ -294,6 +294,15 @@
     }
     
     
+    function getShowInLists() {
+    	return $this->getColumnValue('show_in_lists');
+    }
+    
+    function setShowInLists($value) {
+    	return $this->setColumnValue('show_in_lists', $value);
+    }
+    
+    
     /**
     * Return manager instance
     *

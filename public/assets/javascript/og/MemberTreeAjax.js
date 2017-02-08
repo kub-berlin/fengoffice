@@ -360,11 +360,17 @@ Ext.extend(og.MemberTreeAjax, Ext.tree.TreePanel, {
 				//search on server
 				this.innerCt.mask();
 				var tree_id = this.id;
-				og.openLink(og.getUrl('dimension', 'search_dimension_members_tree', {
-						dimension_id:this.dimensionId,
-						query:Ext.escapeRe(text.toLowerCase()),
-						ignore_context_filters: true
-					}), {
+				
+				var options = {
+					dimension_id:this.dimensionId,
+					query:Ext.escapeRe(text.toLowerCase()),
+					ignore_context_filters: true
+				};
+				if (this.initialConfig.filter_by_ids) {
+					options.filter_by_ids = this.initialConfig.filter_by_ids;
+				}
+				
+				og.openLink(og.getUrl('dimension', 'search_dimension_members_tree', options), {
 	    			hideLoading:true, 
 	    			hideErrors:true,
 	    			callback: function(success, data){
@@ -410,6 +416,10 @@ Ext.extend(og.MemberTreeAjax, Ext.tree.TreePanel, {
 		options.selected_ids = Ext.util.JSON.encode(memberIds);
 		options.avoid_session = 1;
 		options.node_clicked = nodeClicked ? (isNaN(nodeClicked) ? nodeClicked.id : nodeClicked) : null;
+		
+		if (this.initialConfig.filter_by_ids) {
+			options.filter_by_ids = this.initialConfig.filter_by_ids;
+		}
 		
 		// load filtered tree
 		og.initialMemberTreeAjaxLoad(this, 500, 0, options);
@@ -464,6 +474,7 @@ Ext.extend(og.MemberTreeAjax, Ext.tree.TreePanel, {
 	},
 	
 	init: function ( callback  ) {
+		// ensure the correct member sort by name by using the accent replace function before the comparison
 		new Ext.tree.TreeSorter(this, {
 		    dir: "asc",
 		    property: "text",
@@ -474,7 +485,7 @@ Ext.extend(og.MemberTreeAjax, Ext.tree.TreePanel, {
 		    		// let text start with last char in order to set this node as the last one
 		    		return last_char + last_char + last_char + node.text;
 		    	}
-		    	return node.text;
+		    	return og.replaceStringAccents(node.text).toLowerCase();
 		    }
 		});
 		
@@ -491,8 +502,10 @@ Ext.extend(og.MemberTreeAjax, Ext.tree.TreePanel, {
 				
 		this.root.enable();
 		this.totalNodes = 1;
-				
-		if(ogMemberCache.areDimRootMembersLoaded(this.dimensionId.toString())){
+		
+		var filtering_by_ids = this.initialConfig.filter_by_ids;
+		
+		if(ogMemberCache.areDimRootMembersLoaded(this.dimensionId.toString()) && !filtering_by_ids){
 			var dim = og.dimensions[this.dimensionId];
 			if(typeof dim != "undefined"){
 				for (m in dim) {
@@ -519,9 +532,14 @@ Ext.extend(og.MemberTreeAjax, Ext.tree.TreePanel, {
 			}
 			
 			this.initialized = true;
-		}else{
-			og.initialMemberTreeAjaxLoad(this);
 			
+		}else{
+			
+			var options = {};
+			if (filtering_by_ids) {
+				options.filter_by_ids = filtering_by_ids;
+			}
+			og.initialMemberTreeAjaxLoad(this, 500, 0, options);
 		}
 	} ,
 
@@ -617,13 +635,11 @@ Ext.extend(og.MemberTreeAjax, Ext.tree.TreePanel, {
 				dimension_tree.suspendEvents();
 				if (node_parent) node_parent.appendChild(new_node);
 				dimension_tree.resumeEvents();
-			}else{				
+			}else{
 				if (node_parent){
-					node_parent.removeChild(node_exist);
-
-					dimension_tree.suspendEvents();
-					node_parent.appendChild(new_node);
-					dimension_tree.resumeEvents();
+					// dont remove old and insert the new, only update the name and the attributes.
+					node_exist.attributes = mem;
+					node_exist.setText(mem.text);
 				}							
 			}
 			

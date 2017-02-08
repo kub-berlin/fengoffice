@@ -45,7 +45,7 @@
   */
   function format_datetime($value = null, $format = null, $timezone = null) {
     if(is_null($timezone) && function_exists('logged_user') && (logged_user() instanceof Contact)) {
-      $timezone = logged_user()->getTimezone();
+      $timezone = logged_user()->getUserTimezoneHoursOffset();
     } // if
     $datetime = $value instanceof DateTimeValue ? $value : new DateTimeValue($value);
     if ($format){
@@ -72,7 +72,7 @@
   */
   function format_date($value = null, $format = null, $timezone = null) {
     if(is_null($timezone) && function_exists('logged_user') && (logged_user() instanceof Contact)) {
-      $timezone = logged_user()->getTimezone();
+      $timezone = logged_user()->getUserTimezoneHoursOffset();
     } // if
     $datetime = $value instanceof DateTimeValue ? $value : new DateTimeValue($value);
     if ($format){
@@ -96,7 +96,7 @@
   */
   function format_descriptive_date($value = null, $timezone = null) {
     if(is_null($timezone) && function_exists('logged_user') && (logged_user() instanceof Contact)) {
-      $timezone = logged_user()->getTimezone();
+      $timezone = logged_user()->getUserTimezoneHoursOffset();
     } // if
     $datetime = $value instanceof DateTimeValue ? $value : new DateTimeValue($value);
     return Localization::instance()->formatDescriptiveDate($datetime, $timezone);
@@ -114,7 +114,7 @@
   */
   function format_time($value = null, $format = null, $timezone = null) {
     if(is_null($timezone) && function_exists('logged_user') && (logged_user() instanceof Contact)) {
-      $timezone = logged_user()->getTimezone();
+      $timezone = logged_user()->getUserTimezoneHoursOffset();
     } // if
     $datetime = $value instanceof DateTimeValue ? $value : new DateTimeValue($value);
     //if (!$format) $format = user_config_option('time_format_use_24') ? 'G:i' : 'g:i A';
@@ -131,7 +131,7 @@
 
 function friendly_date(DateTimeValue $date, $timezone = null) {
 	if ($timezone == null) {
-		$timezone = logged_user()->getTimezone();
+		$timezone = logged_user()->getUserTimezoneHoursOffset();
 	}
 	
 	//TODO: 7 days before: "Dom at 13:43", older: "Oct, 06 at 15:20"
@@ -236,7 +236,7 @@ function date_format_tip($format) {
 }
 
 
-	function format_value_to_print($col, $value, $type, $obj_type_id, $textWrapper='', $dateformat='Y-m-d') {
+	function format_value_to_print($col, $value, $type, $obj_type_id, $textWrapper='', $dateformat='Y-m-d', $tz_offset=null) {
 		
 		$is_time_column = false;
 		
@@ -329,7 +329,10 @@ function date_format_tip($format) {
 					}
 					if ($dtVal instanceof DateTimeValue) {
 						if ($obj_type_id == ProjectEvents::instance()->getObjectTypeId() || $obj_type_id == ProjectTasks::instance()->getObjectTypeId()) {
-							$dtVal->advance(logged_user()->getTimezone() * 3600, true);
+							if (is_null($tz_offset)) {
+								$tz_offset = logged_user()->getUserTimezoneValue();
+							}
+							$dtVal->advance($tz_offset, true);
 						}
 						if ($obj_type_id == ProjectEvents::instance()->getObjectTypeId() && ($col == 'start'|| $col == 'duration')) $formatted = format_datetime($dtVal);
 						else $formatted = format_date($dtVal, null, 0);
@@ -348,13 +351,15 @@ function date_format_tip($format) {
 	
 	
 	function get_custom_property_value_for_listing($cp, $obj) {
-		$cp_vals = CustomPropertyValues::getCustomPropertyValues($obj->getId(), $cp->getId());
+		$object_id = $obj instanceof ContentDataObject ? $obj->getId() : $obj;
+		
+		$cp_vals = CustomPropertyValues::getCustomPropertyValues($object_id, $cp->getId());
 		$val_to_show = "";
 		
 		if ($cp->getType() == 'table') {
 			
 			$rows = array();
-			$cpvs = CustomPropertyValues::getCustomPropertyValues($obj->getId(), $cp->getId());
+			$cpvs = CustomPropertyValues::getCustomPropertyValues($object_id, $cp->getId());
 			foreach ($cpvs as $cpval) {
 				$row = array();
 				$values = str_replace("\|", "%%_PIPE_%%", $cpval->getValue());

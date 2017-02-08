@@ -167,7 +167,7 @@ strong{font-weight:bold;}
 }
 
 .og-content-panel .x-panel-tbar .x-toolbar.x-small-editor {
- 	min-height: 30px;
+ 	min-height: 25px;
 	padding-top: 5px;
 }
 
@@ -482,6 +482,9 @@ div#menu-panel .x-panel-tbar-noheader .x-toolbar, div#menu-panel .x-panel-mc .x-
 .x-btn button, .x-menu-list-item, .x-grid3-hd-row td, .x-grid3-row td, .x-grid3-summary-row td {
 	font-size: 13px;
 	font-family: "Open Sans",Arial,sans-serif;
+}
+.x-menu-list-item .x-menu-item .x-menu-item-icon.ico-delete {
+	background-position: 0 0 !important;
 }
 .x-toolbar .ytb-text {
 	font-size: 13px;

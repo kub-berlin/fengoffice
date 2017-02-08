@@ -445,6 +445,22 @@ abstract class ContentDataObject extends ApplicationDataObject {
 	function setDontMakeCalculations($value) {
 		$this->dont_make_calculations = $value;
 	}
+	
+	
+	// timezone attributes
+	function getTimezoneId() {
+    	return $this->getObject()->getColumnValue('timezone_id');
+    }
+    function setTimezoneId($value) {
+    	return $this->getObject()->setColumnValue('timezone_id', $value);
+    }
+    
+    function getTimezoneValue() {
+    	return $this->getObject()->getColumnValue('timezone_value');
+    }
+    function setTimezoneValue($value) {
+    	return $this->getObject()->setColumnValue('timezone_value', $value);
+    }
 
 	
 	/**
@@ -1757,7 +1773,7 @@ abstract class ContentDataObject extends ApplicationDataObject {
 		return $members_info;
 	}
 	
-	function getMembersIdsToDisplayPath() {
+	function getMembersIdsToDisplayPath($show_hidden_breadcrumbs = false) {
 		$member_ids = array();
 		$dimensions_ids = array();
 		$selected_members_ids = $this->getMemberIds();
@@ -1770,19 +1786,36 @@ abstract class ContentDataObject extends ApplicationDataObject {
 				$dim = Dimensions::getDimensionById($dimension['dimension_id']);
 				if (intval($dim->getOptionValue('showInPaths')) && $dim->getIsManageable()) {
 					
-					$hook_return = null;
-					Hook::fire("hidden_breadcrumbs", array('ot_id' => $this->getObjectTypeId(), 'dim_id' => $dimension['dimension_id']), $hook_return);
-					if (!is_null($hook_return) && array_var($hook_return, 'hidden')) {
-						continue;
+					if (!$show_hidden_breadcrumbs) {
+						$hook_return = null;
+						Hook::fire("hidden_breadcrumbs", array('ot_id' => $this->getObjectTypeId(), 'dim_id' => $dimension['dimension_id']), $hook_return);
+						if (!is_null($hook_return) && array_var($hook_return, 'hidden')) {
+							continue;
+						}
 					}
 					
 					$dimensions_ids[] = $dimension['dimension_id'];
-					$to_display = user_config_option('breadcrumb_member_count');
+					$to_display = null;
+					if ($this instanceof Contact && $this->isUser()) {
+						$to_display = user_config_option('breadcrumb_member_count');
+					}
 					$extra_cond = " AND m.dimension_id = ".$dimension['dimension_id'];
-					$extra_cond .= $selected_members_cond;
+					
 					$dim_members = ObjectMembers::getMembersIdsByObjectAndExtraCond($this->getId(), $extra_cond, $to_display, false);
-					foreach ($dim_members as $mem) {
-						$member_ids[$dimension['dimension_id']][$mem] = $mem;
+					if (is_array($dim_members)) {
+						foreach ($dim_members as $mem) {
+							$ot_id = $mem['object_type_id'];
+							if ($mem['is_optimization'] == '1') {
+								
+								if (!isset($member_ids[$dimension['dimension_id']]['opt'])) $member_ids[$dimension['dimension_id']]['opt'] = array();
+								if (!isset($member_ids[$dimension['dimension_id']]['opt'][$ot_id])) $member_ids[$dimension['dimension_id']]['opt'][$ot_id] = array();
+								$member_ids[$dimension['dimension_id']]['opt'][$ot_id][] = $mem['member_id'];
+								
+							} else {
+								if (!isset($member_ids[$dimension['dimension_id']][$ot_id])) $member_ids[$dimension['dimension_id']][$ot_id] = array();
+								$member_ids[$dimension['dimension_id']][$ot_id][] = $mem['member_id'];
+							}
+						}
 					}
 				}
 			}
@@ -1879,10 +1912,30 @@ abstract class ContentDataObject extends ApplicationDataObject {
 		$related_member_ids = array();
 		
 		foreach ($members as $member) {
+			// get normal associations
 			$associations = DimensionMemberAssociations::getAssociatations($member->getDimensionId(), $member->getObjectTypeId());
+			
+			
+			// get transitive associations - associations of parent member types
+			$transitive_associations = array();
+			$parent_mem_type_ids = DimensionObjectTypeHierarchies::getAllParentObjectTypeIds($member->getDimensionId(), $member->getObjectTypeId());
+			foreach ($parent_mem_type_ids as $pmem_type_id) {
+				$more_assocs = DimensionMemberAssociations::getAssociatations($member->getDimensionId(), $pmem_type_id);
+				foreach ($more_assocs as $a) {
+					$aconfig = $a->getConfig();
+					if (array_var($aconfig, 'autoclassify_in_property_member_by_child')) {
+						$transitive_associations[] = $a;
+					}
+				}
+			}
+			
+			$associations = array_merge($associations, $transitive_associations);
+			
+			
 			foreach ($associations as $a) {/* @var $a DimensionMemberAssociation */
 				$aconfig = $a->getConfig();
 				$classify_it = false;
+				$include_parents_in_query = false;
 				
 				// classify only if 'autoclassify_in_property_member' option is set for this association
 				if (array_var($aconfig, 'autoclassify_in_property_member')) {
@@ -1892,15 +1945,24 @@ abstract class ContentDataObject extends ApplicationDataObject {
 						$classify_it = true;
 						
 					} else {
-						// force the add to the related member in background if the member is not allowed to be removed  
-						if (!array_var($aconfig, 'allow_remove_from_property_member')) {
-							$classify_it = true;
+						// direct association
+						if ($member->getObjectTypeId() == $a->getObjectTypeId()) {
+							
+							// force the add to the related member in background if the member is not allowed to be removed  
+							if (!array_var($aconfig, 'allow_remove_from_property_member')) {
+								$classify_it = true;
+								
+							} else {
+								// to check if this dimension selector is hidden in forms or not
+								$hookparams = array('dim_id' => $a->getAssociatedDimensionMemberAssociationId(), 'ot_id' => $this->getObjectTypeId());
+								Hook::fire('more_autoclassify_in_related_checks', $hookparams, $classify_it);
+								
+							}
 							
 						} else {
-							// to check if this dimension selector is hidden in forms or not
-							$hookparams = array('dim_id' => $a->getAssociatedDimensionMemberAssociationId(), 'ot_id' => $this->getObjectTypeId());
-							Hook::fire('more_autoclassify_in_related_checks', $hookparams, $classify_it);
-							
+							// transitive association
+							$classify_it = true;
+							$include_parents_in_query = true;
 						}
 						
 						// @TODO: ver que pasa cuando se hace el submit antes de que se terminen de pre-cargar las dim relacionadas
@@ -1909,8 +1971,17 @@ abstract class ContentDataObject extends ApplicationDataObject {
 				}
 				
 				if ($classify_it) {
+					$member_ids = array($member->getId());
+					
+					if ($include_parents_in_query) {
+						$pmembers = $member->getAllParentMembersInHierarchy(false, false);
+						foreach ($pmembers as $pmem) {
+							$member_ids[] = $pmem->getId();
+						}
+					}
+					
 					$rel_mem_ids = array_flat(DB::executeAll("SELECT property_member_id FROM ".TABLE_PREFIX."member_property_members 
-							WHERE association_id=".$a->getId()." AND member_id=".$member->getId()));
+							WHERE association_id=".$a->getId()." AND member_id IN (".implode(',', $member_ids).")"));
 					
 					$related_member_ids = array_merge($related_member_ids, $rel_mem_ids);
 				}
@@ -1931,6 +2002,15 @@ abstract class ContentDataObject extends ApplicationDataObject {
 	
 	function getExternalColumnValue($column) {
 		return "";
+	}
+	
+	
+	function getParentObjectId() {
+		return null;
+	}
+	
+	function getChildObjectIds() {
+		return null;
 	}
 	
 }

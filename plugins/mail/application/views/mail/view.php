@@ -19,6 +19,10 @@ if (isset($email)){
 	if ($email->canEdit(logged_user()) && !$email->isTrashed()){
 		add_page_action(lang('classify'), "javascript: og.render_modal_form('', {c:'mail', a:'classify', params: {id: '" .$email->getId(). "', from_mail_view:1}, focusFirst: false})", 'ico-classify', null, null, true);
 		
+		if (is_array($attachments) && count($attachments) > 0) {
+			add_page_action(lang('classify only attachments'), "javascript: og.render_modal_form('', {c:'mail', a:'classify', params: {id: '" .$email->getId(). "', from_mail_view:1, only_attachments:1}, focusFirst: false})", 'ico-classify', null, null, true);
+		}
+		
 		if (!$email->isArchived()) {
 			add_page_action(lang('archive'), "javascript:if(confirm(lang('confirm archive object'))) og.openLink('" . $email->getArchiveUrl() ."');", 'ico-archive-obj');
 		} else {
@@ -105,7 +109,8 @@ if (isset($email)){
 	if ($email->getBcc() != '') {		
 		$description .= '<tr><td>' . lang('mail BCC') . ':</td><td>' . MailUtilities::displayMultipleAddresses(clean($email->getBcc())) . '</td></tr>';
 	}
-	$description .= '<tr><td>' . lang('date') . ':</td><td>' . format_datetime($email->getSentDate(), 'l, j F Y - '.$time_format, logged_user()->getTimezone()) . '</td></tr>';
+	$tz_offset = Timezones::getTimezoneOffsetToApply($email);
+	$description .= '<tr><td>' . lang('date') . ':</td><td>' . format_datetime($email->getSentDate(), 'l, j F Y - '.$time_format, ($tz_offset/3600)) . '</td></tr>';
 	
 	if (user_config_option('view_mail_attachs_expanded')) {
 		$attach_toggle_cls = "toggle_expanded";

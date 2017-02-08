@@ -155,8 +155,8 @@ class ProjectMilestones extends BaseProjectMilestones {
 		$to_date = $to_date->endOfDay ();
 		
 		//set dates to gmt 0 for sql
-		$from_date->advance(-logged_user()->getTimezone() * (3600));
-		$to_date->advance(-logged_user()->getTimezone() * (3600));
+		$from_date->advance(-logged_user()->getUserTimezoneValue());
+		$to_date->advance(-logged_user()->getUserTimezoneValue());
 		
 		$archived_cond = " AND `archived_on` ".($archived ? "<>" : "=")." 0";
 		

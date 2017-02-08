@@ -1939,10 +1939,16 @@ function convert_to_pdf($html_to_convert, $orientation='Portrait', $genid) {
 		$pdf_filename = $genid . "_pdf.pdf";
 		$pdf_path = ROOT."/tmp/".$pdf_filename;
 		
-		$tmp_html_path = ROOT."/tmp/tmp_html_".$genid.".html";
+		file_put_contents($pdf_path, "");
+		
+		$temp_genid = gen_id();
+		
+		$tmp_html_path = ROOT."/tmp/tmp_html_".$temp_genid.".html";
 		file_put_contents($tmp_html_path, $html_to_convert);
 		
 		if (!in_array($orientation, array('Portrait', 'Landscape'))) $orientation = 'Portrait';
+		
+		$temp_pdf_name = ROOT."/tmp/".$temp_genid.".pdf";
 		
 		//convert to pdf in background
 		if (substr(php_uname(), 0, 7) == "Windows") {
@@ -1950,17 +1956,19 @@ function convert_to_pdf($html_to_convert, $orientation='Portrait', $genid) {
 			if (!defined('WKHTMLTOPDF_PATH')) define('WKHTMLTOPDF_PATH', "C:\\Program Files\\wkhtmltopdf\\bin\\");
 			$command_location = with_slash(WKHTMLTOPDF_PATH) . "wkhtmltopdf";
 			
-			$command = "\"$command_location\" -s A4 --encoding utf8 -O $orientation \"".$tmp_html_path."\" \"".$pdf_path."\"";
+			$command = "\"$command_location\" -s A4 --encoding utf8 -O $orientation \"".$tmp_html_path."\" \"".$temp_pdf_name."\"";
 		} else {
-			$command = "wkhtmltopdf -s A4 --encoding utf8 -O $orientation \"".$tmp_html_path."\" \"".$pdf_path."\"";
+			$command = "wkhtmltopdf -s A4 --encoding utf8 -O $orientation \"".$tmp_html_path."\" \"".$temp_pdf_name."\"";
 		}
 		exec($command, $result, $return_var);
 		
 		if ($return_var > 0){
-			Logger::log("command not found convert",Logger::WARNING);
+			Logger::log("command not found convert: $command",Logger::WARNING);
 			return false;
 		}
-			
+		
+		rename($temp_pdf_name, $pdf_path);
+		
 		//delete the png file
 		unlink($tmp_html_path);
 			
@@ -2279,43 +2287,55 @@ function instantiate_template_task_parameters(TemplateTask $object, ProjectTask 
 			if ($opPos !== false) {
 				// Is parametric
 				$dateParam = substr($value, 1, strpos($value, '}') - 1);
+				$hour_min = null;
 				
 				// get date from parameter, if parameter is defined by user => use that value, if it is the date of task creation => use DateTimeValueLib::now();
 				if ($dateParam == 'task_creation') {
 					$date = DateTimeValueLib::now();
 				} else {
-					$date = getDateValue($parameterValues[$dateParam]);
+					$date_str = $parameterValues[$dateParam];
+					
+					$result = null;
+					Hook::fire('before_instantiate_template_date_param', array('object' => $object, 'copy' => $copy, 'date_str' => $date_str), $result);
+					if (is_array($result)) {
+						if (isset($result['date'])) $date_str = $result['date'];
+						if (isset($result['time'])) $hour_min = $result['time'];
+					}
+					
+					$date = getDateValue($date_str);
 					if (!$date instanceof DateTimeValue) {
 						$date = DateTimeValueLib::now();
 					}
 				}
 				
+				$tz_offset = Timezones::getTimezoneOffsetToApply($copy);
+				
 				// set due time of resulting date as end of the day
 				if ($copy instanceof ProjectTask && config_option('use_time_in_task_dates') && $propName == "due_date"){
 					$copy->setUseDueTime(1);
 					
-					$hour_min = getTimeValue(user_config_option('work_day_end_time'));
-					$hour_min['hours'];
-					$hour_min['mins'];
+					if ($hour_min == null) {
+						$hour_min = getTimeValue(user_config_option('work_day_end_time'));
+					}
 					
 					$date->setHour($hour_min['hours']);
 					$date->setMinute($hour_min['mins']);
 					
-					$date = $date->add('s', -logged_user()->getTimezone()*3600);										
+					$date = $date->add('s', -1*$tz_offset);
 				}
 				
 				// set start time of resulting date as beggining of the day
 				if ($copy instanceof ProjectTask && config_option('use_time_in_task_dates') && $propName == "start_date"){
 					$copy->setUseStartTime(1);
 					
-					$hour_min = getTimeValue(user_config_option('work_day_start_time'));
-					$hour_min['hours'];
-					$hour_min['mins'];
+					if ($hour_min == null) {
+						$hour_min = getTimeValue(user_config_option('work_day_start_time'));
+					}
 					
 					$date->setHour($hour_min['hours']);
 					$date->setMinute($hour_min['mins']);
 					
-					$date = $date->add('s', -logged_user()->getTimezone()*3600);						
+					$date = $date->add('s', -1*$tz_offset);						
 				}
 				
 				

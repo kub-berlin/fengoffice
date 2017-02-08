@@ -195,16 +195,36 @@ class MailUtilities {
 			$ini = stripos($content, "\n$headerName");
 			if ($ini === FALSE) return "";
 		}
-				
+
 		$ini = stripos($content, ":", $ini);
 		if ($ini === FALSE) return "";
 		$ini++;
 		$end = stripos($content, "\n", $ini);
 		$res = trim(substr($content, $ini, $end - $ini));
-		
+
 		return $res;
 	}
-	
+
+	private function getMessageIdHeaderValueFromContent($content) {
+		$headerName = "Message-ID";
+		if (stripos($content, $headerName) !== FALSE && stripos($content, $headerName) == 0) {
+			$ini = 0;
+		} else {
+			$ini = stripos($content, "\n$headerName");
+			if ($ini === FALSE) return "";
+		}
+
+		$ini = stripos($content, "<", $ini);
+		if ($ini === FALSE){
+			debug_log("Message-ID not found: $content", "checkmail_log.php");
+			return "";
+		}
+
+		$end = stripos($content, ">", $ini);
+		$res = trim(substr($content, $ini, $end + 1 - $ini));
+		return $res;
+	}
+
 	function SaveMail(&$content, MailAccount $account, $uidl, $state = 0, $imap_folder_name = '', $read = null, &$received_count) {
 		
 		try {
@@ -216,7 +236,7 @@ class MailUtilities {
 			$to_addresses = self::getAddresses(array_var($parsedMail, "To"));
 			$from = self::getAddresses(array_var($parsedMail, "From"));
 			
-			$message_id = self::getHeaderValueFromContent($content, "Message-ID");
+			$message_id = self::getMessageIdHeaderValueFromContent($content);
 			$in_reply_to_id = self::getHeaderValueFromContent($content, "In-Reply-To");
 			
 			$uid = trim($uidl);
@@ -232,8 +252,18 @@ class MailUtilities {
 					$uid = utf8_substr($uid, 1, utf8_strlen($uid, $encoding) - 2, $encoding);
 				}
 			}
-			// do not save duplicate emails
-			if (MailContents::mailRecordExists($account, $uid, $imap_folder_name == '' ? null : $imap_folder_name,null,$message_id)) {
+
+			// do not save duplicate emails if they are in more than one folder
+			if ($exists_object_id = MailContents::mailRecordExists($account, $uid, null,null,$message_id)) {
+				file_put_contents("cache/testlog", $account->getId().") $imap_folder_name - uid:$uid - REPEATED message_id:$message_id\n", FILE_APPEND);
+				if ($imap_folder_name != '') {
+					DB::execute("
+						INSERT INTO ".TABLE_PREFIX."mail_content_imap_folders (account_id, message_id, folder, uid, object_id) VALUES
+							(".$account->getId().", ".DB::escape($message_id).", ".DB::escape($imap_folder_name).", ".DB::escape($uid).", ".$exists_object_id.")
+						ON DUPLICATE KEY UPDATE uid=".DB::escape($uid).";
+					");
+				}
+				
 				return;
 			}
 			
@@ -258,49 +288,65 @@ class MailUtilities {
 				if ($same instanceof MailContent) return;
 			}
 			
-			$from_spam_junk_folder = strpos(strtolower($imap_folder_name), 'spam') !== FALSE 
-				|| strpos(strtolower($imap_folder_name), 'junk')  !== FALSE
-				|| strpos(strtolower($imap_folder_name), 'trash') !== FALSE;
 			
-			$user_id = logged_user() instanceof Contact ? logged_user()->getId() : $account->getContactId();
-			$max_spam_level = user_config_option('max_spam_level', null, $user_id);
-			if ($max_spam_level < 0) $max_spam_level = 0;
-			
-			$spam_level_header = 'x-spam-level:';
-			foreach ($decoded[0]['Headers'] as $hdr_name => $hdrval) {
-				if (strpos(strtolower($hdr_name), "spamscore") !== false || strpos(strtolower($hdr_name), "x-spam-level")) {
-					$spam_level_header = $hdr_name;
-					break;
+			// check if the from address exists in mail_spam_filters, if marked as "spam" then put it in junk folder, 
+			// if no record exists then check spam level in email headers 
+			$spam_email = MailSpamFilters::getFrom($account->getId(), $from);
+			if($spam_email) {
+				if($spam_email[0]->getSpamState() == "spam") {
+					$state = 4;
 				}
-			}
-			$mail_spam_level = strlen(trim( array_var($decoded[0]['Headers'], $spam_level_header, '') ));
+				
+			} else {
+				// check the spam level in mail headers only if from_address is not in white-list (marked as no spam in mail_spam_filters) 
+				
+				
+				$from_spam_junk_folder = strpos(strtolower($imap_folder_name), 'spam') !== FALSE
+					|| strpos(strtolower($imap_folder_name), 'junk')  !== FALSE
+					|| strpos(strtolower($imap_folder_name), 'trash') !== FALSE;
+					
+				$user_id = logged_user() instanceof Contact ? logged_user()->getId() : $account->getContactId();
+				$max_spam_level = user_config_option('max_spam_level', null, $user_id);
+				if ($max_spam_level < 0) $max_spam_level = 0;
 			
-			// if max_spam_level >= 10 then nothing goes to junk folder
-			$spam_in_subject = false;
-			if (config_option('check_spam_in_subject')) {
-				$spam_in_subject = strpos_utf(strtoupper(array_var($parsedMail, 'Subject')), "**SPAM**") !== false;
-			}
-			if (($max_spam_level < 10 && ($mail_spam_level > $max_spam_level || $from_spam_junk_folder)) || $spam_in_subject) {
-				$state = 4; // send to Junk folder
-			}
-			
-			//if you are in the table spam MailSpamFilters
-			if ($state != 4) {
-				$spam_email = MailSpamFilters::getFrom($account->getId(),$from);
-				if($spam_email) {
-					$state = 0;
-					if($spam_email[0]->getSpamState() == "spam") {
-						$state = 4;
-					}
-				} else {
-					if ($state == 0) {
-						if (strtolower($from) == strtolower($account->getEmailAddress())) {
-							if (strpos($to_addresses, $from) !== FALSE) $state = 5; //Show in inbox and sent folders
-							else $state = 1; //Show only in sent folder
+				// possible spam level header names, order is important
+				$spam_header_names = array('x-spam-bar','x-spam-level','spamscore');
+				
+				// check if mail has any of the spam level headers defined before
+				$spam_level_header = 'x-spam-level:';
+				foreach ($decoded[0]['Headers'] as $hdr_name => $hdrval) {
+					foreach ($spam_header_names as $spam_hname) {
+						if (strpos(strtolower($hdr_name), $spam_hname) !== false) {
+							$spam_level_header = $hdr_name;
+							break 2; // break both loops
 						}
 					}
 				}
+				// get the spam bar
+				$spam_bar_string = array_var($decoded[0]['Headers'], $spam_level_header, '');
+				// ignore the negative values, remove the character "-"
+				$spam_bar_string = str_replace("-", "", $spam_bar_string);
+				// count the spam bar characters
+				$mail_spam_level = strlen(trim( $spam_bar_string ));
+				
+				// if max_spam_level >= 10 then nothing goes to junk folder
+				$spam_in_subject = false;
+				if (config_option('check_spam_in_subject')) {
+					$spam_in_subject = strpos_utf(strtoupper(array_var($parsedMail, 'Subject')), "**SPAM**") !== false;
+				}
+				
+				if (($max_spam_level < 10 && $mail_spam_level >= $max_spam_level) || $spam_in_subject || $from_spam_junk_folder) {
+					$state = 4; // send to Junk folder
+				}
+			
+				if ($state == 0) {
+					if (strtolower($from) == strtolower($account->getEmailAddress())) {
+						if (strpos($to_addresses, $from) !== FALSE) $state = 5; //Show in inbox and sent folders
+						else $state = 1; //Show only in sent folder
+					}
+				}
 			}
+			
 	
 			if (!isset($parsedMail['Subject'])) $parsedMail['Subject'] = '';
 			$mail = new MailContent();
@@ -363,10 +409,10 @@ class MailUtilities {
 			}
 			
 			// if this constant is defined, mails older than this date will not be fetched 
-			if (defined('FIRST_MAIL_DATE')) {
+			if (defined('FIRST_MAIL_DATE') && !$account->getIsImap()) {
 				$first_mail_date = DateTimeValueLib::makeFromString(FIRST_MAIL_DATE);
 				if ($mail->getSentDate()->getTimestamp() < $first_mail_date->getTimestamp()) {
-					// return true to stop getting older mails from the server
+					// return true to stop getting older mails from the server if is pop
 					return true;
 				}
 			}
@@ -390,9 +436,12 @@ class MailUtilities {
 			$mail->setMessageId($message_id);
 			$mail->setInReplyToId($in_reply_to_id);
 	
-			// set hasAttachments=true onlu if there is any attachment with FileDisposition='attachment' or is not an image
+			// set hasAttachments=true only if there is any attachment with FileDisposition='attachment' or is not an image
+			$parsed_attachments = array_var($parsedMail, "Attachments", array());
+			$parsed_attachments = array_merge($parsed_attachments, array_var($parsedMail, "Related", array()));
+			
 			$has_attachments = false;
-			foreach (array_var($parsedMail, "Attachments", array()) as $attachment) {
+			foreach ($parsed_attachments as $attachment) {
 				if (array_var($attachment, 'FileDisposition') == 'attachment') {
 					$has_attachments = true;
 				} else {
@@ -429,6 +478,11 @@ class MailUtilities {
 					if ($enc_conv->hasError()) $utf8_body = utf8_encode(array_var($parsedMail, 'Data', ''));
 					$utf8_body = utf8_safe($utf8_body);
 					$mail->setBodyPlain($utf8_body);
+					
+					// if the main part of the email is an ical file
+					if (array_var($parsedMail, 'SubType') == 'calendar') {
+						$mail->setHasAttachments(true);
+					}
 					break;
 				case 'delivery-status': 
 					$utf8_body = $enc_conv->convert($encoding, 'UTF-8', array_var($parsedMail, 'Response', ''));
@@ -520,6 +574,19 @@ class MailUtilities {
 			$mail->setConversationId($conv_id);
 									
 			$mail->save();
+			
+			if ($imap_folder_name != '') {
+				// mark the email as it belongs to the email folder
+				DB::execute("
+					INSERT INTO ".TABLE_PREFIX."mail_content_imap_folders (account_id, message_id, folder, uid, object_id) VALUES
+						(".$account->getId().", ".DB::escape($message_id).", ".DB::escape($imap_folder_name).", ".DB::escape($uid).", ".$mail->getId().")
+					ON DUPLICATE KEY UPDATE account_id=account_id;
+				");
+
+				DB::execute("
+					UPDATE `".TABLE_PREFIX."mail_account_imap_folder` ma SET ma.last_uid_in_folder=".DB::escape($uid)." WHERE ma.account_id = ".$account->getId()." AND ma.folder_name = ".DB::escape($imap_folder_name).";
+				");
+			}
 
 			
 			// CLASSIFY RECEIVED MAIL WITH THE CONVERSATION
@@ -568,10 +635,13 @@ class MailUtilities {
 			$received_count++;
 			
 			// to apply email rules
-			$null = null;
-			Hook::fire('after_mail_download', $mail, $null);
+			$after_download_data = "";
+			Hook::fire('after_mail_download', $mail, $after_download_data);
 			
 			DB::commit();
+			
+			$mail_saved_ok = true;
+			
 		} catch(Exception $e) {
 			$ret = null;
 			Hook::fire('on_save_mail_error', array('content' => $content, 'account' => $account, 'exception' => $e), $ret);
@@ -586,6 +656,11 @@ class MailUtilities {
 			}
 		}
 		unset($parsedMail);
+		
+		if (isset($mail_saved_ok) && $mail_saved_ok) {
+			$log_data = $after_download_data;
+			ApplicationLogs::createLog($mail, ApplicationLogs::ACTION_ADD, true, true, true, $log_data);
+		}
 		return false;
 	}
 	
@@ -869,6 +944,11 @@ class MailUtilities {
 				$mail_transport->setUsername($smtp_username);
 				$mail_transport->setPassword(self::ENCRYPT_DECRYPT($smtp_password));
 			}
+
+			$local_domain = parse_url(ROOT_URL);
+			if(is_array($local_domain) && array_key_exists('host', $local_domain) && $local_domain['host'] !== ''){
+				$mail_transport->setLocalDomain($local_domain['host']);
+			}
 			
 			$mailer = Swift_Mailer::newInstance($mail_transport);
 			
@@ -1108,11 +1188,12 @@ class MailUtilities {
 						debug_log("    numMessages=$numMessages", "checkmail_log.php");
 						
 						// determine the starting uid and number of message
-						$max_uid = $account->getMaxUID($box->getFolderName());
+						$max_uid = $account->getImapMaxUID($box->getFolderName());
 						$max_summary = null;
 						if($max_uid){					
 							$max_summary = $imap->getSummary($max_uid, true);
 							if (PEAR::isError($max_summary)) {
+								debug_log("    PEAR ERROR max_summary has error: ".$max_summary->getMessage(), "checkmail_log.php");
 								Logger::log($max_summary->getMessage());
 								throw new Exception($max_summary->getMessage());
 							}
@@ -1151,8 +1232,7 @@ class MailUtilities {
 							$server_min_uid = $server_min_summary[0]['UID'];
 						}
 						debug_log("    server_min_uid = $server_min_uid", "checkmail_log.php");
-						
-						
+
 						if($max_uid){
 							if($is_last_mail_on_mail_server){
 								$lastReceived = $max_summary[0]['MSG_NUM'];
@@ -1160,25 +1240,15 @@ class MailUtilities {
 								if($max_uid < $server_min_uid){
 									$lastReceived = 1;
 								}else{
-									// $max_uid is betwen $server_min_uid and $server_max_uid
-									if ($server_max_uid && $max_uid < $server_max_uid) {
-										
-										$diff_uids = $server_max_uid - $max_uid;
-										$lastReceived = $numMessages - $diff_uids;	
-										
-									} else {
-										//get the complete server list of uids and msgids since $max_uid
-										$server_uids_list = $imap->getMessagesListUid($max_uid.':*');
-																		
-										if(count($server_uids_list)){
-											$lastReceived = $server_uids_list[0]["msg_id"];
-										}else{
-											
-											// if there are no messages with uid > max_uid => dont download any messages from this folder, continue with next folder.
-											continue;
-											
-										}
-										
+									//get the complete server list of uids and msgids since $max_uid
+									$server_uids_list = $imap->getMessagesListUid($max_uid.':*');
+									debug_log(print_r("complete server list of uids and msgids since $max_uid", true), "checkmail_log.php");
+									debug_log(print_r($server_uids_list, true), "checkmail_log.php");
+									if(count($server_uids_list)){
+										$lastReceived = $server_uids_list[0]["msg_id"];
+									}else{
+										// if there are no messages with uid > max_uid => dont download any messages from this folder, continue with next folder.
+										continue;
 									}
 								}
 								$lastReceived = $lastReceived - 1;
@@ -1186,6 +1256,28 @@ class MailUtilities {
 						}else{
 							//we don't have any mails on the system yet
 							$lastReceived = 0;
+
+							// if this constant is defined, mails older than this date will not be fetched
+							//FIRST_MAIL_DATE format example 30-Dec-2016 for imap
+							if (defined('FIRST_MAIL_DATE_IMAP')) {
+								$last_mails = $imap->search('SINCE '.FIRST_MAIL_DATE_IMAP);
+								Logger::log(print_r("last_mails", true));//$hola
+								Logger::log(print_r($box->getFolderName(), true));//$hola
+								Logger::log(print_r($last_mails, true));//$hola
+
+								if (PEAR::isError($last_mails)) {
+									Logger::log($last_mails->getMessage());
+									debug_log("      Error search FIRST_MAIL_DATE_IMAP folder ".$box->getFolderName(), "checkmail_log.php");
+								}
+
+								if (is_array($last_mails) && count($last_mails) > 0) {
+									$lastReceived = $last_mails[0];
+									$lastReceived = $lastReceived - 1;
+								}else{
+									//there's no mail in this folder from FIRST_MAIL_DATE_IMAP
+									continue;
+								}
+							}
 						}
 						debug_log("    lastReceived = $lastReceived", "checkmail_log.php");
 						
@@ -1205,7 +1297,7 @@ class MailUtilities {
 								debug_log("      Error getting summary $index", "checkmail_log.php");
 							} else {
 								if ($summary[0]['UID']) {
-									debug_log("      reading email status $index", "checkmail_log.php");
+									debug_log("      reading email status index:$index - uid:".$summary[0]['UID'], "checkmail_log.php");
 									if ($imap->isDraft($index)) $state = 2;
 									else $state = 0;
 									
@@ -1226,7 +1318,7 @@ class MailUtilities {
 											if ($stop_checking) break;
 											//$received++;
 										} catch (Exception $e) {
-											debug_log("      Error saving mail $index", "checkmail_log.php");
+											debug_log("      Error saving mail $index\n".$e->getMessage()."\n".$e->getTraceAsString(), "checkmail_log.php");
 											$mail_file = ROOT."/tmp/unsaved_mail_".$summary[0]['UID'].".eml";
 											$res = file_put_contents($mail_file, $content);
 											if ($res === false) {
@@ -1236,6 +1328,8 @@ class MailUtilities {
 												else Logger::log("Could not save mail, original mail saved as $mail_file, exception:\n".$e->getMessage());
 											}
 											else Logger::log("Could not save mail, original mail saved as $mail_file, exception:\n".$e->getMessage());
+											
+
 										}
 									} // if content
 									else {
@@ -1459,21 +1553,26 @@ class MailUtilities {
 		$port = ($with_ssl=='1') ? ':'.$ssl_port : '';
 		$mail_box = (isset ($box)) ? $box : 'INBOX.Sent';
 		$connection = '{'.$server.$port.'/imap'.$no_valid_cert.$ssl.$tls.'}'.$mail_box;
+		debug_log("a) Connection string: $connection", "sent_emails_sync.log");
+		
 		$stream = imap_open($connection, $from, $password);
 		if ($stream !== FALSE) {
+			debug_log("a) connection stream ok", "sent_emails_sync.log");
 			$check_mailbox = imap_check($stream);
 			if (!isset ($check_mailbox)){
+				debug_log("a) no mailbox found", "sent_emails_sync.log");
 				$check = false;
 			}
 			imap_close($stream);
 		} else {
+			debug_log("a) no connection stream", "sent_emails_sync.log");
 			return false;
 		}
 		return $check;
 	}
 	
 	// to send an email to the email server through IMAP 	
-	function sendToServerThroughIMAP($server, $with_ssl, $transport, $ssl_port, $box, $from, $password, $content){
+	function sendToServerThroughIMAP($server, $with_ssl, $transport, $ssl_port, $box, $from, $password, $content, $mail_id=0){
 		
 		if (!function_exists('imap_open')) {
 			flash_error(lang('php-imap extension not installed'));
@@ -1488,10 +1587,15 @@ class MailUtilities {
 		$port = ($with_ssl=='1') ? ':'.$ssl_port : '';
 		$mail_box = (isset ($box)) ? $box : 'INBOX.Sent';
 		$connection = '{'.$server.$port.'/imap'.$no_valid_cert.$ssl.$tls.'}'.$mail_box;
+		debug_log("b) mail_id=$mail_id - Connection string: $connection", "sent_emails_sync.log");
+		
 		$stream = imap_open($connection, $from, $password);
 		if ($stream !== FALSE) {
-			imap_append($stream, $connection, $content);
+			$ret = imap_append($stream, $connection, $content);
 			imap_close($stream);
+			debug_log("b) connection stream ok - imap_append returned ".($ret?"true":"false"), "sent_emails_sync.log");
+		} else {
+			debug_log("b) no connection stream", "sent_emails_sync.log");
 		}
 	}
 	

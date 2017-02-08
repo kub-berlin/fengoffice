@@ -71,12 +71,15 @@ class ProjectEvents extends BaseProjectEvents {
 			return NULL;
 		}
 
-		$tz_hm = "'". floor(logged_user()->getTimezone()).":".(abs(logged_user()->getTimezone()) % 1)*60 ."'";
+		$tz_val = logged_user()->getUserTimezoneValue();
+		$sign = $tz_val < 0 ? -1 : 1;
+		$dt = new DateTimeValue(abs($tz_val));
+		$tz_hm = "'" . $sign * $dt->getHour() . ":" . $dt->getMinute() . "'";
 
 		$date_no_tz = new DateTimeValue($date->getTimestamp());
 		$start_date_no_tz_str = $date_no_tz->format("Y-m-d H:i:s");
 		
-		$date = new DateTimeValue($date->getTimestamp() - logged_user()->getTimezone() * 3600);
+		$date = new DateTimeValue($date->getTimestamp() - $tz_val);
 		$next_date = new DateTimeValue($date->getTimestamp() + 24*3600);
 
 		$start_date_str = $date->format("Y-m-d H:i:s");
@@ -112,7 +115,7 @@ class ProjectEvents extends BaseProjectEvents {
 					AND
 					(
 						(
-							MOD( DATEDIFF(ADDDATE(`start`, INTERVAL ".logged_user()->getTimezone()." HOUR), '$year-$month-$day') ,repeat_d) = 0
+							MOD( DATEDIFF(ADDDATE(`start`, INTERVAL ".$tz_val." SECOND), '$year-$month-$day') ,repeat_d) = 0
 							AND
 							(
 								DATE_ADD(`start`, INTERVAL (`repeat_num`-1)*`repeat_d` DAY) >= '$start_date_str'
@@ -237,10 +240,14 @@ class ProjectEvents extends BaseProjectEvents {
 			$invited = " AND o.`id` IN (SELECT `event_id` FROM `" . TABLE_PREFIX . "event_invitations` WHERE `contact_id` = ".$user->getId().")";
 		}
 		
-		$tz_hm = "'" . floor(logged_user()->getTimezone()) . ":" . (abs(logged_user()->getTimezone()) % 1)*60 . "'";
+		$tz_val = logged_user()->getUserTimezoneValue();
+		$sign = $tz_val < 0 ? -1 : 1;
+		$dt = new DateTimeValue(abs($tz_val));
+		$tz_hm = "'" . $sign * $dt->getHour() . ":" . $dt->getMinute() . "'";
+		
 
-		$s_date = new DateTimeValue($start_date->getTimestamp() - logged_user()->getTimezone() * 3600);
-		$e_date = new DateTimeValue($end_date->getTimestamp() - logged_user()->getTimezone() * 3600);
+		$s_date = new DateTimeValue($start_date->getTimestamp() - $tz_val);
+		$e_date = new DateTimeValue($end_date->getTimestamp() - $tz_val);
 		$e_date->add("d", 1);
 
 		$start_date_str = $s_date->format("Y-m-d H:i:s");

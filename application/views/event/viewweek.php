@@ -55,7 +55,7 @@ $(function(){
 	$endday = $startday + 7; // end of week
 	
 	$today = DateTimeValueLib::now();
-	$today->add('h', logged_user()->getTimezone());
+	$today->add('s', logged_user()->getUserTimezoneValue());
 	$currentday = $today->format("j");
 	$currentmonth = $today->format("n");
 	$currentyear = $today->format("Y");
@@ -65,8 +65,6 @@ $(function(){
 	
 	$date_start = new DateTimeValue(mktime(0, 0, 0, $month, $startday, $year)); 
 	$date_end = new DateTimeValue(mktime(0, 0, 0, $month, $endday, $year)); 
-//	$date_start->add('h', logged_user()->getTimezone());
-//	$date_end->add('h', logged_user()->getTimezone());
 	
 	$tasks = array();
 	$milestones = ProjectMilestones::getRangeMilestones($date_start, $date_end);
@@ -151,8 +149,12 @@ $(function(){
 			
 			foreach ($tmp_tasks as $task) {
 				$added = false;
+				$tz_value = Timezones::getTimezoneOffsetToApply($task, logged_user());
+				
 				if ($task->getDueDate() instanceof DateTimeValue){
-					$due_date = new DateTimeValue($task->getDueDate()->getTimestamp() + logged_user()->getTimezone() * 3600);
+					
+					$due_date = new DateTimeValue($task->getDueDate()->getTimestamp() + $tz_value);
+					
 					if ($dates[$day_of_week]->getTimestamp() == mktime(0,0,0, $due_date->getMonth(), $due_date->getDay(), $due_date->getYear())) {
 						if ($task->getUseDueTime() && ($task->getStartDate() instanceof DateTimeValue || $task->getTimeEstimate() > 0)) {
 							$results[$day_of_week][] = $task;
@@ -164,7 +166,7 @@ $(function(){
 					}
 				}
 				if ($task->getStartDate() instanceof DateTimeValue){
-					$start_date = new DateTimeValue($task->getStartDate()->getTimestamp() + logged_user()->getTimezone() * 3600);
+					$start_date = new DateTimeValue($task->getStartDate()->getTimestamp() + $tz_value);
 					if (!$added && $dates[$day_of_week]->getTimestamp() == mktime(0,0,0, $start_date->getMonth(), $start_date->getDay(), $start_date->getYear())) {
 						if ($task->getUseStartTime() && ($task->getDueDate() instanceof DateTimeValue|| $task->getTimeEstimate() > 0)) {
 							$results[$day_of_week][] = $task;
@@ -213,7 +215,9 @@ $(function(){
 				}
 			}
 			if (!$starts_this_week && $task->getDueDate() instanceof DateTimeValue) {
-				$due_date = new DateTimeValue($task->getDueDate()->getTimestamp() + logged_user()->getTimezone() * 3600);
+				$tz_value = Timezones::getTimezoneOffsetToApply($task, logged_user());
+				
+				$due_date = new DateTimeValue($task->getDueDate()->getTimestamp() + $tz_value);
 				$due_dow = $due_date->format('w') + (user_config_option("start_monday") ? -1 : 0);
 				for ($dow = 0; $dow < $due_dow; $dow++) {
 					$dow_ts = mktime(0, 0, 0, $month, $startday + $dow, $year);
@@ -377,15 +381,18 @@ $(function(){
 										$start_of_task = false;
 										$end_of_task = false;
 										$is_repe_task = $event->isRepetitive();
+										
+										$tz_value = Timezones::getTimezoneOffsetToApply($task, logged_user());
+										
 										if ($event->getDueDate() instanceof DateTimeValue) {
-											$due_date = new DateTimeValue($event->getDueDate()->getTimestamp() + logged_user()->getTimezone() * 3600);
+											$due_date = new DateTimeValue($event->getDueDate()->getTimestamp() + $tz_value);
 											if ($dates[$day_of_week]->getTimestamp() == mktime(0,0,0, $due_date->getMonth(), $due_date->getDay(), $due_date->getYear())){
 												$end_of_task = true;
 												$start_of_task = true;
 											}
 										}
 										if ($event->getStartDate() instanceof DateTimeValue) {
-											$start_date = new DateTimeValue($event->getStartDate()->getTimestamp() + logged_user()->getTimezone() * 3600);
+											$start_date = new DateTimeValue($event->getStartDate()->getTimestamp() + $tz_value);
 											if ($dates[$day_of_week]->getTimestamp() == mktime(0,0,0, $start_date->getMonth(), $start_date->getDay(), $start_date->getYear())) {
 												$start_of_task = true;
 												$end_of_task = true;
@@ -691,16 +698,22 @@ onmouseup="og.showEventPopup(<?php echo $date->getDay() ?>, <?php echo $date->ge
 											$event_duration->add('s', 1);
 											
 											if ($event instanceof ProjectEvent) {
-												$real_start = new DateTimeValue($event->getStart()->getTimestamp() + 3600 * logged_user()->getTimezone());
-												$real_duration = new DateTimeValue($event->getDuration()->getTimestamp() + 3600 * logged_user()->getTimezone());
+												
+												$tz_value = Timezones::getTimezoneOffsetToApply($event, logged_user());
+												
+												$real_start = new DateTimeValue($event->getStart()->getTimestamp() + $tz_value);
+												$real_duration = new DateTimeValue($event->getDuration()->getTimestamp() + $tz_value);
+
 											} else if ($event instanceof ProjectTask) {
+												$tz_value = Timezones::getTimezoneOffsetToApply($event, logged_user());
+												
 												if ($event->getStartDate() instanceof DateTimeValue) {
-													$real_start = new DateTimeValue($event->getStartDate()->getTimestamp() + 3600 * logged_user()->getTimezone());
+													$real_start = new DateTimeValue($event->getStartDate()->getTimestamp() + $tz_value);
 												} else {
 													$real_start = $event_start;
 												}
 												if ($event->getDueDate() instanceof DateTimeValue) {
-													$real_duration = new DateTimeValue($event->getDueDate()->getTimestamp() + 3600 * logged_user()->getTimezone());
+													$real_duration = new DateTimeValue($event->getDueDate()->getTimestamp() + $tz_value);
 												} else {
 													$real_duration = $event_duration;
 												}

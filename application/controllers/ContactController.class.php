@@ -128,6 +128,14 @@ class ContactController extends ApplicationController {
 			tpl_assign('contact_id', $contact_id);
 			$contact = Contacts::findById($contact_id);
 			
+			$tz_id = 0;
+			if ($company instanceof Contact) {
+				$tz_id = $company->getUserTimezoneId();
+			}
+			if (!$tz_id) {
+				$tz_id = config_option('default_timezone');
+			}
+			
 			if ($contact instanceof Contact) {
 				
 				if (!is_valid_email($contact->getEmailAddress())){
@@ -145,6 +153,7 @@ class ContactController extends ApplicationController {
 					'password_generator' => 'random',
 					'type' => 'Executive',
 					'can_manage_time' => true,
+					'user_timezone_id' => $tz_id,
 				); // array
 				tpl_assign('ask_email', false);
 			} else {
@@ -152,7 +161,7 @@ class ContactController extends ApplicationController {
 				$user_data = array(
 					'password_generator' => 'random',
 					'company_id' => $company->getId(),
-					'timezone' => $company->getTimezone(),
+					'user_timezone_id' => $tz_id,
 					'create_contact' => true,
 					'send_email_notification' => false,
 					'type' => 'Executive',
@@ -492,9 +501,11 @@ class ContactController extends ApplicationController {
 		$join_params = array();
 		
 		switch ($order){
+			case 'dateUpdated':
 			case 'updatedOn':
 				$order = '`updated_on`';
 				break;
+			case 'dateCreated':
 			case 'createdOn':
 				$order = '`created_on`';
 				break;
@@ -681,18 +692,18 @@ class ContactController extends ApplicationController {
 					$personal_emails = $c->getContactEmails('personal');	
 					$w_address = $c->getAddress('work');
 					$h_address = $c->getAddress('home');
+					$p_address = $c->getAddress('postal');
 					
 					if(user_config_option("listingContactsBy")){
 						$name = $c->getDisplayName();
 					} else {
 						$name = $c->getReverseDisplayName();
 					}
-									
-					$object["contacts"][$i] = array(
-						"id" => $i,
+					
+					$general_info = $c->getObject()->getArrayInfo();
+					
+					$info = array(
 						"ix" => $i,
-						"object_id" => $c->getId(),
-						"ot_id" => $c->getObjectTypeId(),
 						"type" => $c->getUserType() > 0 ? 'user' : 'contact',
 						"name" => $name,
 						"picture" => $c->getPictureUrl(),
@@ -713,28 +724,24 @@ class ContactController extends ApplicationController {
 						"homePhone1" => $c->getPhone('home',true) ? $c->getPhoneNumber('home',true) : '',
 						"homePhone2" => $c->getPhone('home') ? $c->getPhoneNumber('home') : '',
 						"mobilePhone" =>$c->getPhone('mobile') ? $c->getPhoneNumber('mobile') : '',
-						"createdOn" => $c->getCreatedOn() instanceof DateTimeValue ? ($c->getCreatedOn()->isToday() ? format_time($c->getCreatedOn()) : format_datetime($c->getCreatedOn())) : '',
-						"createdOn_today" => $c->getCreatedOn() instanceof DateTimeValue ? $c->getCreatedOn()->isToday() : 0,
-						"createdBy" => $c->getCreatedByDisplayName(),
-						"createdById" => $c->getCreatedById(),
-						"updatedOn" => $c->getUpdatedOn() instanceof DateTimeValue ? ($c->getUpdatedOn()->isToday() ? format_time($c->getUpdatedOn()) : format_datetime($c->getUpdatedOn())) : '',
-						"updatedOn_today" => $c->getUpdatedOn() instanceof DateTimeValue ? $c->getUpdatedOn()->isToday() : 0,
-						"updatedBy" => $c->getUpdatedByDisplayName(),
-						"updatedById" => $c->getUpdatedById(),
+						"postalAddress" => $p_address ? $c->getFullAddress($p_address) : '',
 						"memPath" => json_encode($c->getMembersIdsToDisplayPath()),
 						"userType" => $c->getUserType(),
 						"birthday" => $c->getBirthday() instanceof DateTimeValue ? $c->getBirthday()->format('M, j') : '',
 					);
+					$info = array_merge($general_info, $info);
+					
+					$object["contacts"][$i] = $info;
+					
 				} else if ($c instanceof Contact){
 					
+					$general_info = $c->getObject()->getArrayInfo();
+					
 					$w_address = $c->getAddress('work');
-					$object["contacts"][$i] = array(
-						"id" => $i,
+					$p_address = $c->getAddress('postal');
+					$info = array(
 						"ix" => $i,
-						"object_id" => $c->getId(),
-						"ot_id" => $c->getObjectTypeId(),
 						"type" => 'company',
-						'name' => $c->getObjectName(),
 						"picture" => $c->getPictureUrl(),
 						'email' => $c->getEmailAddress(),
 						'website' => $c->getWebpage('work') ? cleanUrl($c->getWebpageUrl('work'), false) : '',
@@ -753,19 +760,15 @@ class ContactController extends ApplicationController {
 						"homePhone1" => '',
 						"homePhone2" => '',
 						"mobilePhone" =>'',
-						"createdOn" => $c->getCreatedOn() instanceof DateTimeValue ? ($c->getCreatedOn()->isToday() ? format_time($c->getCreatedOn()) : format_datetime($c->getCreatedOn())) : '',
-						"createdOn_today" => $c->getCreatedOn() instanceof DateTimeValue ? $c->getCreatedOn()->isToday() : 0,
-						"createdBy" => $c->getCreatedByDisplayName(),
-						"createdById" => $c->getCreatedById(),
-						"updatedOn" => $c->getUpdatedOn() instanceof DateTimeValue ? ($c->getUpdatedOn()->isToday() ? format_time($c->getUpdatedOn()) : format_datetime($c->getUpdatedOn())) : '',
-						"updatedOn_today" => $c->getUpdatedOn() instanceof DateTimeValue ? $c->getUpdatedOn()->isToday() : 0,
-						"updatedBy" => $c->getUpdatedByDisplayName(),
-						"updatedById" => $c->getUpdatedById(),
+						"postalAddress" => $p_address ? $c->getFullAddress($p_address) : '',
 						"memPath" => json_encode($c->getMembersIdsToDisplayPath()),
 						"contacts" => $c->getContactsByCompany(),
 						"users" => $c->getUsersByCompany(),
 						"birthday" => '',
 					);
+					$info = array_merge($general_info, $info);
+						
+					$object["contacts"][$i] = $info;
 				}
 				
 				$columns = array();
@@ -815,6 +818,11 @@ class ContactController extends ApplicationController {
 			ajx_current("empty");
 			return;
 		} // if
+		
+		if ($contact->isCompany()) {
+			$this->company_card();
+			return;
+		}
 		
 		$this->setTemplate('card');
 		
@@ -941,8 +949,18 @@ class ContactController extends ApplicationController {
 		$contact_data = array_var($_POST, 'contact');
 		if(!array_var($contact_data,'company_id')){
 			$contact_data['company_id'] = get_id('company_id');
-			$contact_data['timezone'] = logged_user()->getTimezone();
 		}
+		
+		$tz_id = 0;
+		$company = Contacts::findById(get_id('company_id'));
+		if ($company instanceof Contact) {
+			$tz_id = $company->getUserTimezoneId();
+		}
+		if (!$tz_id) {
+			$tz_id = config_option('default_timezone');
+		}
+		$contact_data['user_timezone_id'] = $tz_id;
+		
 		$redirect_to = get_url('contact');
 		
 		// Create contact from mail content, when writing an email...
@@ -1064,6 +1082,16 @@ class ContactController extends ApplicationController {
 					$_SESSION['new_contact_picture_small'] = null;
 					$_SESSION['new_contact_picture'] = null;					
 				}
+				
+				// init timezone with the company timezone, if not defined then use the default timezone
+				$tz_id = 0;
+				if (isset($company) && $company instanceof Contact) {
+					$tz_id = $company->getUserTimezoneId();
+				}
+				if (!$tz_id) {
+					$tz_id = config_option('default_timezone');
+				}
+				$contact->setUserTimezoneId($tz_id);
 
 				$contact->setObjectName();
 				$contact->save();
@@ -1535,8 +1563,8 @@ class ContactController extends ApplicationController {
 				'birthday'=> $contact->getBirthday(),
 				'comments' => $contact->getCommentsField(),
 				'picture_file' => $contact->getPictureFile(),
-				'timezone' => $contact->getTimezone(),
 				'company_id' => $contact->getCompanyId(),
+				'user_timezone_id' => $contact->getUserTimezoneId(),
 		); // array
 			
 		if ($contact->isUser()) {
@@ -3174,7 +3202,7 @@ class ContactController extends ApplicationController {
 		if (isset($checked['notes']) && $checked['notes']) $contact_data['notes'] = array_var($fields, $position['notes']);
 		          
 		$contact_data['is_private'] = false;
-		$contact_data['timezone'] = logged_user()->getTimezone();
+		$contact_data['timezone'] = logged_user()->getUserTimezoneHoursOffset();
                 
 		return $contact_data;                
 	} // buildContactData
@@ -3221,7 +3249,7 @@ class ContactController extends ApplicationController {
 		$comp['country'] = array_var($contact_data, 'w_country');
 		$comp['phone_number'] = array_var($contact_data, 'w_phone_number');
 		$comp['fax_number'] = array_var($contact_data, 'w_fax_number');
-		$comp['timezone'] = logged_user()->getTimezone();
+		$comp['timezone'] = logged_user()->getUserTimezoneHoursOffset();
 		return $comp;
 	}
 	
@@ -3240,7 +3268,7 @@ class ContactController extends ApplicationController {
 		if (isset($checked['phone_number']) && $checked['phone_number']) $contact_data['phone_number'] = array_var($fields, $position['phone_number']);
 		if (isset($checked['fax_number']) && $checked['fax_number']) $contact_data['fax_number'] = array_var($fields, $position['fax_number']);
 		if (isset($checked['notes']) && $checked['notes']) $contact_data['notes'] = array_var($fields, $position['notes']);
-		$contact_data['timezone'] = logged_user()->getTimezone();
+		$contact_data['timezone'] = logged_user()->getUserTimezoneHoursOffset();
 		
 		return $contact_data;
 	}
@@ -3333,7 +3361,7 @@ class ContactController extends ApplicationController {
 			
 			$company_data = array(
 				'first_name' => $company->getFirstName(),
-				'timezone' => $company->getTimezone(),
+				'user_timezone_id' => $company->getUserTimezoneId(),
 				'email' => $company->getEmailAddress(),
 				'comments' => $company->getCommentsField(),
 			); // array
@@ -3476,7 +3504,7 @@ class ContactController extends ApplicationController {
 				tpl_assign('modal', true);
 			}
 			$company_data = array(
-				'timezone' => logged_user()->getTimezone(),
+				'user_timezone_id' => config_option('default_timezone'),
 			); // array
 		} // if
 		tpl_assign('company', $company);

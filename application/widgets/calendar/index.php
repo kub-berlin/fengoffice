@@ -33,7 +33,7 @@ if ($calendar_panel instanceof TabPanel && $calendar_panel->getEnabled()) {
 	//user_config_option('show_two_weeks_calendar',null,logged_user()->getId())? $my_weeks = 2 : $my_weeks = 1 ;
 	$my_weeks = 2;
 	$endday = $startday + (7 * $my_weeks);
-	$today = DateTimeValueLib::now()->add('h', logged_user()->getTimezone());
+	$today = DateTimeValueLib::now()->add('s', logged_user()->getUserTimezoneValue());
 	$currentday = $today->getDay();
 	$currentmonth = $today->getMonth();
 	$currentyear = $today->getYear();
@@ -220,8 +220,10 @@ if ($calendar_panel instanceof TabPanel && $calendar_panel->getEnabled()) {
 						
 						if($event instanceof ProjectEvent ){
 							
-							$event_start = new DateTimeValue($event->getStart()->getTimestamp() + 3600 * logged_user()->getTimezone());
-							$event_duration = new DateTimeValue($event->getDuration()->getTimestamp() + 3600 * logged_user()->getTimezone());
+							$tz_value = Timezones::getTimezoneOffsetToApply($event, logged_user());
+							
+							$event_start = new DateTimeValue($event->getStart()->getTimestamp() + $tz_value);
+							$event_duration = new DateTimeValue($event->getDuration()->getTimestamp() + $tz_value);
 							
 							if ($dtv->getTimestamp() == mktime(0,0,0, $event_start->getMonth(), $event_start->getDay(), $event_start->getYear()) ||
 								$dtv->getTimestamp() == mktime(0,0,0, $event_duration->getMonth(), $event_duration->getDay(), $event_duration->getYear())) {
@@ -262,7 +264,10 @@ if ($calendar_panel instanceof TabPanel && $calendar_panel->getEnabled()) {
 							}
 						} elseif($event instanceof ProjectMilestone ){
 							$milestone = $event;
-							$due_date = new DateTimeValue($milestone->getDueDate()->getTimestamp() + logged_user()->getTimezone() * 3600);
+							
+							$tz_value = Timezones::getTimezoneOffsetToApply($event, logged_user());
+							$due_date = new DateTimeValue($milestone->getDueDate()->getTimestamp() + $tz_value);
+							
 							if ($dtv->getTimestamp() == mktime(0,0,0,$due_date->getMonth(),$due_date->getDay(),$due_date->getYear())) {	
 								$count++;
 								if ($count <= 3){
@@ -299,14 +304,16 @@ if ($calendar_panel instanceof TabPanel && $calendar_panel->getEnabled()) {
 						elseif(is_array($event)){
 							//$task = $event;
 							
+							$tz_value = Timezones::getTimezoneOffsetToApply($event, logged_user());
+							
 							$start_of_task = false;
 							$end_of_task = false;
 							if ($event['due_date'] != EMPTY_DATETIME){
-								$due_date = new DateTimeValue(strtotime($event['due_date']) + logged_user()->getTimezone() * 3600);
+								$due_date = new DateTimeValue(strtotime($event['due_date']) + $tz_value);
 								if ($dtv->getTimestamp() == mktime(0,0,0, $due_date->getMonth(), $due_date->getDay(), $due_date->getYear())) $end_of_task = true;
 							}
 							if ($event['start_date'] != EMPTY_DATETIME){
-								$start_date = new DateTimeValue(strtotime($event['start_date']) + logged_user()->getTimezone() * 3600);
+								$start_date = new DateTimeValue(strtotime($event['start_date']) + $tz_value);
 								if ($dtv->getTimestamp() == mktime(0,0,0, $start_date->getMonth(), $start_date->getDay(), $start_date->getYear())) $start_of_task = true;
 							}
 							

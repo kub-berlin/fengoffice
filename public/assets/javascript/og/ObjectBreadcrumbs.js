@@ -386,9 +386,13 @@ og.replaceAllEmptyBreadcrumbForThisMember = function(dimension_id ,member, extra
 		var new_target_id = 'bread-crumb-'+ Ext.id() + member.id;
 		var container_to_fill = $(all_targets[j]).data("container-to-fill");
 		var show_link = $(all_targets[j]).data("show-link");
-		$(all_targets[j]).parent().html('<span id="'+new_target_id+'" class="bread-crumb-'+ member.id +' member-path real-breadcrumb og-wsname-color-'+ member.color +'" data-container-to-fill="'+container_to_fill+'" data-show-link="'+show_link+'"></span>');
+		var exclude_parents_path = $(all_targets[j]).data("exclude-parents-path");
+		var epp = exclude_parents_path ? '1' : '0';
 		
-		og.insertBreadcrumb(member.id,new_target_id,false);
+		$(all_targets[j]).parent().html('<span id="'+new_target_id+'" class="bread-crumb-'+ member.id +' member-path real-breadcrumb og-wsname-color-'+ member.color +
+				'" data-container-to-fill="'+container_to_fill+'" data-show-link="'+show_link+'" data-exclude-parents-path="'+epp+'"></span>');
+		
+		og.insertBreadcrumb(member.id,new_target_id,false,null,exclude_parents_path);
 	}	
 }
 
@@ -396,11 +400,12 @@ og.replaceAllEmptyBreadcrumbForThisMember = function(dimension_id ,member, extra
  * this function return empty spams for each breadcrumb, so later we can update them with the correct width.
  * after the returned html is inserted on the dom you have to fire the event 'replace all empty breadcrumb'
  * */
-og.getEmptyCrumbHtml = function(dims,container_to_fill,skipped_dimensions,show_link) {
+og.getEmptyCrumbHtml = function(dims,container_to_fill,skipped_dimensions,show_link,exclude_parents_path) {
 	var all_bread_crumbs = "";
 	if (typeof show_link == "undefined" || show_link == null ) {
 		var show_link = true;
 	}
+	var epp = exclude_parents_path ? '1' : '0';
 	
 	//all_bread_crumbs += '<span class="obj-breadcrumb-container">';
 	for (x in dims) {
@@ -410,15 +415,23 @@ og.getEmptyCrumbHtml = function(dims,container_to_fill,skipped_dimensions,show_l
 		}
 		var dim = {};
 		var empty_bread_crumbs = "";
-		var members = dims[x];
+		var members_by_ot = dims[x];
 		
-		for (id in members) {
-			if (isNaN(id)) continue;
-									
-			//return a target to reload on the callback after get the member from the server if is necesary
-			empty_bread_crumbs += '<span class="member-path"><span class="bread-crumb-'+ id +' empty-bread-crumb member-path" data-container-to-fill="'+container_to_fill+'" data-show-link="'+show_link+'"></span></span>';
-			if(og.emptyBreadcrumbsToRefresh.indexOf(id) == -1){  
-				og.emptyBreadcrumbsToRefresh.push(id);
+		for (ot_id in members_by_ot) {
+			if (ot_id == 'opt') continue;
+			
+			var members = members_by_ot[ot_id];
+			if (!members) continue;
+			for (idx=0; idx<members.length; idx++) {
+				id = members[idx];
+				if (isNaN(id)) continue;
+				
+				//return a target to reload on the callback after get the member from the server if is necesary
+				empty_bread_crumbs += '<span class="member-path"><span class="bread-crumb-'+ id +' empty-bread-crumb member-path" '+
+					'data-container-to-fill="'+container_to_fill+'" data-show-link="'+show_link+'" data-exclude-parents-path="'+epp+'"></span></span>';
+				if(og.emptyBreadcrumbsToRefresh.indexOf(id) == -1){
+					og.emptyBreadcrumbsToRefresh.push(id);
+				}
 			}
 		}
 		
@@ -438,11 +451,12 @@ og.insertBreadcrumb = function(member_id,target,from_callback) {
 	target = "#"+target;
 	var container_to_fill = $(target).data("container-to-fill");
 	var show_link = $(target).data("show-link");
+	var exclude_parents_path = $(target).data("exclude-parents-path");
 	
 	/*SINGLE BREADCRUMB SECTION*/
 	var extra_params = {										
 			};	
-	var members = og.getMemberTextsFromOgDimensions(member_id, true);
+	var members = og.getMemberTextsFromOgDimensions(member_id, !exclude_parents_path);
 	
 	//title must have all parents members names
 	var title = '';

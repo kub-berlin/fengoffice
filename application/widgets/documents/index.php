@@ -4,7 +4,7 @@ $panel = TabPanels::instance()->findById('documents-panel');
 if ($panel instanceof TabPanel && $panel->getEnabled()) {
 	$limit = 5;
 	$result = ProjectFiles::instance()->listing(array(
-		"extra_conditions" => "AND updated_by_id > 0",
+		"extra_conditions" => "AND o.updated_by_id > 0",
 		"order" => "updated_on",
 		"order_dir" => "desc",
 		"start" => 0,

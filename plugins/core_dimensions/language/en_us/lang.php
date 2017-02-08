@@ -19,6 +19,7 @@
 	'color' => 'Color',
 	'custom property is disabled' => 'This custom property is disabled and won\'t be shown in forms.',
 	'enable' => 'Enable',
+	'after' => 'after',
 	
 	'modify subtasks dates' => 'Modify subtasks dates?',
 	'success update subtasks dates' => 'Subtasks dates updated successfully.',

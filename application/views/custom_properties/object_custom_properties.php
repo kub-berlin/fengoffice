@@ -16,6 +16,12 @@ if ($visibility == 'others' && count($cps) == 0) {
 if (!isset($genid)) $genid = gen_id();
 
 if(count($cps) > 0){
+	
+	if (count($cps) > 10) {
+		echo "<div class='cp-section cp-left'>";
+	}
+	$cp_idx = 0;
+	
 	$print_table_functions = false;
 	foreach($cps as $customProp){
 		if(!isset($required) || ($required && ($customProp->getIsRequired() || $customProp->getVisibleByDefault())) || (!$required && !($customProp->getIsRequired() || $customProp->getVisibleByDefault()))){
@@ -166,9 +172,11 @@ if(count($cps) > 0){
 						}
 						
 						if ($text == null) {
-							$text = $customProp->getCode() == "" ? $value : lang($value);
-						} else {
-							$text = $customProp->getCode() == "" ? $text : lang($text);
+							$text = $value;
+						}
+						if ($customProp->getIsSpecial()) {
+							$lang_value = Localization::instance()->lang($text);
+							$text = is_null($lang_value) ? $text : $lang_value;
 						}
 						
 						
@@ -348,7 +356,16 @@ if(count($cps) > 0){
 			}
 			
 			echo '<div class="clear"></div>';
+			
+			$cp_idx++;
+			if ($cp_idx == floor(count($cps)/2)) {
+				echo "</div><div class='cp-section cp-right'>";
+			}
 		}
+	}
+	
+	if (count($cps) > 10) {
+		echo '</div><div class="clear"></div>';
 	}
 	
 	Hook::fire('after_render_custom_properties', array('object' => $_custom_properties_object, 'genid' => $genid), $ret);

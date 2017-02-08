@@ -20,7 +20,7 @@ og.MailManager = function() {
 	this.fields = [
 		'object_id', 'type', 'ot_id', 'accountId', 'accountName', 'hasAttachment', 'subject', 'text', 'date', 'rawdate',
 		'memberIds', 'projectName', 'userId', 'userName', 'workspaceColors','isRead', 'from', 'memPath',
-		'from_email','isDraft','isSent','folder','to', 'ix', 'conv_total', 'conv_unread', 'conv_hasatt'
+		'from_email','isDraft','isSent','folder','to', 'ix', 'conv_total', 'conv_unread', 'conv_hasatt', 'status_ico'
 	];
 
 	var cps = og.custom_properties_by_type['mail'] ? og.custom_properties_by_type['mail'] : [];
@@ -127,13 +127,6 @@ og.MailManager = function() {
 		var subject = value && og.clean(value.trim()) || '<span class="italic">' + lang("no subject") + '</span>';
 		var conv_str = r.data.conv_total > 1 ? " <span class='db-ico ico-comment' style='margin-left:3px;padding-left: 18px;'><span style='font-size:80%'>(" + (r.data.conv_unread > 0 ? '<b style="font-size:130%">' + r.data.conv_unread + '</b>/' : '') + r.data.conv_total + ")</span></span>" : "";
 		
-		mem_path = "";
-		var mpath = Ext.util.JSON.decode(r.data.memPath);
-		if (typeof mpath.length === "undefined"){ 
-			mem_path = "<div class='breadcrumb-container' style='display: inline-block;'>";
-			mem_path += og.getEmptyCrumbHtml(mpath, '.breadcrumb-container', og.breadcrumbs_skipped_dimensions);
-			mem_path += "</div>";
-		}
 		
 		var js = 'var r = og.MailManager.store.getById(\'' + r.id + '\'); r.data.isRead = true;og.openLink(\'{1}\');r.commit();og.eventManager.fireEvent(\'replace all empty breadcrumb\', null);return false;';
 		name = String.format(
@@ -149,7 +142,7 @@ og.MailManager = function() {
 			text = '&nbsp;-&nbsp;<span style="color:#888888;white-space:nowrap">';
 			text += og.clean(r.data.text) + "</span></i>";
 		}
-		return name + mem_path + text ;
+		return name + text ;
 	}
 	
 	
@@ -184,6 +177,13 @@ og.MailManager = function() {
 			return '<div class="db-ico ico-email"></div>';
 		} else {
 			return String.format('<a href="#" onclick="{0}" title={1}><div class="db-ico ico-classify"></div></a>', "og.render_modal_form('', {c:'mail', a:'classify', params: {id: "+r.data.object_id+", from_mail_list: true},focusFirst: false})", lang('classify'));
+		}
+	}
+	
+	function renderStatusIcon(value, p, r) {
+		if (value != '') {
+			var title = value == 'ico-mail-replied' ? lang('email replied') : lang('email forwarded');
+			return '<div class="db-ico '+value+'" title="'+title+'"></div>';
 		}
 	}
 
@@ -373,6 +373,13 @@ og.MailManager = function() {
         	hideable:false,
         	menuDisabled: true
 		},{
+			id: 'status_ico',
+			header: lang('status'),
+			dataIndex: 'status_ico',
+			width: 30,
+        	renderer: renderStatusIcon,
+        	tooltip: lang('mail status col tooltip')
+		},{
 			id: 'hasAttachment',
 			header: '&nbsp;',
 			dataIndex: 'hasAttachment',
@@ -434,7 +441,7 @@ og.MailManager = function() {
 	for (i=0; i<cps.length; i++) {
 		cm_info.push({
 			id: 'cp_' + cps[i].id,
-			hidden: parseInt(cps[i].visible_def) == 0,
+			hidden: parseInt(cps[i].show_in_lists) == 0,
 			header: cps[i].name,
 			align: cps[i].cp_type=='numeric' ? 'right' : 'left',
 			dataIndex: 'cp_' + cps[i].id,
@@ -537,7 +544,7 @@ og.MailManager = function() {
 				var ids = "";
 				for (var i=0; i < sel.length; i++) {
 					if (ids) ids += ",";
-					ids += sel[i].id;
+					ids += sel[i].data.object_id;
 					sel[i].set('isRead', true);
 					sel[i].commit();
 				}
@@ -557,7 +564,7 @@ og.MailManager = function() {
 				var ids = "";
 				for (var i=0; i < sel.length; i++) {
 					if (ids) ids += ",";
-					ids += sel[i].id;
+					ids += sel[i].data.object_id;
 					sel[i].set('isRead', false);
 					sel[i].commit();
 				}
@@ -577,7 +584,7 @@ og.MailManager = function() {
 				var ids = "";
 				for (var i=0; i < sel.length; i++) {
 					if (ids) ids += ",";
-					ids += sel[i].id;
+					ids += sel[i].data.object_id;
 					this.store.remove(sel[i]);
 				}
 				if (ids) og.openLink(og.getUrl('mail', 'mark_as_spam', {ids:ids}));
@@ -597,7 +604,7 @@ og.MailManager = function() {
 				var ids = "";
 				for (var i=0; i < sel.length; i++) {
 					if (ids) ids += ",";
-					ids += sel[i].id;
+					ids += sel[i].data.object_id;
 					this.store.remove(sel[i]);
 				}
 				if (ids) og.openLink(og.getUrl('mail', 'mark_as_ham', {ids:ids}));
@@ -730,7 +737,7 @@ og.MailManager = function() {
 					var ids = "";
 					for (var i=0; i < sel.length; i++) {
 						if (ids) ids += ",";
-						ids += sel[i].id;
+						ids += sel[i].data.object_id;
 						this.store.remove(sel[i]);
 					}
 					if (ids) og.openLink(og.getUrl('object', 'trash', {ids:ids}),{callback:function(){Ext.getCmp('mails-manager').load()}});
@@ -750,7 +757,7 @@ og.MailManager = function() {
 					var ids = "";
 					for (var i=0; i < sel.length; i++) {
 						if (ids) ids += ",";
-						ids += sel[i].id;
+						ids += sel[i].data.object_id;
 						this.store.remove(sel[i]);
 					}
 					if (ids) og.openLink(og.getUrl('object', 'archive', {ids:ids}));

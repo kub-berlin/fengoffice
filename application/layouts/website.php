@@ -252,8 +252,8 @@ og.initialGUIState = <?php echo json_encode(GUIController::getState()) ?>;
 if (user_config_option("autodetect_time_zone", null)) {
 	$now = DateTimeValueLib::now();
 ?>
-	og.usertimezone = og.calculate_time_zone(new Date(<?php echo $now->getYear() ?>,<?php echo $now->getMonth() - 1 ?>,<?php echo $now->getDay() ?>,<?php echo $now->getHour() ?>,<?php echo $now->getMinute() ?>,<?php echo $now->getSecond() ?>));
-	og.openLink(og.getUrl('account', 'set_timezone', {'tz': og.usertimezone}), {'hideLoading': true});
+	og.tz_offset = og.calculate_time_zone(new Date(<?php echo $now->getYear() ?>,<?php echo $now->getMonth() - 1 ?>,<?php echo $now->getDay() ?>,<?php echo $now->getHour() ?>,<?php echo $now->getMinute() ?>,<?php echo $now->getSecond() ?>));
+	og.openLink(og.getUrl('account', 'set_timezone', {tz_name: jstz.determine().name(), tz_offset: og.tz_offset}), {'hideLoading': true});
 <?php 
 } ?>
 og.CurrentPagingToolbar = <?php echo defined('INFINITE_PAGING') && INFINITE_PAGING ? 'og.InfinitePagingToolbar' : 'og.PagingToolbar' ?>;
@@ -272,11 +272,15 @@ og.loggedUser = {
 	displayName: <?php echo json_encode(logged_user()->getObjectName()) ?>,
 	isAdmin: <?php echo logged_user()->isAdministrator() ? 'true' : 'false' ?>,
 	isGuest: <?php echo logged_user()->isGuest() ? 'true' : 'false' ?>,
-	tz: <?php echo logged_user()->getTimezone() ?>,
 	type: <?php echo logged_user()->getUserType() ?>,
 	localization: '<?php echo logged_user()->getLocale() ?>',
 	can_instantiate_templates: <?php echo can_instantiate_templates(logged_user()) ? 'true' : 'false'?>,
-	can_manage_tasks: <?php echo can_manage_tasks(logged_user()) ? 'true' : 'false' ?>
+	can_manage_tasks: <?php echo can_manage_tasks(logged_user()) ? 'true' : 'false' ?>,
+	tz: {
+		id: '<?php echo logged_user()->getUserTimezoneId() ?>',
+		name: '<?php echo Timezones::getTimezoneName(logged_user()->getUserTimezoneId()) ?>',
+		offset: '<?php echo logged_user()->getUserTimezoneValue() ?>'
+	}
 };
 og.zipSupported = <?php echo zip_supported() ? 1 : 0 ?>;
 og.hasNewVersions = <?php
@@ -315,7 +319,7 @@ og.config = {
 	},
 	'with_perm_user_types': Ext.util.JSON.decode('<?php echo json_encode(config_option('give_member_permissions_to_new_users'))?>'),
 	'member_selector_page_size': 100,
-	'currency_code': '<?php echo config_option('currency_code', '$') ?>'
+	'currency_code': '<?php config_option('currency_code', '$') ?>'
 };
 og.preferences = {
 	'viewContactsChecked': <?php echo json_encode(user_config_option('viewContactsChecked')) ?>,
@@ -408,6 +412,10 @@ foreach ($object_types as $ot) {
 	if ($ot->getType() == 'content_object') {
 		$types[$ot->getId()]['controller'] = $ot->getObjectTypeController();
 		$types[$ot->getId()]['add_action'] = $ot->getObjectTypeAddAction();
+
+		$allow_generic_type = true;
+		Hook::fire('allow_generic_type_object_subtypes_ot', $ot, $allow_generic_type);
+		$types[$ot->getId()]['allow_generic_type'] = $allow_generic_type;
 	}
 }
 ?>

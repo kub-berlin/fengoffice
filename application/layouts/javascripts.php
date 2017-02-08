@@ -75,6 +75,7 @@ return array(
 	"og/tasks/TasksBottomToolbar.js",
 	"og/tasks/print.js",
 	"og/tasks/TaskPopUp.js",
-	"../jquery-colResizable/colResizable-1.5.source.js"
+	"../jquery-colResizable/colResizable-1.5.source.js",
+	"jstz/jstz.min.js"
 );
 

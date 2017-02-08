@@ -112,7 +112,8 @@ class Reports extends BaseReports {
 			case 'home_address':
 			case 'work_address':
 			case 'other_address':
-				$type_name = ($field == 'home_address' ? 'home' : ($field == 'work_address' ? 'work' : 'other'));
+			case 'postal_address':
+				$type_name = ($field == 'home_address' ? 'home' : ($field == 'work_address' ? 'work' : ($field == 'postal_address' ? 'postal' : 'other')));
 				$type_cond = " AND ce.address_type_id in (select t.id from ".TABLE_PREFIX."address_types t where t.name='$type_name')";
 				return "o.id IN (select ce.contact_id from ".TABLE_PREFIX."contact_addresses ce where ce.contact_id=o.id ".$type_cond." and (
 					ce.street ".$cond." or ce.city ".$cond." or ce.state ".$cond." or ce.country ".$cond." or ce.zip_code ".$cond."))";
@@ -160,6 +161,7 @@ class Reports extends BaseReports {
 			case 'home_address':
 			case 'work_address':
 			case 'other_address':
+			case 'postal_address':
 				$order = 'IF(ISNULL(jt.street) and ISNULL(jt.city) and ISNULL(jt.state) and ISNULL(jt.country) and ISNULL(jt.zip_code),1,0), jt.street, jt.city, jt.state, jt.country, jt.zip_code';
 				$join_params['table'] = TABLE_PREFIX."contact_addresses";
 				$select_columns = array("DISTINCT o.*", "e.*");
@@ -175,7 +177,7 @@ class Reports extends BaseReports {
 	
 	static function get_extra_contact_columns() {
 		return array("email_address", "is_user", "mobile_phone", "work_phone", "home_phone", "im_values", 
-			"personal_webpage", "work_webpage", "other_webpage", "home_address", "work_address", "other_address");
+			"personal_webpage", "work_webpage", "other_webpage", "home_address", "work_address", "other_address", "postal_address");
 	}
 
 	/**
@@ -271,6 +273,19 @@ class Reports extends BaseReports {
 					$original_order_by_col = "e.$order_by_col";
 				} else if (in_array($order_by_col, Objects::instance()->getColumns())) {
 					$original_order_by_col = "o.$order_by_col";
+				} else {
+					
+					$new_order_params = null;
+					Hook::fire('custom_report_override_order_column', array('report' => $report, 'ot' => $ot, 'order_by_col' => $order_by_col), $new_order_params);
+					
+					if (!is_null($new_order_params)) {
+						$order_by_col = $new_order_params['order_by_col'];
+						$original_order_by_col = $new_order_params['order_by_col'];
+						$join_params = $new_order_params['join_params'];
+					} else {
+						$order_by_col = "name";
+						$original_order_by_col = "o.name";
+					}
 				}
 			}
 			if ($order_by_asc == null) $order_by_asc = $report->getIsOrderByAsc();
@@ -289,6 +304,7 @@ class Reports extends BaseReports {
 					'limit' => $limit,
 					'conditions' => $allConditions,
 					'select_columns' => $select_columns,
+					'join_params' => $join_params,
 			);
 			$results = null;
 			Hook::fire('execute_object_custom_report', $report_options, $results);
@@ -343,7 +359,9 @@ class Reports extends BaseReports {
 				
 			}
 			
-			$results['pagination'] = Reports::getReportPagination($id, $params, $original_order_by_col, $order_by_asc, $offset, $limit, $totalResults);
+			if (!isset($results['pagination'])) {
+				$results['pagination'] = Reports::getReportPagination($id, $params, $original_order_by_col, $order_by_asc, $offset, $limit, $totalResults);
+			}
 			
 		
 			$dimensions_cache = array();
@@ -391,6 +409,8 @@ class Reports extends BaseReports {
 							}
 						}
 						$results['columns']['types'][$field] = $managerInstance->getColumnType($field);
+						
+						Hook::fire('custom_reports_fixed_additional_columns_def', array('object_type' => $ot, 'field' => $field), $results);
 					}
 					
 				} else {
@@ -409,6 +429,9 @@ class Reports extends BaseReports {
 				$icon_class = $object->getIconClass();
 				
 				$row_values = array('object_type_id' => $object->getObjectTypeId());
+				
+				$tz_offset = Timezones::getTimezoneOffsetToApply($object, logged_user());
+				$row_values['tz_offset'] = $tz_offset;
 				
 				if (!$to_print) {
 					$row_values['link'] = '<a class="link-ico '.$icon_class.'" title="' . clean($obj_name) . '" target="new" href="' . $object->getViewUrl() . '">&nbsp;</a>';
@@ -471,20 +494,32 @@ class Reports extends BaseReports {
 							}
 								
 							if ($value instanceof DateTimeValue) {
-								$dateFormat = user_config_option('date_format');
-								Hook::fire("custom_property_date_format", null, $dateFormat);
 								
-								$tz = logged_user()->getTimezone();
-								if ($object instanceof ProjectTask) {
-									if(($field == 'due_date' && !$object->getUseDueTime()) || ($field == 'start_date' && !$object->getUseStartTime())){
-										$dateFormat = user_config_option('date_format');
-										$tz = 0;
+								// check if the value for this object in the same column has already been processed
+								if (isset($dates_cache) && array_var($dates_cache, $object->getId()) && array_var($dates_cache[$object->getId()], $field)) {
+									$value = $dates_cache[$object->getId()][$field];
+									
+								} else {
+									$dateFormat = user_config_option('date_format');
+									Hook::fire("custom_property_date_format", null, $dateFormat);
+									
+									$add_timezone_offset = true;
+									if ($object instanceof ProjectTask) {
+										if(($field == 'due_date' && !$object->getUseDueTime()) || ($field == 'start_date' && !$object->getUseStartTime())){
+											$dateFormat = user_config_option('date_format');
+											$add_timezone_offset = false;
+										}
 									}
+									
+									if ($add_timezone_offset) {
+										$value->add('s', $tz_offset);
+									}
+									$value = $value->format($dateFormat);
+									
+									if (!isset($dates_cache)) $dates_cache = array();
+									if (!isset($dates_cache[$object->getId()])) $dates_cache[$object->getId()] = array();
+									$dates_cache[$object->getId()][$field] = $value;
 								}
-								
-								$value->add('h', $tz);
-								$value = $value->format($dateFormat);
-								
 							}
 							if(in_array($field, $managerInstance->getExternalColumns())){
 							
@@ -495,7 +530,11 @@ class Reports extends BaseReports {
 									$value = format_value_to_print('time', $value, DATA_TYPE_INTEGER, $report->getReportObjectTypeId());
 									
 								} else if ($object instanceof Timeslot && $field == 'billing') {
-									$value = config_option('currency_code', '$') .' '. $object->getFixedBilling();
+									
+									$currency = Currencies::getCurrency($object->getRateCurrencyId());
+									$symbol = $currency instanceof Currency ? $currency->getSymbol() : '';
+									$value = $symbol .' '. $object->getFixedBilling();
+									
 								} else {
 									$value = self::instance()->getExternalColumnValue($field, $value, $managerInstance);
 								}
@@ -537,19 +576,35 @@ class Reports extends BaseReports {
 										$row_values[$field] = $str;
 									}
 									if (in_array($field, array("mobile_phone", "work_phone", "home_phone"))) {
-										if ($field == "mobile_phone") $row_values[$field] = $contact->getPhoneNumber('mobile', null, false);
-										else if ($field == "work_phone") $row_values[$field] = $contact->getPhoneNumber('work', null, false);
-										else if ($field == "home_phone") $row_values[$field] = $contact->getPhoneNumber('home', null, false);
+										if ($field == "mobile_phone") $phone_type = 'mobile';
+										else if ($field == "work_phone") $phone_type = 'work';
+										else if ($field == "home_phone") $phone_type = 'home';
+										
+										$row_values[$field] = $contact->getPhoneNumber($phone_type, null, false);
+										if (!$row_values[$field] && $contact->getCompanyId() > 0 && config_option('reports_inherit_company_phones')) {
+											$company = $contact->getCompany();
+											if ($company instanceof Contact) {
+												$row_values[$field] = $company->getPhoneNumber($phone_type, null, false);
+											}
+										}
 									}
 									if (in_array($field, array("personal_webpage", "work_webpage", "other_webpage"))) {
-										if ($field == "personal_webpage") $row_values[$field] = $contact->getWebpageUrl('personal');
-										else if ($field == "work_webpage") $row_values[$field] = $contact->getWebpageUrl('work');
-										else if ($field == "other_webpage") $row_values[$field] = $contact->getWebpageUrl('other');
+										if ($field == "personal_webpage") $webpage_type = 'personal';
+										else if ($field == "work_webpage") $webpage_type = 'work';
+										else if ($field == "other_webpage") $webpage_type = 'other';
+										
+										$row_values[$field] = $contact->getWebpageUrl($webpage_type);
 									}
-									if (in_array($field, array("home_address", "work_address", "other_address"))) {
-										if ($field == "home_address") $row_values[$field] = $contact->getStringAddress('home');
-										else if ($field == "work_address") $row_values[$field] = $contact->getStringAddress('work');
-										else if ($field == "other_address") $row_values[$field] = $contact->getStringAddress('other');
+									if (str_ends_with($field, "_address") && $field != 'email_address') {
+										$address_type = str_replace("_address", "", $field);
+										
+										$row_values[$field] = $contact->getStringAddress($address_type);
+										if (!$row_values[$field] && $contact->getCompanyId() > 0 && config_option('reports_inherit_company_address')) {
+											$company = $contact->getCompany();
+											if ($company instanceof Contact) {
+												$row_values[$field] = $company->getStringAddress($address_type);
+											}
+										}
 									}
 								}
 							} else if($ot->getHandlerClass() == 'MailContents') {
@@ -590,7 +645,7 @@ class Reports extends BaseReports {
 						}
 					}
 				}
-				
+				$row_values['id'] = $object->getId();
 				
 				Hook::fire("report_row", $object, $row_values);
 				
@@ -613,6 +668,8 @@ class Reports extends BaseReports {
 			}
 			
 			$results['rows'] = $report_rows;
+			
+			Hook::fire("report_results_more_data", array('report' => $report, 'objects' => $objects), $results);
 		}
 		
 		return $results;

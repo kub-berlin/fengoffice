@@ -156,13 +156,27 @@ member_selector.add_relation = function(dimension_id, genid, member_id, show_act
 	
 	//add mem_path after insert completePath div to calculate the correct width
 	
-	var tmp_member = {};
-	tmp_member[member.id] = member.id;
-	var tmp_dim = {};
-	tmp_dim[dimension_id] = tmp_member;
-	mem_path = og.getEmptyCrumbHtml(tmp_dim,".completePath",null,false);
-	$("#"+genid+"selected-member"+member.id+" .completePath").append(mem_path);
-	og.eventManager.fireEvent('replace all empty breadcrumb', null);
+	var minfo = null;
+	if (og.dimensions[dimension_id]) {
+		minfo = og.dimensions[dimension_id][member.id];
+	}
+	
+	if (!minfo) {
+		var tree = Ext.getCmp(genid + '-member-chooser-panel-' + dimension_id + '-tree');
+		if (tree) {
+			var node = tree.getNodeById(member.id);
+			if (node) minfo = node.attributes;
+		}
+	}
+	if (minfo) {
+		var tmp_dim = {};
+		tmp_dim[dimension_id] = {};
+		tmp_dim[dimension_id][minfo.object_type_id] = [member.id];
+		
+		mem_path = og.getEmptyCrumbHtml(tmp_dim,".completePath",null,false);
+		$("#"+genid+"selected-member"+member.id+" .completePath").append(mem_path);
+		og.eventManager.fireEvent('replace all empty breadcrumb', null);
+	}
 	
 	if (!member_selector[genid].properties[dimension_id].isMultiple) {
 		var form = Ext.get(genid + 'add-member-form-dim' + dimension_id);
@@ -216,7 +230,11 @@ member_selector.remove_relation = function(dimension_id, genid, member_id, dont_
 
 	// refresh member_ids input
 	var member_ids_input = Ext.fly(Ext.get(genid + member_selector[genid].hiddenFieldName));
-	var member_ids = Ext.util.JSON.decode(member_ids_input.getValue());
+	var member_ids_input_val = member_ids_input.getValue();
+	var member_ids = [];
+	if (member_ids_input_val) {
+		member_ids = Ext.util.JSON.decode(member_ids_input.getValue());
+	}
 	for (index in member_ids) {
 		if (member_ids[index] == member_id) member_ids.splice(index, 1);
 	}
@@ -282,7 +300,7 @@ member_selector.reload_dependant_selectors = function(dimension_id, genid) {
 		var dim_id = dimensions_to_reload[i];
 
 		var dep_genid = "";
-		var selector_inputs = $("#" + form_id + ' .dimension-panel-textfilter');
+		var selector_inputs = form_id ? $("#" + form_id + ' .dimension-panel-textfilter') : [];
 		for (var x=0; x<selector_inputs.length; x++) {
 			var sel_id = selector_inputs[x].id;
 			var key = "-member-chooser-panel-"+ dim_id +"-tree-textfilter";

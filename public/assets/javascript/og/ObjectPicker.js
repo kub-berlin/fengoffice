@@ -11,9 +11,6 @@ og.ObjectPicker = function(config, object_id, object_id_no_select, ignore_contex
 		count_results : 0,
 		extra_list_params: extra_list_param
 	};
-	if (ignore_context) {
-		url_params['ignore_context'] = ignore_context ? '1' : '0';
-	}
 	
 	var Grid = function(config) {
 		if (!config) config = {};
@@ -48,7 +45,11 @@ og.ObjectPicker = function(config, object_id, object_id_no_select, ignore_contex
         	}
     	});
 		
-
+		this.store.baseParams.ignore_context = ignore_context ? '1' : '0';
+		
+		if (config.extra_member_ids) {
+			this.store.baseParams.extra_member_ids = config.extra_member_ids;
+		}
 			
     	this.store.setDefaultSort('dateUpdated', 'desc');
 
@@ -174,10 +175,15 @@ og.ObjectPicker = function(config, object_id, object_id_no_select, ignore_contex
 				for (var mi=0; mi<this.member_filter[x].length; mi++) {
 					member_ids.push(this.member_filter[x][mi]);
 				}
-				//member_ids.push(this.member_filter[x]);
 			}
+			
 			this.store.baseParams.extra_member_ids = Ext.util.JSON.encode(member_ids);
-			this.store.baseParams.ignore_context = this.store.baseParams.ignore_context || member_ids.length > 0 ? '1' : '0';
+			
+			if (filter && filter.filter == 'type') {
+				this.store.baseParams.ignore_context = member_ids.length > 0 ? '1' : '0';
+			} else {
+				this.store.baseParams.ignore_context = this.store.baseParams.ignore_context || member_ids.length > 0 ? '1' : '0';
+			}
 			
 			this.load();
 		},
@@ -387,7 +393,7 @@ og.ObjectPicker = function(config, object_id, object_id_no_select, ignore_contex
 				layout: 'fit',
 				tbar: tbarItems,
 				items: [
-					this.grid = new Grid()
+					this.grid = new Grid(config)
 				]
 			},
 			{

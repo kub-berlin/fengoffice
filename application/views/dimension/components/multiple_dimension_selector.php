@@ -97,6 +97,10 @@
 	
 	?>
 
+	<?php if (isset($options['filter_by_ids']) && isset($options['filter_by_ids'][$dimension_id])) : ?>
+		config.filter_by_ids = '<?php echo implode(',', $options['filter_by_ids'][$dimension_id]) ?>' ;
+	<?php endif; ?>
+
 	member_selector['<?php echo $genid; ?>'].properties['<?php echo $dimension_id ?>'] = {
 		title: '<?php echo escape_character($dimension_name) ?>',
 		dimensionId: <?php echo $dimension_id ?>,

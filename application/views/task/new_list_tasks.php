@@ -138,7 +138,7 @@ og.config.quick_add_task_combos = <?php
 		}		
 		echo "[".$object."]";
 ?>;
-ogTasks.custom_properties = <?php echo json_encode($cp_values)?>;
+ogTasks.custom_properties = <?php echo json_encode($cps_definition)?>;
 
 
 
@@ -278,7 +278,7 @@ ogTasks.custom_properties = <?php echo json_encode($cp_values)?>;
 		var editor = CKEDITOR.replace('<?php echo $genid ?>ckeditor' + id, {
 			height: height,
 			allowedContent: true,
-			enterMode: CKEDITOR.ENTER_DIV,
+			enterMode: CKEDITOR.ENTER_BR,
 			shiftEnterMode: CKEDITOR.ENTER_BR,
 			disableNativeSpellChecker: false,
 			language: '<?php echo $loc ?>',
@@ -298,7 +298,8 @@ ogTasks.custom_properties = <?php echo json_encode($cp_values)?>;
 					editor.resetDirty();
 				}
 			},
-			removePlugins: 'magicline',
+			fillEmptyBlocks: false,
+			removePlugins: 'scayt,liststyle,magicline',
 			entities_additional : '#39,#336,#337,#368,#369'
 		});
 	}
@@ -316,7 +317,12 @@ ogTasks.custom_properties = <?php echo json_encode($cp_values)?>;
 		});
 	});
 	
-	
+
+	Handlebars.registerHelper('isTasksColumnCPVisible', function (cp_id) {
+		if (ogTasks && ogTasks.userPreferences) {
+			return ogTasks.userPreferences['tasksShowCP_'+cp_id] == 1;
+		}
+	});
 	
 </script>
 <?php 

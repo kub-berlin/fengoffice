@@ -205,7 +205,11 @@ og.config.multi_assignment = '<?php echo config_option('multi_assignment') && Pl
 			}
 		?>
 		
-		<?php $null = null; Hook::fire('before_render_main_custom_properties', array('object' => $object), $null);?>
+		<?php 
+			$null = null;
+			$object->setObjectTypeId($projectTask->getObjectTypeId());
+			Hook::fire('before_render_main_custom_properties', array('object' => $object), $null);
+		?>
 		
 		<div class="main-custom-properties-div"><?php
 			if ($main_cp_count) {
@@ -220,9 +224,9 @@ og.config.multi_assignment = '<?php echo config_option('multi_assignment') && Pl
 		<?php
 			$listeners = array('on_selection_change' => 'og.reload_task_form_selectors()');
 			if ($task->isNew()) {
-				render_member_selectors($projectTask->getObjectTypeId(), $genid, null, array('select_current_context' => false, 'listeners' => $listeners), null, null, false);
+				render_member_selectors($projectTask->getObjectTypeId(), $genid, null, array('select_current_context' => false, 'listeners' => $listeners, 'object' => $object), null, null, false);
 			} else {
-				render_member_selectors($projectTask->getObjectTypeId(), $genid, array_var($task_data, 'selected_members_ids', $task->getMemberIds()), array('listeners' => $listeners), null, null, false);
+				render_member_selectors($projectTask->getObjectTypeId(), $genid, array_var($task_data, 'selected_members_ids', $task->getMemberIds()), array('listeners' => $listeners, 'object' => $object), null, null, false);
 			}
 		?>
 		</div>
@@ -357,7 +361,7 @@ og.config.multi_assignment = '<?php echo config_option('multi_assignment') && Pl
 			var editor = CKEDITOR.replace('<?php echo $genid ?>ckeditor', {
 				height: h,
 				allowedContent: true,
-				enterMode: CKEDITOR.ENTER_DIV,
+				enterMode: CKEDITOR.ENTER_BR,
 				shiftEnterMode: CKEDITOR.ENTER_BR,
 				disableNativeSpellChecker: false,
 				language: '<?php echo $loc ?>',
@@ -377,7 +381,8 @@ og.config.multi_assignment = '<?php echo config_option('multi_assignment') && Pl
 						editor.resetDirty();
 					}
 				},
-				removePlugins: 'magicline',
+				fillEmptyBlocks: false,
+				removePlugins: 'scayt,liststyle,magicline',
 				entities_additional : '#39,#336,#337,#368,#369'
 			});
 
@@ -535,6 +540,11 @@ og.config.multi_assignment = '<?php echo config_option('multi_assignment') && Pl
 					<tr><td><input class="checkbox" type="checkbox" value="1" name="task[repeat_saturdays]" /> <?php echo lang('repeat on saturdays')?></td></tr>
 					<tr><td><input class="checkbox" type="checkbox" value="1" name="task[repeat_sundays]" /> <?php echo lang('repeat on sundays')?></td></tr>
 					<tr><td><input class="checkbox" type="checkbox" value="1" name="task[working_days]" /> <?php echo lang('repeat working days')?></td></tr>
+					<?php
+						$html = "";
+						Hook::fire('form_repeat_by_more_checkboxes', array('object' => $object), $html);
+						if ($html) echo $html;
+					?>
 				</table>
 				</td>
 			</tr>
@@ -667,7 +677,7 @@ og.config.multi_assignment = '<?php echo config_option('multi_assignment') && Pl
 	var start = true;
 	
 	og.drawAssignedToSelectBox = function(companies, only_me, groups) {
-		ogTasks.usersStore['<?php echo $genid ?>'] = ogTasks.buildAssignedToComboStore(companies, only_me, groups);
+		ogTasks.usersStore['<?php echo $genid ?>'] = ogTasks.buildAssignedToComboStore(companies, only_me, groups, true);
 		var assignCombo = new Ext.form.ComboBox({
 			renderTo:'<?php echo $genid ?>assignto_container_div',
 			name: 'taskFormAssignedToCombo',
@@ -703,7 +713,7 @@ og.config.multi_assignment = '<?php echo config_option('multi_assignment') && Pl
 		ogTasks.applyAssignedToSubtasksInTaskForm('<?php echo $genid?>');
 	}
 
- 	og.redrawUserLists = function(context){
+ 	og.redrawUserListsTempTask = function(context){
 		if (!og.redrawingUserList) {
 			og.redrawingUserList = true ;
 			var prev_value = 0;
@@ -807,7 +817,7 @@ og.config.multi_assignment = '<?php echo config_option('multi_assignment') && Pl
 			});
 		}
 		
-		og.redrawUserLists(dimension_members_json);
+		og.redrawUserListsTempTask(dimension_members_json);
 	}
 	
 	

@@ -1,5 +1,5 @@
 <?php 
-	$headers = array('name', 'type', 'default value', 'list values comma separated', 'is required', 'is multiple', 'show in main tab', 'actions');
+	$headers = array('name', 'type', 'default value', 'list values comma separated', 'is required', 'is multiple', 'show in main tab', 'show in lists', 'actions');
 	if (!isset($id_suffix)) $id_suffix = "";
 ?>
 <table class="custom-property-list" id="<?php echo $genid?>custom-properties-table">
@@ -54,6 +54,8 @@
 			
 			<td class="center" style="max-width:80px;"><?php echo checkbox_field("custom_properties[{number}][visible_by_default]", false, array('id' => 'visible_by_default'));?></td>
 			
+			<td class="center" style="max-width:80px;"><?php echo checkbox_field("custom_properties[{number}][show_in_lists]", false, array('id' => 'show_in_lists'));?></td>
+			
 			<td class="actions">
 				<a class="link-ico ico-delete" id="delete_action" href="#" onclick="og.deleteCustomProperty(this)" title="<?php echo lang('delete')?>"></a>
 				<a class="link-ico ico-delete" id="disable_action" href="#" onclick="og.disableSpecialCustomProperty(this)" title="<?php echo lang('disable')?>" style="display:none;"></a>
@@ -71,7 +73,7 @@
 					echo $num_opt_html;
 				?></div>
 			</td>
-			<td colspan="4">
+			<td colspan="5">
 				<span class="desc" id="disabled_message" style="display:none;"><?php echo lang('custom property is disabled')?></span>
 				<span class="desc" id="deleted_message" style="display:none;"><?php echo lang('custom property deleted')?></span>
 			</td>

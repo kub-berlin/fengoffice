@@ -121,6 +121,47 @@ class MailContents extends BaseMailContents {
 		return false;;
 	}
 	
+
+	static function parse_to($to) {
+		if (!is_array($to)) $to = explode(';', $to);
+		$return = array();
+		foreach ($to as $elem){
+			$mail= preg_replace("/.*\<(.*)\>.*/", "$1", $elem, 1);
+			$nam = explode('<', $elem);
+			$return[]= array(trim($nam[0]),trim($mail));
+		}
+		return $return;
+	}
+
+	public static function conversationIsRepliedOrForwarded($mail = null, $include_trashed = false) {
+		if (!$mail instanceof MailContent || $mail->getConversationId() == 0) return false;
+		$conversation_id = $mail->getConversationId();
+		$deleted = ' AND `is_deleted` = false';
+		if (!$include_trashed) $deleted .= ' AND `trashed_by_id` = 0';
+		
+		$sql = "SELECT md.`to` FROM ". TABLE_PREFIX ."mail_contents mc
+			INNER JOIN ". TABLE_PREFIX ."objects o ON o.id = mc.object_id
+			INNER JOIN ". TABLE_PREFIX ."mail_datas md ON md.id = mc.object_id
+			WHERE `conversation_id` = '$conversation_id' $deleted AND `account_id` = " . $mail->getAccountId()." 
+				AND in_reply_to_id='".$mail->getMessageId()."'";
+		$row = DB::executeOne($sql);
+		
+		if ($row) {
+			$to_addresses = array();
+			$parsed_to = self::parse_to($row['to']);
+			foreach ($parsed_to as $pt) {
+				$to_addresses[] = $pt[1];
+			}
+			
+			if (in_array($mail->getFrom(), $to_addresses)) {
+				return 'replied';
+			} else {
+				return 'forwarded';
+			}
+		}
+		return false;
+	}
+	
 	public static function getNextConversationId($account_id) {
 		$sql = "INSERT INTO `".TABLE_PREFIX."mail_conversations` () VALUES ()";
 		DB::execute($sql);
@@ -138,18 +179,29 @@ class MailContents extends BaseMailContents {
 	static function mailRecordExists(MailAccount $account, $uid, $folder = null, $is_deleted = null, $message_id = null) {
 		$account_id = $account->getId();
 		if (!$uid) return false;
-		$folder_cond = is_null($folder) ? '' : " AND `imap_folder_name` = " . DB::escape($folder);
-		$del_cond = is_null($is_deleted) ? "" : " AND `is_deleted` = " . DB::escape($is_deleted ? true : false);
 		
-		if(!is_null($message_id) && $account->getIsImap()){
-			$id_cond = " AND `message_id` = " . DB::escape($message_id);
+		$join_sql = "";
+		$folder_cond = "";
+		$del_cond = is_null($is_deleted) ? "" : " AND mc.`is_deleted` = " . DB::escape($is_deleted ? true : false);
+		
+		if(trim($message_id) != '' && $account->getIsImap()){
+			$id_cond = " AND mc.`message_id` = " . DB::escape($message_id);
+			
+			$join_sql = " INNER JOIN ".TABLE_PREFIX."mail_content_imap_folders mcf 
+					ON mcf.account_id=mc.account_id AND mcf.message_id=mc.message_id ";
+
+			if(!is_null($folder)){
+				$folder_cond = " AND mcf.folder=".DB::escape($folder)." ";
+			}
 		}else{			
-			$id_cond = " AND `uid` = " . DB::escape($uid);
+			$id_cond = " AND mc.`uid` = " . DB::escape($uid);
 		}		
-		$conditions = "`account_id` = " . DB::escape($account_id) . $id_cond . $folder_cond . $del_cond;
+		$conditions = "mc.`account_id` = " . DB::escape($account_id) . $id_cond . $folder_cond . $del_cond;
 		
-		$rows = DB::executeAll("SELECT object_id FROM `".TABLE_PREFIX."mail_contents` WHERE $conditions limit 1");
-		return count($rows) > 0;
+		$sql = "SELECT mc.object_id FROM `".TABLE_PREFIX."mail_contents` mc $join_sql WHERE $conditions limit 1";
+
+		$rows = DB::executeAll($sql);
+		return count($rows) > 0 ? $rows[0]['object_id'] : false;
 	}
 	
 	static function getUidsFromAccount($account_id, $folder = null) {
@@ -305,7 +357,13 @@ class MailContents extends BaseMailContents {
 		
 		$extra_conditions = "$accountConditions $classified $read $conversation_cond $box_cond $extra_cond";
 		
+		$original_extra_conditions = $extra_conditions;
 		Hook::fire("listing_extra_conditions", null, $extra_conditions);
+		
+		$join_with_searchable_objects = false;
+		if ($original_extra_conditions != $extra_conditions) {
+			$join_with_searchable_objects = true;
+		}
 		
 		$dim_order = null;
 		if (str_starts_with($order_by, "dim_")) {
@@ -327,6 +385,7 @@ class MailContents extends BaseMailContents {
 			"dim_order" => $dim_order,
 			"cp_order" => $cp_order,
 			'extra_conditions' => $extra_conditions,
+			'join_with_searchable_objects' => $join_with_searchable_objects,
 			'count_results' => false,
 			'only_count_results' => $only_count_result,
 			'join_params' => $join_params

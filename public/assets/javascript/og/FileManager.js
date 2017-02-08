@@ -90,7 +90,7 @@ og.FileManager = function() {
 	var readClass = 'read-unread-' + Ext.id();
 	function renderName(value, p, r) {
 		if (isNaN(r.data.object_id)) {
-			return '<span class="bold" id="'+r.data.id+'">'+ (value ? og.clean(value) : '') +'</span>';
+			return '<span class="bold" id="'+r.data.object_id+'">'+ (value ? og.clean(value) : '') +'</span>';
 		}
 		var result = '';
 		
@@ -163,7 +163,7 @@ og.FileManager = function() {
 		if (!r.data.dateUpdated_today) {
 			return lang('last updated by on', userString, value);
 		} else {
-			return lang('last updated by at', userString, value);
+			return userString +", "+ value;
 		}
 	}
 	
@@ -178,7 +178,7 @@ og.FileManager = function() {
 		if (!r.data.dateCreated_today) {
 			return lang('last updated by on', userString, value);
 		} else {
-			return lang('last updated by at', userString, value);
+			return userString +", "+ value;
 		}
 	}
 
@@ -429,7 +429,7 @@ og.FileManager = function() {
 	for (i=0; i<cps.length; i++) {
 		cm_info.push({
 			id: 'cp_' + cps[i].id,
-			hidden: parseInt(cps[i].visible_def) == 0,
+			hidden: parseInt(cps[i].show_in_lists) == 0,
 			header: cps[i].name,
 			align: cps[i].cp_type=='numeric' ? 'right' : 'left',
 			dataIndex: 'cp_' + cps[i].id,

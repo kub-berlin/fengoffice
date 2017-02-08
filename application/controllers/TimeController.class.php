@@ -138,11 +138,17 @@ class TimeController extends ApplicationController {
 		ajx_set_no_toolbar(true);
 	}
 	
-	function add_timeslot(){
-		$object_id = array_var($_REQUEST, "object_id",false);
+	function add_timeslot($parameters = null, $use_transaction = true){
+		if (is_null($parameters)) {
+			$object_id = array_var($_REQUEST, "object_id",false);
+			$parameters = $_POST;
+			$parameters["use_current_time"] = array_var($_REQUEST, "use_current_time");
+		} else {
+			$object_id = array_var($parameters, "object_id", false);
+		}
 		
 		ajx_current("empty");
-		$timeslot_data = array_var($_POST, 'timeslot');
+		$timeslot_data = array_var($parameters, 'timeslot');
 		
 		if($object_id){
 			$object = Objects::findObject($object_id);			
@@ -153,7 +159,7 @@ class TimeController extends ApplicationController {
 			}
 			$member_ids = $object->getMemberIds();
 		}else{
-			$member_ids = json_decode(array_var($_POST, 'members',array()));	
+			$member_ids = json_decode(array_var($parameters, 'members',array()));	
 			// clean member_ids
 			$tmp_mids = array();
 			foreach ($member_ids as $mid) {
@@ -210,28 +216,26 @@ class TimeController extends ApplicationController {
 				return;
 			}
 			
+			$logged_user_tz_hours_offset = logged_user()->getUserTimezoneValue() / 3600;
+			
 			$startTime = getDateValue(array_var($timeslot_data, 'date'));
-			$startTime = $startTime->add('h', 8 - logged_user()->getTimezone());
-			$endTime = getDateValue(array_var($timeslot_data, 'date'));
-			$endTime = $endTime->add('h', 8 - logged_user()->getTimezone() + $hoursToAdd);
+			$endTime = new DateTimeValue($startTime->getTimestamp());
+			$endTime->add('h', $hoursToAdd);
 			
 			//use current time
-			if( array_var($_REQUEST, "use_current_time",false)){
+			if( array_var($parameters, "use_current_time")) {
 				$currentStartTime = DateTimeValueLib::now();
 				$currentEndTime = DateTimeValueLib::now();
 				$currentStartTime = $currentStartTime->add('h', -$hoursToAdd);	
 				
-				$startTime->setHour($currentStartTime->getHour());
-				$startTime->setMinute($currentStartTime->getMinute());
-				$endTime->setHour($currentEndTime->getHour());
-				$endTime->setMinute($currentEndTime->getMinute());				
+				$startTime = $currentStartTime;
+				$endTime = $currentEndTime;
 			}
-			
 			$timeslot_data['start_time'] = $startTime;
 			$timeslot_data['end_time'] = $endTime;
 			$timeslot_data['description'] = html_to_text($timeslot_data['description']);
 			$timeslot_data['name'] = $timeslot_data['description'];
-			$timeslot_data['rel_object_id'] = $object_id;//array_var($timeslot_data,'project_id');
+			$timeslot_data['rel_object_id'] = $object_id;
 			$timeslot = new Timeslot();
 		
 			
@@ -256,7 +260,9 @@ class TimeController extends ApplicationController {
 				}
 			}
 							
-			DB::beginWork();
+			if ($use_transaction) {
+				DB::beginWork();
+			}
 			$timeslot->save();
 			
 			$task = ProjectTasks::findById($object_id);
@@ -265,20 +271,24 @@ class TimeController extends ApplicationController {
 			}
 			
 			if (!isset($member_ids) || !is_array($member_ids) || count($member_ids) == 0) {
-				$member_ids = json_decode(array_var($_POST, 'members'));
+				$member_ids = json_decode(array_var($parameters, 'members'));
 			}
 			$object_controller = new ObjectController();
 			if (!is_null($member_ids)) {
 				$object_controller->add_to_members($timeslot, $member_ids);
 			}
 			
-			DB::commit();
+			if ($use_transaction) {
+				DB::commit();
+			}
 			ApplicationLogs::createLog($timeslot, ApplicationLogs::ACTION_ADD);
 			
 			$show_billing = can_manage_billing(logged_user());
 			ajx_extra_data(array("timeslot" => $timeslot->getArrayInfo($show_billing),"real_obj_id" => $timeslot->getRelObjectId()));
 		} catch(Exception $e) {
-			DB::rollback();
+			if ($use_transaction) {
+				DB::rollback();
+			}
 			flash_error($e->getMessage());
 		} // try
 	}
@@ -380,11 +390,13 @@ class TimeController extends ApplicationController {
 					flash_error(lang('time has to be greater than 0'));
 					return;
 				}
+
+				$logged_user_tz_hours_offset = logged_user()->getUserTimezoneValue() / 3600;
 				
 				$startTime = getDateValue(array_var($timeslot_data, 'date'));
-				$startTime = $startTime->add('h', 8 - logged_user()->getTimezone());
+				$startTime = $startTime->add('h', 8 - $logged_user_tz_hours_offset);
 				$endTime = getDateValue(array_var($timeslot_data, 'date'));
-				$endTime = $endTime->add('h', 8 - logged_user()->getTimezone() + $hoursToAdd);
+				$endTime = $endTime->add('h', 8 - $logged_user_tz_hours_offset + $hoursToAdd);
 				$timeslot_data['start_time'] = $startTime;
 				$timeslot_data['end_time'] = $endTime;
 				$timeslot_data['name'] = $timeslot_data['description'];

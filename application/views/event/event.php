@@ -243,9 +243,9 @@ $other_cp_count = CustomProperties::countHiddenCustomPropertiesByObjectType($obj
 			<?php
 			$listeners = array('on_selection_change' => 'og.reload_subscribers("'.$genid.'",'.$object->manager()->getObjectTypeId().'); og.redrawPeopleList("'.$genid.'");');
 			if ($event->isNew()) {
-				render_member_selectors($event->manager()->getObjectTypeId(), $genid, null, array('select_current_context' => true, 'listeners' => $listeners), null, null, false);
+				render_member_selectors($event->manager()->getObjectTypeId(), $genid, null, array('select_current_context' => true, 'listeners' => $listeners, 'object' => $object), null, null, false);
 			} else {
-				render_member_selectors($event->manager()->getObjectTypeId(), $genid, $event->getMemberIds(), array('listeners' => $listeners), null, null, false);
+				render_member_selectors($event->manager()->getObjectTypeId(), $genid, $event->getMemberIds(), array('listeners' => $listeners, 'object' => $object), null, null, false);
 			} 
 			?>
 		  </div>
@@ -273,6 +273,14 @@ $other_cp_count = CustomProperties::countHiddenCustomPropertiesByObjectType($obj
 			?>
 		  </div>
 		  <div class="clear"></div>
+		  
+		  <?php
+				if (!$event->isNew() && $event->getTimezoneId() != logged_user()->getUserTimezoneId()) {
+		  ?><div class="dataBlock"><?php 
+				  	echo timezone_selector_hidden($event, $genid);
+		  ?></div><?php
+				}
+		  ?>
 		  
 		  <div class="dataBlock">
 			<?php echo label_tag(lang('CAL_DURATION')) ?>

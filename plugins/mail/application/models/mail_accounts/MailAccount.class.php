@@ -99,6 +99,23 @@ class MailAccount extends BaseMailAccount {
 		return $maxUID;
 	}
 	
+	function getImapMaxUID($folder = ''){
+		$maxUID = "";
+		
+		$sql = "
+			SELECT `last_uid_in_folder` as uid FROM `".TABLE_PREFIX."mail_account_imap_folder`
+			WHERE `account_id` = ".$this->getId()." AND `folder_name` = '$folder'
+			LIMIT 1;
+		";
+		
+		$row = DB::executeOne($sql);
+		if ($row) {
+			$maxUID = $row['uid'];
+		}
+		
+		return $maxUID;
+	}
+	
 	// ---------------------------------------------------
 	//  URLs
 	// ---------------------------------------------------

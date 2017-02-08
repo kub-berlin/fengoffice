@@ -8,8 +8,8 @@ og.MessageManager = function() {
 	this.needRefresh = false;
 	
 	this.fields = [
-		'object_id', 'type', 'ot_id', 'name', 'text', 'date', 'is_today',
-		'userId', 'userName', 'updaterId', 'updaterName', 'ix', 'isRead', 'memPath'
+		'object_id', 'type', 'ot_id', 'name', 'text', 'is_today',
+		'updatedBy', 'updatedById', 'dateUpdated', 'ix', 'isRead', 'memPath'
    	];
    	var cps = og.custom_properties_by_type['message'] ? og.custom_properties_by_type['message'] : [];
    	var cp_names = [];
@@ -64,7 +64,7 @@ og.MessageManager = function() {
 				}
 			}
 		});
-		og.MessageManager.store.setDefaultSort('date', 'desc');
+		og.MessageManager.store.setDefaultSort('dateUpdated', 'desc');
 	}
 	this.store = og.MessageManager.store;
 	this.store.addListener({messageToShow: {fn: this.showMessage, scope: this}});
@@ -76,7 +76,7 @@ og.MessageManager = function() {
 	var readClass = 'read-unread-' + Ext.id();
 	function renderName(value, p, r) {
 		if (isNaN(r.data.object_id)) {
-			return '<span class="bold" id="'+r.data.id+'">'+ (value ? og.clean(value) : '') +'</span>';
+			return '<span class="bold" id="'+r.data.object_id+'">'+ (value ? og.clean(value) : '') +'</span>';
 		}
 			
 		var name = '';
@@ -138,12 +138,12 @@ og.MessageManager = function() {
 		if (!value) {
 			return "";
 		}
-		var userString = String.format('<a href="{1}" onclick="og.openLink(\'{1}\');return false;">{0}</a>', og.clean(r.data.updaterName), og.getUrl('contact', 'card', {id: r.data.updaterId}));
+		var userString = String.format('<a href="{1}" onclick="og.openLink(\'{1}\');return false;">{0}</a>', og.clean(r.data.updatedBy), og.getUrl('contact', 'card', {id: r.data.updatedById}));
 	
 		if (!r.data.is_today) {
 			return lang('last updated by on', userString, value);
 		} else {
-			return lang('last updated by at', userString, value);
+			return userString +", "+ value;
 		}
 	}
 
@@ -244,7 +244,7 @@ og.MessageManager = function() {
         },{
 			id: 'updatedOn',
 			header: lang("last updated by"),
-			dataIndex: 'date',
+			dataIndex: 'dateUpdated',
 			width: 50,
 			sortable: true,
 			renderer: renderDate
@@ -256,7 +256,7 @@ og.MessageManager = function() {
 	for (i=0; i<cps.length; i++) {
 		cm_info.push({
 			id: 'cp_' + cps[i].id,
-			hidden: parseInt(cps[i].visible_def) == 0,
+			hidden: parseInt(cps[i].show_in_lists) == 0,
 			header: cps[i].name,
 			align: cps[i].cp_type=='numeric' ? 'right' : 'left',
 			dataIndex: 'cp_' + cps[i].id,

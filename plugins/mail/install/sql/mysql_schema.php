@@ -91,6 +91,7 @@ CREATE TABLE  `<?php echo $table_prefix ?>mail_account_imap_folder` (
   `account_id` int(10) unsigned NOT NULL default '0',
   `folder_name` varchar(100) <?php echo $default_collation ?> NOT NULL default '',
   `check_folder` tinyint(1) NOT NULL default '0',
+  `last_uid_in_folder` varchar(255) <?php echo $default_collation ?> NOT NULL default '',
   PRIMARY KEY  (`account_id`,`folder_name`)
 ) ENGINE=<?php echo $engine ?> <?php echo $default_charset ?>;
 
@@ -121,3 +122,14 @@ CREATE TABLE IF NOT EXISTS `<?php echo $table_prefix ?>mail_spam_filters` (
   `spam_state` enum('no spam','spam') COLLATE utf8_unicode_ci NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE = <?php echo $engine ?> <?php echo $default_charset ?>;
+
+
+CREATE TABLE IF NOT EXISTS `<?php echo $table_prefix ?>mail_content_imap_folders` (
+  `account_id` int(10) unsigned NOT NULL,
+  `message_id` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
+  `folder` varchar(100) COLLATE utf8_unicode_ci NOT NULL,
+  `uid` varchar(255) <?php echo $default_collation ?> NOT NULL default '',
+  `object_id` int(10) unsigned NOT NULL default 0,
+  PRIMARY KEY (`account_id`,`folder`,`object_id`),
+  KEY `account_id_folder_object_id` (`account_id`,`folder`,`object_id`)
+) ENGINE=<?php echo $engine ?> <?php echo $default_charset ?>;

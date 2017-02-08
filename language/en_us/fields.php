@@ -297,6 +297,8 @@ return array(
 	'home_address' => 'Home address',
 	'work_address' => 'Work address',
 	'other_address' => 'Other address',
+	'postal_address' => 'Postal address',
+	'postal' => 'Postal',
 
 	'field Contacts home_phone' => 'Home phone',
 	'field Contacts work_phone' => 'Work phone',
@@ -308,5 +310,6 @@ return array(
 	'field Contacts home_address' => 'Home address',
 	'field Contacts work_address' => 'Work address',
 	'field Contacts other_address' => 'Other address',
+	'field Contacts postal_address' => 'Postal address',
 );
 

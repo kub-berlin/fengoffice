@@ -48,7 +48,7 @@ else $timeformat = 'g:i A';
 
 // get actual current day info
 $today = DateTimeValueLib::now();
-$today->add('h', logged_user()->getTimezone());
+$today->add('s', logged_user()->getUserTimezoneValue());
 $currentday = $today->format("j");
 $currentmonth = $today->format("n");
 $currentyear = $today->format("Y");
@@ -162,7 +162,7 @@ foreach($companies as $company)
 					
 					$milestones = ProjectMilestones::getRangeMilestones($date_start, $date_end);
 					if($task_filter != "hide"){
-						$tasks = ProjectTasks::getRangeTasksByUser($date_start, $date_end, ($user_filter != -1 ? $user : null),$task_filter);
+						$tasks = ProjectTasks::getRangeTasksByUser($date_start, $date_end, ($user_filter != -1 ? $user : null), $task_filter, false, false, 600);
 					}
 					
 					if (user_config_option('show_birthdays_in_calendar')) {
@@ -344,13 +344,16 @@ foreach($companies as $company)
 								
 								$result_evs = array();
 								foreach ($all_events as $ev) {
-									$std = $ev->getStart()->advance(logged_user()->getTimezone() * 3600, false);
+									
+									$tz_value = Timezones::getTimezoneOffsetToApply($ev, logged_user());
+									
+									$std = $ev->getStart()->advance($tz_value, false);
 									if ($ev->getTypeId() == 2) {
 										if ($std->format("Y-m-d") == $dtv->format("Y-m-d")) {
 											$result_evs[] = $ev;
 										}
 									} else {
-										$etd = $ev->getDuration()->advance(logged_user()->getTimezone() * 3600, false);
+										$etd = $ev->getDuration()->advance($tz_value, false);
 										$end_dtv = $dtv->advance(24*3600, false);
 										
 										if ($std->format("Y-m-d H:i:s") < $end_dtv->format("Y-m-d H:i:s") && $etd->format("Y-m-d H:i:s") > $dtv->format("Y-m-d H:i:s")) {
@@ -375,10 +378,12 @@ foreach($companies as $company)
 											$typeofevent = $event->getTypeId();
 											$eventid = $event->getId();
 											
+											$tz_value = Timezones::getTimezoneOffsetToApply($event, logged_user());
+											
 											getEventLimits($event, $dtv, $event_start, $event_duration, $end_modified);
 											
-											$real_start = new DateTimeValue($event->getStart()->getTimestamp() + 3600 * logged_user()->getTimezone());
-											$real_duration = new DateTimeValue($event->getDuration()->getTimestamp() + 3600 * logged_user()->getTimezone());
+											$real_start = new DateTimeValue($event->getStart()->getTimestamp() + $tz_value);
+											$real_duration = new DateTimeValue($event->getDuration()->getTimestamp() + $tz_value);
 											
 											$pre_tf = $real_start->getDay() == $real_duration->getDay() ? '' : 'D j, ';
 											if (!$event->isRepetitive() && $real_start->getDay() != $event_start->getDay()) $subject = "... $subject";
@@ -485,12 +490,15 @@ foreach($companies as $company)
 											$task = $event;
 											$end_of_task = false;
 											$start_of_task = false;
+											
+											$tz_value = Timezones::getTimezoneOffsetToApply($event, logged_user());
+											
 											if ($task->getDueDate() instanceof DateTimeValue){
-												$due_date = new DateTimeValue($task->getDueDate()->getTimestamp() + logged_user()->getTimezone() * 3600);
+												$due_date = new DateTimeValue($task->getDueDate()->getTimestamp() + $tz_value);
 												if ($dtv->getTimestamp() == mktime(0,0,0, $due_date->getMonth(), $due_date->getDay(), $due_date->getYear())) $end_of_task = true;
 											}
 											if ($task->getStartDate() instanceof DateTimeValue){
-												$start_date = new DateTimeValue($task->getStartDate()->getTimestamp() + logged_user()->getTimezone() * 3600);
+												$start_date = new DateTimeValue($task->getStartDate()->getTimestamp() + $tz_value);
 												if ($dtv->getTimestamp() == mktime(0,0,0, $start_date->getMonth(), $start_date->getDay(), $start_date->getYear())) $start_of_task = true;
 											}
 											if ($start_of_task || $end_of_task) {
@@ -627,6 +635,8 @@ foreach($companies as $company)
 		} else {
 			var tbarsh = Ext.get('calendarPanelSecondTopToolbar').getHeight() + Ext.get('calendarPanelTopToolbar').getHeight();
 			var cmt = document.getElementById('calendarMonthTitle');
+			if (!cmt) return;
+			
 			var mainHeight = maindiv.offsetHeight;
 			
 			var divHeight = maindiv.offsetHeight - tbarsh - cmt.offsetHeight;

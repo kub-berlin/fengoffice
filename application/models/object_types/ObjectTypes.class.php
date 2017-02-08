@@ -18,8 +18,7 @@
   	
   	static function getAllObjectTypes($external_conditions = "") {
   		$object_types = self::findAll(array(
-  				"conditions" => "IF(plugin_id IS NULL OR plugin_id=0, true, (SELECT p.is_activated FROM ".TABLE_PREFIX."plugins p WHERE p.id=plugin_id) = true) AND
-			`id` NOT IN (SELECT `object_type_id` FROM ".TabPanels::instance()->getTableName(true)." WHERE `enabled` = 0) $external_conditions"
+			"conditions" => "IF(plugin_id IS NULL OR plugin_id=0, true, (SELECT p.is_activated FROM ".TABLE_PREFIX."plugins p WHERE p.id=plugin_id) = true) $external_conditions"
   		));
   		return $object_types;
   	}

@@ -514,10 +514,13 @@ og.captureLinks = function(id, caller) {
 				var p = this.onvalidate(e);
 
 			}
+
+			if (this.getAttribute('disabled') != null && this.getAttribute('disabled') == 'disabled') return false ;
+
 			if (p || typeof p == 'undefined' ) {
 				if (!this.href || this.href.indexOf("c=access&a=index") != -1) {
 					return false ;
-				} 
+				}
 				og.openLink(this.href, {caller: this.target}) ;
 			}
 			return false;
@@ -623,7 +626,7 @@ og.openLink = function(url, options) {
 						og.processResponse(data, options);
 					}
 				} catch (e) {
-					console.log(e);
+					//console.log(e);
 					og.err(e.message);
 				}
 				var ok = typeof data == 'object' && data.errorCode == 0;
@@ -899,8 +902,8 @@ og.eventManager = {
 								}
 							}
 						} catch (e) {
-							console.log(e);
-							 if (!Ext.isIE) og.err(e.message);
+							//console.log(e);
+							if (!Ext.isIE) og.err(e.message);
 						}
 					}
 				}
@@ -923,7 +926,7 @@ og.eventManager = {
 					ret = list[i].callback.call(list[i].scope, arguments, list[i].id);
 				}
 			} catch (e) {
-				console.log(e);
+				//console.log(e);
 				og.err(e.message);
 			}
 			if (list[i] && list[i].options.single || ret == 'remove') {
@@ -954,7 +957,7 @@ og.extractScripts = function(html) {
 							window.eval(match[2]);
 						}
 					} catch (e) {
-						console.log(e);
+						//console.log(e);
 						og.err(e.message);
 					}
 				}
@@ -1365,7 +1368,7 @@ og.loadScripts = function(urls, config) {
 					success[urls[i]] = true;
 					count++;
 				} catch (e) {
-					console.log(e);
+					//console.log(e);
 					og.err(e.message);
 				}
 			}
@@ -2658,8 +2661,15 @@ og.clearDimensionSelection = function() {
  */
 og.renderDimCol = function(value, p, r) {
 	var dim_id = p.id.replace(/dim_/, '');
+	var text = og.dimColEmptyBreadcrumb(dim_id, r.data.memPath);
+	return text;
+}
+og.dimColEmptyBreadcrumb = function(dim_id, memPath) {
 	var text = '';
-	var mpath = Ext.util.JSON.decode(r.data.memPath);
+	var mpath = null;
+	if (memPath) {
+		mpath = Ext.util.JSON.decode(memPath);
+	}
 	if (mpath) {
 		var mpath_aux = {};
 		mpath_aux[dim_id] = {};
@@ -2747,6 +2757,8 @@ og.showSelectTimezone = function(genid)	{
 	var check = document.getElementById(genid + "userFormAutoDetectTimezoneYes");
 	var div = document.getElementById(genid + "selecttzdiv");
 	if (check && div) div.style.display = check.checked ? "none" : "";
+	
+	if (check) $("#"+genid+"autodetected_tz_div").css('display', check.checked ? "" : "none");
 };
 
 og.getTimezoneFromBrowser = function(server, genid) {
@@ -3431,13 +3443,40 @@ og.expandAllChildNodes = function(node) {
 	}
 }
 
-og.deleteMember = function(delete_url, ot_name){
-	var delMessage = prompt(lang('confirm delete permanently this member', ot_name)+'\n'+lang('confirm delete with keyword'), "");
+
+og.doDeleteMember = function(gen, delete_url) {
+	var delMessage = $("#"+gen+"_keyword").val();
 	if (delMessage && (delMessage.toUpperCase() == "DELETE")) {			
 		og.openLink(delete_url);
 	}
+	$('#delete_mem_modal_close_link').click();
 }
 
+og.deleteMember = function(delete_url, ot_name){
+	var gen = Ext.id();
+	var html = '<div class="modal-container" style="background-color:white;padding:10px;">'+
+				'<div style="margin-left:10px;display: inline-block;">'+
+					'<label class="coInputTitle" style="min-width:10px;">'+ lang('delete')+' '+ot_name +'</label>'+	
+					'<div class="desc" style="margin-top:5px;">'+ lang('confirm delete permanently this member', ot_name) +'</div>'+
+				'</div>'+
+				'<div style="margin: 10px 10px 0;">'+
+					'<label>'+ lang('confirm delete with keyword') +'</label>'+
+					'<input type="text" name="keyword" id="'+ gen +'_keyword" style="width:100%;">'+
+				'</div><div class="clear"></div>'+
+				'<div style="float:right;">'+
+					'<button class="submit blue" onclick="og.doDeleteMember(\''+gen+'\',\''+delete_url+'\')">'+ lang('delete') +'</button>&nbsp;'+
+					'<button class="submit" onclick="$(\'#delete_mem_modal_close_link\').click();">'+ lang('cancel') +'</button>'+
+				'</div><div class="clear"></div></div>';
+	
+	var modal_params = {
+		'escClose': true,
+		'overlayClose': true,
+		'minWidth' : 400,
+		'minHeight' : 200,
+		'closeHTML': '<a id="delete_mem_modal_close_link" class="modal-close modal-close-img"></a>'
+	};
+	$.modal(html, modal_params);
+}
 
 
 og.renderContactDataFields = function(genid, value) {		
@@ -3506,7 +3545,8 @@ og.renderAddressInput = function(id, name, container_id, sel_type, sel_data) {
 	var undo_delete_link = $('<a href="#" onclick="og.undoMarkAsDeleted(this, \''+container_id+'\', \''+id+'\');" class="coViewAction ico-undo undo-delete" style="display:none;" title="'+lang('undo')+'">'+lang('undo')+'</a>');
 	$('#'+container_id).append(undo_delete_link);
 
-	var address_input = $('<textarea name="'+name+'[street]" id="'+id+'_street" class="address_street_input" placeholder="'+lang('street address')+'">'+ sel_data.street +'</textarea>');
+	var address_placeholder_str = navigator.appVersion.indexOf("MSIE") != -1 ? '' : ('placeholder="'+lang('street address')+'"');
+	var address_input = $('<textarea name="'+name+'[street]" id="'+id+'_street" class="address_street_input" '+address_placeholder_str+'>'+ sel_data.street +'</textarea>');
 	$('#'+container_id).append(address_input);
 
 	var city_input = $('<input name="'+name+'[city]" id="'+id+'_city" value="'+sel_data.city+'" class="address_city_input" placeholder="'+lang('city')+'"/>');
@@ -3562,14 +3602,6 @@ og.onAssociatedMemberTypeSelectMultiple = function (genid, dimension_id, member_
 	
 	member_selector.add_relation(dimension_id, genid, member_id, true);
 	document.getElementById(genid + hf_id).value = Ext.util.JSON.encode(member_selector[genid].sel_context[dimension_id]);
-	
-	// prevent showing whole tree
-	og.dont_show_tree = dimension_id;
-	setTimeout(function(){
-		// only focus in text input without displaying tree
-		$("#"+genid+"-member-chooser-panel-"+dimension_id+"-tree-textfilter").focus();
-		og.dont_show_tree = null;
-	},100);
 	
 	og.selectDefaultAssociatedMembers(genid, dimension_id, member_id);
 }
@@ -3794,7 +3826,7 @@ og.initialMemberTreeAjaxLoad = function(tree, limit, offset, add_params) {
 			dimension_tree.resumeEvents();
 			dimension_tree.render();
 			
-			if(typeof(data.dimensions_root_members) != "undefined" && !data.more_nodes_left){
+			if(typeof(data.dimensions_root_members) != "undefined" && !data.more_nodes_left && !parameters.filter_by_ids){
 				ogMemberCache.addDimToDimRootMembers(data.dimension_id);
 			}
 			
@@ -3971,11 +4003,223 @@ og.get_dimension_member_association_by_id = function (dim_assoc_id) {
 
 
 og.gridObjectNameRenderer = function(value, p, r) {
-	if (r.data.id == '__total_row__' || r.data.id <= 0) return value;
+	if (r.data.id == '__total_row__' || r.data.object_id <= 0) return '<span id="__total_row__">'+value+'</span>';
 	
-	var onclick = "og.openLink(og.getUrl('"+ r.store.baseParams.url_controller +"', 'view', {id: "+ r.data.object_id +"})); return false;";
+	var controller = r.data.type_controller ? r.data.type_controller : r.store.baseParams.url_controller;
+	
+	var onclick = "og.openLink(og.getUrl('"+ controller +"', 'view', {id: "+ r.data.object_id +"})); return false;";
 	return String.format('<a href="#" onclick="{1}" title="{2}" style="font-size:120%;"><span class="bold">{0}</span></a>', og.clean(value), onclick, og.clean(value));
 }
 
+og.gridPictureRenderer = function(value, p, r) {
+	if (r.data.picture) {
+		var picture_url = r.data.picture;
+		return String.format('<div class="picture-file-small"><img src="{0}" alt="{1}" /></div>', picture_url, og.clean(r.data.name));
+	} else {
+		var classes = "db-ico ico-unknown ico-" + (r.data.type ? r.data.type : 'contact');
+		return String.format('<div class="{0}" title="{1}" style="margin-left: 5px;"/>', classes, lang(r.data.type));
+	}
+	
+}
+
+og.getDateToolbarFilterComponent = function(config) {
+	var uid = Ext.id();
+	
+	var action_btn = new Ext.Action({
+		id: uid + config.name,
+		text: config.value ? config.value : lang('select a date'),
+        tooltip: config.tooltip ? config.tooltip : config.text,
+        menu: new og.drawDateMenuPicker({
+        	id: config.name,
+        	items:[new Ext.menu.Item({
+        		id: uid + config.name + '_remove',
+        		text: lang('remove filter'),
+        		iconCls: 'ico-delete',
+        		hidden: true,
+        		handler: function() {
+	        		var man = Ext.getCmp(config.grid_id);
+	        		if (man.filters[config.name]) man.filters[config.name].value = null; 
+        			man.load();
+        			this.hide();
+        			Ext.getCmp(uid + config.name).setText(lang('select a date'));
+        		}
+        	})],
+        	listeners: {
+        		'select': function(dp, date) {
+		        	var man = Ext.getCmp(config.grid_id);
+	    			Ext.getCmp(uid + config.name).setText(date.format(og.preferences['date_format']));
+	    			man.filters[dp.id].value = date.format(og.preferences['date_format']);
+		        	man.load();
+		        	Ext.getCmp(uid + config.name + '_remove').show();
+        		}
+	        }
+        })
+	});
+	
+	return action_btn;
+}
+
+og.getListToolbarFilterComponent = function(config) {
+	var uid = Ext.id();
+	
+	var combo = new Ext.form.ComboBox({
+    	id: config.name,
+    	store: new Ext.data.SimpleStore({
+	        fields: ['value', 'text'],
+	        data : config.options
+	    }),
+	    displayField: 'text',
+        mode: 'local',
+        triggerAction: 'all',
+        selectOnFocus: true,
+        width: config.width ? config.width : 160,
+        valueField: 'value',
+        valueNotFoundText: '',
+        listeners: {
+        	'select' : function(combo, record) {
+				var man = Ext.getCmp(config.grid_id);
+				man.filters[config.name].value = combo.getValue();
+				man.load();
+        	}
+        }
+	});
+	
+	if (typeof(config.initial_val) != 'undefined') {
+		combo.setValue(config.initial_val);
+	}
+	
+	return combo;
+}
 
 
+og.buildToolbarFilterAction = function(filter_name, filter_data, grid_id) {
+	var items = [];
+	if (filter_name == 'text_filter') {
+		items.push(filter_data);
+		
+	} else if (filter_data.type == 'date') {
+		var btn_config = {name: filter_name, grid_id:grid_id};
+		var btn = og.getDateToolbarFilterComponent(btn_config);
+		if (btn) {
+			if (filter_data.label) items.push(filter_data.label);
+			items.push(btn);
+		}
+		
+	} else if (filter_data.type == 'list') {
+		var combo_config = {name: filter_name, grid_id:grid_id};
+		combo_config = Ext.apply(combo_config, filter_data);
+		var combo = og.getListToolbarFilterComponent(combo_config);
+		if (combo) {
+			if (filter_data.label) items.push(filter_data.label);
+			items.push(combo);
+		}
+	}
+	
+	return items;
+}
+
+
+og.onTzSelectorCountryChange = function(country_combo, timezones_id) {
+
+	og.openLink(og.getUrl('account', 'get_country_timezones', {code: $(country_combo).val()}), {
+		preventPanelLoad: true,
+		callback: function(success, data) {
+			
+			if (data.timezones) {
+				var combo = document.getElementById(timezones_id);
+				while (combo.options.length > 0) combo.remove(0);
+				
+				for (var id in data.timezones) {
+					var name = data.timezones[id];
+					var option = document.createElement("option");
+					option.text = name;
+					option.value = id;
+					
+					combo.add(option);
+				}
+			}
+		}
+	});
+}
+
+og.showHiddenTimezoneSelector = function(genid) {
+	$('#'+genid+'tz_text').hide();
+	$('#'+genid+'tz_selector').show();
+	$('#'+genid+'tz_edited').val(1);
+	$('#'+genid+'tz_edit_link').hide();
+}
+
+og.ConfirmBoxDefaultCancelFn = function(close_btn_id) {
+	$('#'+close_btn_id).click();
+	return false;
+}
+
+og.ConfirmBoxDefaultAcceptFn = function(close_btn_id) {
+	$('#'+close_btn_id).click();
+	return true;
+}
+
+og.ConfirmBox = function(data) {
+
+	var default_cancel_fn = 'og.ConfirmBoxDefaultCancelFn("'+data.genid+'_confirmbox_close_link");';
+	var cancel_fn = default_cancel_fn;
+	if (typeof(data.cancel_fn) !== 'undefined'){
+		cancel_fn = data.cancel_fn + default_cancel_fn;
+	}
+
+	var default_accept_fn = 'og.ConfirmBoxDefaultAcceptFn("'+data.genid+'_confirmbox_close_link");';
+	var accept_fn = accept_fn;
+	if (typeof(data.accept_fn) !== 'undefined'){
+		accept_fn = data.accept_fn + default_accept_fn;
+	}
+
+	//template data
+	var data = {
+		genid: data.genid,
+		text: data.text,
+		cancel_fn: cancel_fn,
+		accept_fn: accept_fn
+	}
+
+	//get template
+	var source = $("#confirm-dialog-box").html();
+	//compile the template
+	var template = Handlebars.compile(source);
+
+	//instantiate the template
+	var html = template(data);
+
+	var modal_params = {
+		'escClose': true,
+		'minWidth' : 500,
+		'minHeight' : 400,
+		'overlayClose': true,
+		'closeHTML': '<a id="'+data.genid+'_confirmbox_close_link" style="display: none;" class="modal-close modal-close-img"></a>'
+	};
+
+	$.modal(html,modal_params);
+}
+
+
+og.replaceStringAccents = function(str) {
+	var rExps=[
+		{re:/[\xC0-\xC6]/g, ch:'A'},
+		{re:/[\xE0-\xE6]/g, ch:'a'},
+		{re:/[\xC8-\xCB]/g, ch:'E'},
+		{re:/[\xE8-\xEB]/g, ch:'e'},
+		{re:/[\xCC-\xCF]/g, ch:'I'},
+		{re:/[\xEC-\xEF]/g, ch:'i'},
+		{re:/[\xD2-\xD6]/g, ch:'O'},
+		{re:/[\xF2-\xF6]/g, ch:'o'},
+		{re:/[\xD9-\xDC]/g, ch:'U'},
+		{re:/[\xF9-\xFC]/g, ch:'u'},
+		{re:/[\xD1]/g, ch:'N'},
+		{re:/[\xF1]/g, ch:'n'}
+	];
+
+	for(var i=0, len=rExps.length; i<len; i++) {
+		str=str.replace(rExps[i].re, rExps[i].ch);
+	}
+
+	return str;
+}

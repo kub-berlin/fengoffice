@@ -175,7 +175,7 @@ class TemplateController extends ApplicationController {
 			$manager = get_class($milestone->manager());
 			$ico = "ico-milestone";
 			$action = "add";
-			$objects[] = $this->prepareObject($objectId, $id, $objectName, $objectTypeName, $manager, $action,null, null, null, $ico);
+			$objects[] = $this->prepareObject($objectId, $id, $objectName, $objectTypeName, $manager, $action,null, null, null, $ico, $milestone->getObjectTypeId());
 		}
 		
 		foreach ($tasks as $task){
@@ -189,15 +189,16 @@ class TemplateController extends ApplicationController {
 			$parentId = $task->getParentId();
 			$ico = "ico-task";
 			$action = "add";
-			$objects[] = $this->prepareObject($objectId, $id, $objectName, $objectTypeName, $manager, $action,$milestoneId, $subTasks, $parentId, $ico);
+			$objects[] = $this->prepareObject($objectId, $id, $objectName, $objectTypeName, $manager, $action,$milestoneId, $subTasks, $parentId, $ico, $task->getObjectTypeId());
 		}
 		
 		return $objects;
 	}
 		
-	function prepareObject($objectId, $id, $objectName, $objectTypeName, $manager, $action,$milestoneId = null , $subTasks = null, $parentId = null, $ico = null) {
+	function prepareObject($objectId, $id, $objectName, $objectTypeName, $manager, $action,$milestoneId = null , $subTasks = null, $parentId = null, $ico = null, $objectTypeId=0) {
 		$object = array(
 				"object_id" => $objectId,
+				"object_type_id" => $objectTypeId,
 				"type" => $objectTypeName,
 				"id" => $id,
 				"name" => $objectName,
@@ -489,7 +490,10 @@ class TemplateController extends ApplicationController {
 		foreach ($parameters as $param) {
 			/* @var $param TemplateParameter */
 			$param_val = array_var($parameterValues, $param->getName(), '');
+			
+			Hook::fire('before_saving_instantiated_template_param', array('param' => $param, 'template' => $template, 'inst_id' => $instantiation_id), $param_val);
 			$param_val = escape_character($param_val);
+			
 			DB::execute("INSERT INTO `".TABLE_PREFIX."template_instantiated_parameters` (`template_id`, `instantiation_id`, `parameter_name`, `value`) VALUES
 					('".$template->getId()."', '$instantiation_id', '".escape_character($param->getName())."', ".DB::escape($param_val).") ON DUPLICATE KEY UPDATE template_id=template_id");
 		}
@@ -740,9 +744,18 @@ class TemplateController extends ApplicationController {
 	function instantiate_parameters(){
 		if(is_array(array_var($_POST, 'parameterValues'))){
 			ajx_current("back");
-			$ret = null;
-			Hook::fire('before_instantiate_paramters', array_var($_POST, 'parameterValues'), $ret);
+			
+			$template_id = get_id();
+			$error = null;
+			Hook::fire('before_instantiate_paramters', array('id' => $template_id, 'params' => array_var($_POST, 'parameterValues')), $error);
+			if ($error) {
+				flash_error($error);
+				ajx_current("empty");
+				return;
+			}
+			
 			$this->instantiate();
+			
 		}else{
 			$id = get_id();
 
@@ -754,7 +767,7 @@ class TemplateController extends ApplicationController {
 			$parameters = TemplateParameters::getParametersByTemplate($id);
 			$params = array();
 			foreach($parameters as $parameter){
-				$params[] = array('name' => $parameter->getName(), 'type' => $parameter->getType(), 'default_value' => $parameter->getDefaultValue());
+				$params[] = $parameter->getArrayInfo();
 			}
 
 			$template = COTemplates::findById($id);

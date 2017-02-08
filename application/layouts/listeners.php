@@ -573,16 +573,6 @@ og.eventManager.addListener('ask to assign default permissions',
 	}
 );
 
-og.eventManager.addListener('refresh member list parameters', 
-	function (data){
-		if (!og.member_list_params) og.member_list_params = {};
-		og.member_list_params.object_type_name = data.object_type_name;
-		og.member_list_params.object_type_id = data.object_type_id;
-		og.member_list_params.dimension_id = data.dimension_id;
-		og.member_list_params.dimension_code = data.dimension_code;
-	}
-);
-
 og.eventManager.addListener('update last member list groups info', 
 	function (data){
 		if (!og.member_list_groups_info) og.member_list_groups_info = {};
@@ -626,5 +616,81 @@ og.eventManager.addListener('member parent changed',
 	}
 );
 
+og.eventManager.addListener('reload custom property definition', 
+	function (event_data) {
+		og.openLink(og.getUrl('object', 'get_cusotm_property_columns'), {
+			callback: function(success, data){
+				if (typeof data.properties != 'undefined' && !(data.properties instanceof Array )) {
+					og.custom_properties_by_type = data.properties;
+
+					var type_name = event_data.ot.name;
+					if (og.custom_properties_by_type[type_name]) {
+						var man_id = type_name + "-manager";
+						var man = Ext.getCmp(man_id);
+						if (!man) {
+							man_id = type_name + "s-manager";
+							man = Ext.getCmp(man_id);
+						}
+						if (man) {
+							var cm = man.getColumnModel();
+							if (cm && cm.config) {
+								
+								// remove all custom property columns
+								for (var i=cm.config.length-1; i>=0; i--) {
+									if (cm.config[i].id && cm.config[i].id.indexOf("cp_") == 0) {
+										cm.config.splice(i, 1);
+									}
+								}
+								
+								// add new columns for all available custom properties
+								for (var j=0; j<og.custom_properties_by_type[type_name].length; j++) {
+									var cp = og.custom_properties_by_type[type_name][j];
+									cm.config.push({
+										id: 'cp_' + cp.id,
+										hidden: parseInt(cp.show_in_lists) == 0,
+										header: cp.name,
+										align: cp.cp_type=='numeric' ? 'right' : 'left',
+										dataIndex: 'cp_' + cp.id,
+										sortable: true,
+										renderer: og.clean
+									});
+								}
+								
+								// reload column model configuration
+								cm.fireEvent('configchange');
+								
+								// ensure that grid height is 100%
+								$("#"+man_id+" .x-panel-body").css('height', '100%');
+								
+								// reload grid
+								man.load();
+							}
+						}
+					}
+				}
+			}
+		});
+	}
+);
+
+// hack to prevent toolbars from dissapear, when entenring an object, collapsing the left panel and closing the object => the grid toolbar dissapears
+og.eventManager.addListener('after grid panel load', function(data){
+	var cp = Ext.getCmp("center-panel");
+	if (cp) {
+		var cph = cp.getInnerHeight();
+		cp.setHeight(cph-1); // change height to fire the resize event, so it relocates the toolbars that were bad positioned
+		cp.setHeight(cph); // restore original height
+	}
+});
+
+og.eventManager.addListener('update tasks in list', function(data) {
+	if (data.tasks && data.tasks.length > 0) {
+		for (var i=0; i<data.tasks.length; i++) {
+			var t = data.tasks[i];
+			ogTasks.drawTaskRowAfterEdit({'task': t});
+		}
+		ogTasks.refreshGroupsTotals();
+	}
+});
 
 </script>

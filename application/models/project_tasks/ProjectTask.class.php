@@ -213,7 +213,7 @@ class ProjectTask extends BaseProjectTask {
 	function isLate() {
 		if($this->isCompleted()) return false;
 		if(!$this->getDueDate() instanceof DateTimeValue) return false;
-		return !$this->isToday() && ($this->getDueDate()->getTimestamp() < DateTimeValueLib::now()->add('h', logged_user()->getTimezone())->getTimestamp());
+		return !$this->isToday() && ($this->getDueDate()->getTimestamp() < DateTimeValueLib::now()->add('s', Timezones::getTimezoneOffsetToApply($this))->getTimestamp());
 	} // isLate
 	
 	/**
@@ -224,7 +224,7 @@ class ProjectTask extends BaseProjectTask {
 	 * @return null
 	 */
 	function isToday() {
-		$now = DateTimeValueLib::now()->add('h', logged_user()->getTimezone());
+		$now = DateTimeValueLib::now()->add('s', logged_user()->getUserTimezoneValue());
 		$due = $this->getDueDate();
 		// getDueDate and similar functions can return NULL
 		if(!($now instanceof DateTimeValue)) return false;
@@ -244,20 +244,26 @@ class ProjectTask extends BaseProjectTask {
 	 */
 	function getLateInDays() {
 		if (!$this->getDueDate() instanceof DateTimeValue) return 0;
+		
+		$tz_offset = Timezones::getTimezoneOffsetToApply($this);
+		
 		$due_date_start = $this->getDueDate();
-		$due_date_start->add('h', logged_user()->getTimezone());
+		$due_date_start->add('s', $tz_offset);
 		$today = DateTimeValueLib::now();
-		$today = $today->add('h', logged_user()->getTimezone());
+		$today = $today->add('s', $tz_offset);
 		
 		return abs(floor($due_date_start->getTimestamp() / 86400) - floor($today->getTimestamp() / 86400));
 	} // getLateInDays
 	
 	function getLeftInDays() {
 		if (!$this->getDueDate() instanceof DateTimeValue) return 0;
+		
+		$tz_offset = Timezones::getTimezoneOffsetToApply($this);
+		
 		$due_date_start = $this->getDueDate();
-		$due_date_start->add('h', logged_user()->getTimezone());
+		$due_date_start->add('s', $tz_offset);
 		$today = DateTimeValueLib::now();
-		$today = $today->add('h', logged_user()->getTimezone());
+		$today = $today->add('s', $tz_offset);
 		
 		return abs(floor($due_date_start->getTimestamp() / 86400) - floor($today->getTimestamp() / 86400));
 	}
@@ -482,9 +488,53 @@ class ProjectTask extends BaseProjectTask {
 				}
 			}
 		}
+		
+		// if task is repetitive, generate a complete instance of this task and modify repeat values
+		if ($this->isRepetitive()) {
+			$task_controller = new TaskController();
+			$complete_last_task = false;
+			
+			// calculate next repetition date
+			$opt_rep_day = array('saturday' => false, 'sunday' => false);
+			$new_dates = $task_controller->getNextRepetitionDates($this, $opt_rep_day, $new_st_date, $new_due_date);
+		
+			// if this is the last task of the repetetition, complete it, do not generate a new instance
+			if ($this->getRepeatNum() > 0) {
+				$this->setRepeatNum($this->getRepeatNum() - 1);
+				if ($this->getRepeatNum() == 0) {
+					$complete_last_task = true;
+				}
+			}
+			if (!$complete_last_task && $this->getRepeatEnd() instanceof DateTimeValue) {
+				if ($this->getRepeatBy() == 'start_date' && array_var($new_dates, 'st') > $this->getRepeatEnd() ||
+					$this->getRepeatBy() == 'due_date' && array_var($new_dates, 'due') > $this->getRepeatEnd() ) {
+		
+					$complete_last_task = true;
+				}
+			}
+		
+			if (!$complete_last_task) {
+				// generate new pending task
+				$new_task = $this->cloneTask(array_var($new_dates, 'st'), array_var($new_dates, 'due'));
+				
+				// clean this task's repetition options
+				$this->setRepeatEnd(EMPTY_DATETIME);
+				$this->setRepeatForever(0);
+				$this->setRepeatNum(0);
+				$this->setRepeatD(0);
+				$this->setRepeatM(0);
+				$this->setRepeatY(0);
+				$this->setRepeatBy("");
+			}
+		}
+		
 		$this->setPercentCompleted(100);
 		$this->update_parents_path = false;
 		$this->save();
+		
+		$null = null;
+		Hook::fire("after_task_complete", array('task' => $this), $null);
+		
 		return $log_info;
 	} // completeTask
 
@@ -538,7 +588,7 @@ class ProjectTask extends BaseProjectTask {
 			return null;
 		else{
 			$due = $this->getDueDate();
-			$date = DateTimeValueLib::now()->add('h', logged_user()->getTimezone())->getTimestamp();
+			$date = DateTimeValueLib::now()->add('s', logged_user()->getUserTimezoneValue())->getTimestamp();
 			$nowDays = floor($date/(60*60*24));
 			$dueDays = floor($due->getTimestamp()/(60*60*24));
 			return $dueDays - $nowDays;
@@ -601,7 +651,11 @@ class ProjectTask extends BaseProjectTask {
 		}
 		if($new_due_date != "") {
 			if ($new_task->getDueDate() instanceof DateTimeValue) $new_task->setDueDate($new_due_date);
-		}		
+		}
+		
+		$null = null;
+		Hook::fire('task_clone_more_attributes', array('original' => $this, 'copy' => $new_task), $null);
+		
 		$new_task->save();
 		
 		

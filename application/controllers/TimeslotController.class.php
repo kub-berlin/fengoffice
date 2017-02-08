@@ -354,6 +354,7 @@ class TimeslotController extends ApplicationController {
           		'end_time' => $timeslot->getEndTime(),
           		'is_fixed_billing' => $timeslot->getIsFixedBilling(),
           		'hourly_billing' => $timeslot->getHourlyBilling(),
+          		'rate_currency_id' => $timeslot->getRateCurrencyId(),
           		'fixed_billing' => $timeslot->getFixedBilling()
 			);
 		}
@@ -386,8 +387,10 @@ class TimeslotController extends ApplicationController {
 				$et->setHour($e_time['hours']);
 				$et->setMinute($e_time['mins']);
 				
-				$st = new DateTimeValue($st->getTimestamp() - logged_user()->getTimezone() * 3600);
-				$et = new DateTimeValue($et->getTimestamp() - logged_user()->getTimezone() * 3600);
+				$tz_offset = Timezones::getTimezoneOffsetToApply($timeslot);
+				
+				$st = new DateTimeValue($st->getTimestamp() - $tz_offset);
+				$et = new DateTimeValue($et->getTimestamp() - $tz_offset);
 				$timeslot->setStartTime($st);
 				$timeslot->setEndTime($et);
 				

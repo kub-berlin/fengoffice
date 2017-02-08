@@ -7,9 +7,9 @@
 			<div id="<?php echo $genid ?>add_contact_select_context_div" class="dataBlock"><?php 
 				$listeners = array('on_selection_change' => 'og.reload_subscribers("'.$genid.'",'.$object->manager()->getObjectTypeId().')');
 				if ($contact->isNew()) {
-					render_member_selectors($contact->manager()->getObjectTypeId(), $genid, null, array('select_current_context' => true, 'listeners' => $listeners), null, null, false); 
+					render_member_selectors($contact->manager()->getObjectTypeId(), $genid, null, array('select_current_context' => true, 'listeners' => $listeners, 'object' => $contact), null, null, false); 
 				} else {
-					render_member_selectors($contact->manager()->getObjectTypeId(), $genid, $contact->getMemberIds(), array('listeners' => $listeners), null, null, false); 
+					render_member_selectors($contact->manager()->getObjectTypeId(), $genid, $contact->getMemberIds(), array('listeners' => $listeners, 'object' => $contact), null, null, false); 
 				} 
 			?></div>
 			<?php endif ;?>
@@ -138,9 +138,9 @@
 				$contact_obj = isset($object) && $object instanceof Contact ? $object : $contact;
 				
 				if ($contact->isNew() && !array_var($_REQUEST, 'create_user_from_contact')) {
-					render_member_selectors($contact_obj->manager()->getObjectTypeId(), $genid, null, array('select_current_context' => true, 'listeners' => $listeners, 'hidden_field_name' => 'no_perm_members'), $skipped_dimensions, null, false); 
+					render_member_selectors($contact_obj->manager()->getObjectTypeId(), $genid, null, array('select_current_context' => true, 'listeners' => $listeners, 'object' => $contact_obj, 'hidden_field_name' => 'no_perm_members'), $skipped_dimensions, null, false); 
 				} else {
-					render_member_selectors($contact_obj->manager()->getObjectTypeId(), $genid, $contact_obj->getMemberIds(), array('listeners' => $listeners, 'hidden_field_name' => 'no_perm_members'), $skipped_dimensions, null, false); 
+					render_member_selectors($contact_obj->manager()->getObjectTypeId(), $genid, $contact_obj->getMemberIds(), array('listeners' => $listeners, 'object' => $contact_obj, 'hidden_field_name' => 'no_perm_members'), $skipped_dimensions, null, false); 
 				} 
 			?></div>
 			<?php } ?>

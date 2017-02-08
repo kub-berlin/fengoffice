@@ -144,7 +144,7 @@ class ContactMemberCaches extends BaseContactMemberCaches {
 			
 			//Get all members	
 			$extra_conditions = " AND id IN (".implode(",",$members_ids).")";
-			$all_members = $dimension->getAllMembers(false, array_var($args,'order',null), true, $extra_conditions, null, array_var($args,'order_dir',null));
+			$all_members = $dimension->getAllMembers(false, array_var($args,'order',null), false, $extra_conditions, null, array_var($args,'order_dir',null));
 				
 			//Add an extra temp param with the cached parent id
 			foreach ($all_members as $member){

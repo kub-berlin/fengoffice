@@ -245,8 +245,10 @@ Ext.grid.GridPanel.override({
 				var bba = man.getBottomToolbar();
 				bba.updateInfo();
 				
-				var total_pag =  data.totalCount < bba.pageSize ? 1 : Math.ceil(data.totalCount/bba.pageSize)
-				bba.afterTextEl.el.textContent = String.format(bba.afterPageText, total_pag);
+				var total_pag =  data.totalCount < bba.pageSize ? 1 : Math.ceil(data.totalCount/bba.pageSize);
+				if (bba.afterTextEl) {
+					bba.afterTextEl.el.textContent = String.format(bba.afterPageText, total_pag);
+				}
 				
 				// enable toolbar
 				bba.enable();
@@ -269,7 +271,7 @@ Ext.grid.GridPanel.override({
 					bba.next.disable();
 				}
 				
-				bba.loading.enable();
+				if (bba.loading) bba.loading.enable();
 			  }});
 		
 			params.only_result = 0;

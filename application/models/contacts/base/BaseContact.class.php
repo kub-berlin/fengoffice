@@ -641,6 +641,14 @@
     function setDefaultBillingId($value) {
       return $this->setColumnValue('default_billing_id', $value);
     } // setDefaultBillingId()
+      
+    
+    function getUserTimezoneId() {
+    	return $this->getColumnValue('user_timezone_id');
+    }
+    function setUserTimezoneId($value) {
+    	return $this->setColumnValue('user_timezone_id', $value);
+    }
     
 	
     /**

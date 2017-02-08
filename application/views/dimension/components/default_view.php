@@ -116,9 +116,13 @@ $("#<?php echo $genid; ?>selected-members-dim<?php echo $dimension_id?>").append
 				foreach ($dimension_selected_members as $selected_member){
 					?> 
 					var member_id = <?php echo $selected_member->getId()?>;
+					var type_id = <?php echo $selected_member->getObjectTypeId()?>;
 					var dimension_id = <?php echo $selected_member->getDimensionId()?>;
+					
 					var tmp_member = {};
-					tmp_member[member_id] = member_id;
+					if (typeof(tmp_member[type_id])=='undefined') tmp_member[type_id] = [];
+					tmp_member[type_id].push(member_id);
+					
 					var tmp_dim = {};
 					tmp_dim[dimension_id] = tmp_member;
 					mem_path = og.getEmptyCrumbHtml(tmp_dim,".completePath",null,false);

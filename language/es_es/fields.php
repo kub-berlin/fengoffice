@@ -298,6 +298,8 @@
 	'home_address' => 'Dirección personal',
 	'work_address' => 'Dirección del trabajo',
 	'other_address' => 'Otra dirección',
+	'postal_address' => 'Dirección postal',
+	'postal' => 'Postal',
 
 	'field Contacts home_phone' => 'Teléfono personal',
 	'field Contacts work_phone' => 'Teléfono del trabajo',
@@ -309,5 +311,6 @@
 	'field Contacts home_address' => 'Dirección personal',
 	'field Contacts work_address' => 'Dirección del trabajo',
 	'field Contacts other_address' => 'Otra dirección',
+	'field Contacts postal_address' => 'Dirección postal',
     'field ProjectTasks original_task_id' => 'Id de tarea original',
 );

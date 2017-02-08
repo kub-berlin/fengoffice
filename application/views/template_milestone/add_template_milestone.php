@@ -82,9 +82,9 @@
 			<?php
 				$listeners = array('on_selection_change' => 'og.reload_milestone_form_selectors()');
 				if ($milestone->isNew()) {
-					render_member_selectors($milestone->manager()->getObjectTypeId(), $genid, null, array('select_current_context' => false, 'listeners' => $listeners), null, null, false);
+					render_member_selectors($milestone->manager()->getObjectTypeId(), $genid, null, array('select_current_context' => false, 'listeners' => $listeners, 'object' => $object), null, null, false);
 				} else {
-					render_member_selectors($milestone->manager()->getObjectTypeId(), $genid, $milestone->getMemberIds(), array('listeners' => $listeners), null, null, false);
+					render_member_selectors($milestone->manager()->getObjectTypeId(), $genid, $milestone->getMemberIds(), array('listeners' => $listeners, 'object' => $object), null, null, false);
 				} 
 			?>
 			<div class="clear"></div>

@@ -127,19 +127,43 @@
 
 
 		<div id="<?php echo $genid ?>member_permissions" class="permission-form-container" style="display:none;">
-		  <div id="<?php echo $genid ?>pg_name" style="font-weight:bold;font-size:120%;padding-bottom:5px"></div>
+		  <div id="<?php echo $genid ?>pg_name" class="permissions-target-name"></div>
 	  	  <table>
-		  	<tr style="border-bottom:1px solid #888;margin-bottom:5px">
-		  	<td style="vertical-align:middle">
-		  		<span class="perm_all_checkbox_container">
-					<?php echo checkbox_field($genid . 'pAll', false, array('id' => $genid . 'pAll', 'onclick' => 'og.userPermissions.ogPermAllChecked("' . $genid . '", this.checked)')) ?>
-					<label style="font-weight:bold" for="<?php echo $genid ?>pAll" class="checkbox"><?php echo lang('all') ?></label>   
-		  		</span>
-		  	</td>
-		  	<td align=center style="padding:0 10px;width:100px;"><a href="#" class="internalLink radio-title-3" onclick="og.userPermissions.ogPermSetLevel('<?php echo $genid ?>', 3);return false;"><?php echo lang('read write and delete') ?></a></td>
-		  	<td align=center style="padding:0 10px;width:100px;"><a href="#" class="internalLink radio-title-2" onclick="og.userPermissions.ogPermSetLevel('<?php echo $genid ?>', 2);return false;"><?php echo lang('read and write') ?></a></td>
-		  	<td align=center style="padding:0 10px;width:100px;"><a href="#" class="internalLink radio-title-1" onclick="og.userPermissions.ogPermSetLevel('<?php echo $genid ?>', 1);return false;"><?php echo lang('read only') ?></a></td>
-		  	<td align=center style="padding:0 10px;width:100px;"><a href="#" class="internalLink radio-title-0" onclick="og.userPermissions.ogPermSetLevel('<?php echo $genid ?>', 0);return false;"><?php echo lang('none no bars') ?></a></td></tr>
+		  	<tr class="permissions-title-row">
+			  	<td style="vertical-align:middle"></td>
+			  	<td align=center style="width: 120px;">
+			  		<a href="#" class="internalLink all-radio-sel radio-title-3" onclick="og.userPermissions.ogPermSetLevel('<?php echo $genid ?>', 3);return false;"><?php echo lang('read write and delete') ?></a>
+			  	</td>
+			  	<td align=center style="width: 120px;">
+			  		<a href="#" class="internalLink all-radio-sel radio-title-2" onclick="og.userPermissions.ogPermSetLevel('<?php echo $genid ?>', 2);return false;"><?php echo lang('read and write') ?></a>
+			  	</td>
+			  	<td align=center style="width: 120px;">
+			  		<a href="#" class="internalLink all-radio-sel radio-title-1" onclick="og.userPermissions.ogPermSetLevel('<?php echo $genid ?>', 1);return false;"><?php echo lang('read only') ?></a>
+			  	</td>
+			  	<td align=center style="width: 120px;">
+			  		<a href="#" class="internalLink all-radio-sel radio-title-0" onclick="og.userPermissions.ogPermSetLevel('<?php echo $genid ?>', 0);return false;"><?php echo lang('none no bars') ?></a>
+			  	</td>
+		  	</tr>
+		  	
+			<tr class="permissions-checkall-row">
+				<td><?php echo lang('check all').":"?></td>
+				<td align="center">
+					<input type="checkbox" class="all-radio-sel-chk" id="chk-3" title="<?php echo lang('set rwd permissions for all object types')?>"
+						onchange="og.userPermissions.ogPermSetLevelCheckbox(this, '<?php echo $genid ?>', 3);"/>
+				</td>
+				<td align="center">
+					<input type="checkbox" class="all-radio-sel-chk" id="chk-2" title="<?php echo lang('set rw permissions for all object types')?>"
+						onchange="og.userPermissions.ogPermSetLevelCheckbox(this, '<?php echo $genid ?>', 2);"/>
+				</td>
+				<td align="center">
+					<input type="checkbox" class="all-radio-sel-chk" id="chk-1" title="<?php echo lang('set r permissions for all object types')?>"
+						onchange="og.userPermissions.ogPermSetLevelCheckbox(this, '<?php echo $genid ?>', 1);"/>
+				</td>
+				<td align="center">
+					<input type="checkbox" class="all-radio-sel-chk" id="chk-0" title="<?php echo lang('set none permissions for all object types')?>"
+						onchange="og.userPermissions.ogPermSetLevelCheckbox(this, '<?php echo $genid ?>', 0);"/>
+				</td>
+			</tr>
 		  	
 		<?php 
 			$row_cls = "";

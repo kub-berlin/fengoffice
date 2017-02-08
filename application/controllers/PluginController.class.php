@@ -158,9 +158,9 @@ class PluginController extends ApplicationController {
 	
 	function ensure_installed_and_activated($plugin_name) {
 		
+		$plugin = Plugins::findOne(array('conditions' => "name='$plugin_name'"));
 		if (!Plugins::instance()->isActivePlugin($plugin_name)) {
 			
-			$plugin = Plugins::findOne(array('conditions' => "name='$plugin_name'"));
 			if (!$plugin instanceof Plugin || !$plugin->isInstalled()) {
 				
 				$this->executeInstaller($plugin_name);
@@ -169,6 +169,11 @@ class PluginController extends ApplicationController {
 			}
 				
 			$plugin->activate();
+		}
+		
+		// ensure that is running in the last version
+		if ($plugin instanceof Plugin) {
+			$plugin->update();
 		}
 	} 
 	
@@ -345,6 +350,8 @@ static function executeInstaller($name) {
 				executeMultipleQueries ( implode("\n", $queries), $total_queries, $executed_queries );
 				Logger::log ( "File install.php processed for plugin  '$name'." . mysql_error () );
 			}
+			
+			DB::execute("UPDATE ".TABLE_PREFIX."plugins SET is_installed=1 WHERE name='$name'");
 			
 			DB::commit ();
 			return true;

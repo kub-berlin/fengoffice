@@ -102,7 +102,7 @@ sig.actualHtmlSignature = '';
   	<div style="display: none;">
   		<table><tr><td>
   			<?php echo submit_button(lang('send mail'), '', 
-  			array('id'=>'sendMail','onclick'=>"og.checkAttach();"))?>
+  			array('id'=>'sendMail','onclick'=>"return og.checkAttach();"))?>
   		</td><td>
   			<?php echo submit_button(lang('save')." ".lang('draft'), '', 
   			array('id'=>'saveMail','onclick'=>"og.setHfValue('$genid', 'isDraft', 'true');og.stopAutosave('$genid');")) ?>
@@ -226,6 +226,17 @@ sig.actualHtmlSignature = '';
 		icocls: '<?php echo $icon_class ?>'
 	});
 	<?php 
+			}
+		}
+		if (isset($_SESSION['existing_attachments'])) {
+			$existing_attachments = $_SESSION['existing_attachments'];
+			unset($_SESSION['existing_attachments']);
+			
+			foreach ($existing_attachments as $att) {?>
+				var obj = {object_id: <?php echo $att['object_id']?>, manager: '<?php echo $att['manager']?>', 
+					name: '<?php echo $att['name']?>', icocls: '<?php echo $att['ico']?>', mimeType: '<?php echo $att['type']?>'};
+				og.addMailAttachment(container, obj);
+		<?php
 			}
 		}
 	?>
@@ -359,7 +370,8 @@ var editor = CKEDITOR.replace(genid+'ckeditor', {
 			Ext.getCmp(p.id).setPreventClose(ev.editor.checkDirty());
 		}
 	},
-	removePlugins: 'scayt,liststyle,tabletools,contextmenu,magicline',
+	fillEmptyBlocks: false,
+	removePlugins: 'scayt,liststyle,magicline',
 	entities_additional : '#39,#336,#337,#368,#369'
 });
 } catch (e) {
@@ -446,14 +458,19 @@ og.checkAttach = function() {
 			og.setHfValue('<?php echo $genid;?>', 'sendBtnClick', 'true');	
 			og.setHfValue('<?php echo $genid;?>', 'isDraft', 'false');
 			og.stopAutosave('<?php echo $genid;?>');
+			return true;
 		}else{
 			og.setHfValue('<?php echo $genid;?>', 'sendBtnClick', 'false');	
+			og.setHfValue('<?php echo $genid;?>', 'isDraft', 'false');
+			return false;
 		}
 	}else{
 		og.setHfValue('<?php echo $genid;?>', 'sendBtnClick', 'true');	
 		og.setHfValue('<?php echo $genid;?>', 'isDraft', 'false');
 		og.stopAutosave('<?php echo $genid;?>');
+		return true;
 	}
+	return true;
 }
 
 og.checkFrom = function() {

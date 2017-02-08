@@ -393,6 +393,7 @@ abstract class ContentDataObjects extends DataManager {
 		$result->total =array();
 		$type_id  = self::getObjectTypeId();
 		$SQL_BASE_JOIN = '';
+		$SQL_SEARCHABLE_OBJ_JOIN = '';
 		$SQL_EXTRA_JOINS = '';
 		$SQL_TYPE_CONDITION = 'true';
 		$SQL_FOUND_ROWS = '';
@@ -417,9 +418,14 @@ abstract class ContentDataObjects extends DataManager {
 		$extra_member_ids =  array_var($args,'extra_member_ids');
 		$ignore_context = array_var($args,'ignore_context');
 		$include_deleted = (bool) array_var($args,'include_deleted');
+		$join_with_searchable_objects = array_var($args, 'join_with_searchable_objects');
 		$select_columns = array_var($args, 'select_columns');
 		if (empty($select_columns)) {
-			$select_columns = array('*');
+			if ($join_with_searchable_objects) {
+				$select_columns = array('DISTINCT(o.id),o.*,e.*');
+			} else {
+				$select_columns = array('*');
+			}
 		}
 		
 		$only_return_query_string = array_var($args, 'only_return_query_string');
@@ -448,6 +454,10 @@ abstract class ContentDataObjects extends DataManager {
 	    	}
 			$SQL_EXTRA_JOINS = self::prepareJoinConditions(array_var($args,'join_params'));
 			
+		}
+		
+		if ($join_with_searchable_objects) {
+			$SQL_SEARCHABLE_OBJ_JOIN = " INNER JOIN ".TABLE_PREFIX."searchable_objects so ON so.rel_object_id=o.id ";
 		}
 		
 		if (!$ignore_context && !$member_ids) {
@@ -640,6 +650,7 @@ abstract class ContentDataObjects extends DataManager {
 			$sql = "
 				SELECT $SQL_FOUND_ROWS $SQL_COLUMNS FROM ".TABLE_PREFIX."objects o
 				$SQL_BASE_JOIN
+				$SQL_SEARCHABLE_OBJ_JOIN
 				$SQL_EXTRA_JOINS
 				WHERE
 					$permissions_condition
@@ -1386,5 +1397,10 @@ abstract class ContentDataObjects extends DataManager {
 		$null = null;
 		Hook::fire('after_add_obj_to_sharing_table', array('id' => $oid, 'type_id' => $tid), $null);
 	
+	}
+	
+	
+	function getColumnsToAggregateInTotals() {
+		return array();
 	}
 }

@@ -633,20 +633,45 @@ ogTasks.drawTaskRow = function(task, drawOptions, displayCriteria, group_id, lev
 	
 	//dimesions breadcrumbs
 	var dim_classification = new Array();
-	for(x in  drawOptions.show_dimension_cols){
+	for(var x=0; x<drawOptions.show_dimension_cols.length; x++){
 		did = drawOptions.show_dimension_cols[x];
-		if (isNaN(did) || did == 0) continue;
 		var dim_mpath = {};
-		dim_mpath[did] = mpath[did];
+		var exclude_parents_path = false;
 		
-		dim_mem_path = "";
+		if (!isNaN(did)) {
+			dim_mpath[did] = mpath[did];
+		}
 		
-		if (typeof mpath[did] != "undefined") dim_mem_path = og.getEmptyCrumbHtml(dim_mpath,".task-breadcrumb-container");
+		if (ogTasks.override_task_dim_col_value && ogTasks.override_task_dim_col_value.length > 0) {
+			for (var i=0; i<ogTasks.override_task_dim_col_value.length; i++) {
+				var fn = ogTasks.override_task_dim_col_value[i];
+				if (typeof(fn) == 'function') {
+					var result = fn.call(null, did, mpath);
+					if (result) {
+						dim_mpath = result.dim_mpath;
+						exclude_parents_path = result.exclude_parents_path;
+					}
+				}
+			}
+		}
+
+		if (isNaN(did)) {
+			for (z in dim_mpath) {
+				did = z;
+				break;
+			}
+		}
+		
+		var dim_mem_path = "";
+		if (typeof mpath[did] != "undefined") {
+			dim_mem_path = og.getEmptyCrumbHtml(dim_mpath, ".task-breadcrumb-container", null, null, exclude_parents_path);
+		}
+		
 		var key = 'lp_dim_' + did + '_show_as_column';
 		if (og.preferences['listing_preferences'][key]) {
 			dim_classification.push(
 				{
-					id: 'task_clasification_dim_'+did,
+					id: 'task_clasification_dim_'+ drawOptions.show_dimension_cols[x],
 					dim_mem_path: dim_mem_path 
 				}
 			);
@@ -1256,16 +1281,25 @@ ogTasks.initTasksList = function() {
 	}
 
 	//dimesions breadcrumbs
-	for(x in  drawOptions.show_dimension_cols){
+	for(x in drawOptions.show_dimension_cols){
 		did = drawOptions.show_dimension_cols[x];
-		if (isNaN(did) || did == 0) continue;
+		ot_id = null;
+		if (typeof(did) == 'function') continue;
+		
+		if (isNaN(did) && did.indexOf("-") != -1) {
+			exp = did.split("-");
+			did = exp[0];
+			if (!isNaN(ot_id)) ot_id = exp[1];
+		}
+		if (did == 0) continue;
+		
 		var key = 'lp_dim_' + did + '_show_as_column';
 		if (og.preferences['listing_preferences'][key]) {
 			tasks_list_cols.push(
 				{
-					id: 'task_clasification'+did,
+					id: 'task_clasification' + drawOptions.show_dimension_cols[x],
 					css_class: 'task_clasification',
-					title: og.dimensions_info[did].name, 
+					title: ot_id ? lang(og.objectTypes[ot_id].name + 's') : og.dimensions_info[did].name, 
 					data: 'data-resizable=1',
 					group_total_field: '', 
 					col_width: 'auto'
@@ -1384,6 +1418,21 @@ ogTasks.initTasksList = function() {
 		);		
 	}
 	
+	
+	// custom properties
+	for (x in ogTasks.custom_properties) {
+		var cp = ogTasks.custom_properties[x];
+		if (typeof(cp) == 'object' && ogTasks.userPreferences['tasksShowCP_'+cp.id] == 1) {
+			tasks_list_cols.push({
+				id: 'cp_'+cp.id,
+				css_class: '',
+				title: cp.name, 
+				data: 'data-resizable=1',
+				group_total_field: '', 
+				col_width: 'auto'
+			});
+		}
+	}
 	
 	//quick actions
 	tasks_list_cols.push(
@@ -1707,4 +1756,100 @@ ogTasks.classifyTasks = function(task_ids, member_id, dimension_id, from_group_i
 			}
 		}
 	});
+}
+
+
+
+
+
+
+
+ogTasks.createDimensionColumnMenuItems = function(did, option_name, ignore_listing_preferences) {
+	var menu_items = [];
+	
+	var key = 'lp_dim_' + did + '_show_as_column';
+	if (ignore_listing_preferences || og.preferences['listing_preferences'][key]) {
+		
+		var general_item = ogTasks.createDimensionColumnMenuItem(did, og.dimensions_info[did].name, did, option_name);
+		menu_items.push(general_item);
+		
+		if (ogTasks.list_dimension_column_hooks) {
+			for (var j=0; j<ogTasks.list_dimension_column_hooks.length; j++) {
+				var fn = ogTasks.list_dimension_column_hooks[j];
+				if (typeof(fn) == 'function') {
+					more_items = fn.call(null, did, option_name);
+					if (more_items && more_items.length > 0) {
+						menu_items = menu_items.concat(more_items);
+					}
+				}
+			}
+		}
+		
+		if (ogTasks.userPreferences.showDimensionCols.indexOf(did) != -1) {
+			og.breadcrumbs_skipped_dimensions[did] = did.toString();
+		} else {
+			og.breadcrumbs_skipped_dimensions[did] = 0;
+		}
+	}
+	
+	return menu_items;
+}
+
+
+
+ogTasks.createDimensionColumnMenuItem = function(did, label, menu_key, option_name) {
+	
+	if (!option_name) option_name = 'tasksShowDimensionCols';
+	
+	var checked = ogTasks.userPreferences.showDimensionCols.indexOf(menu_key) != -1;
+	if (option_name.indexOf("gantt") == 0) {
+		checked = ogTasks.ganttPreferences.ganttShowDimensionCols.indexOf(menu_key) != -1;
+	}
+	
+	var menu_config = {
+		option_name: option_name,
+		text: label,
+		value: menu_key,
+		checked: checked,
+		checkHandler: function() {
+			if (this.option_name.indexOf("gantt") == 0) {
+				var dim_index = ogTasks.ganttPreferences.ganttShowDimensionCols.indexOf(this.value);
+				if (dim_index != -1) {
+					ogTasks.ganttPreferences.ganttShowDimensionCols.splice(dim_index, 1);
+				} else {
+					ogTasks.ganttPreferences.ganttShowDimensionCols.push(this.value);
+				}
+			} else {
+				var dim_index = ogTasks.userPreferences.showDimensionCols.indexOf(this.value);
+				if (dim_index != -1) {
+					ogTasks.userPreferences.showDimensionCols.splice(dim_index, 1);
+				} else {
+					ogTasks.userPreferences.showDimensionCols.push(this.value);
+				}
+			}
+			
+			var opt_val = ogTasks.userPreferences.showDimensionCols.toString();
+			if (this.option_name.indexOf("gantt") == 0) {
+				checked = ogTasks.ganttPreferences.ganttShowDimensionCols.toString();
+			}
+
+			var url = og.getUrl('account', 'update_user_preference', {name: this.option_name, value: opt_val});
+			og.openLink(url, { hideLoading:true });
+
+			if (this.value.indexOf("-") == -1 && this.option_name.indexOf("gantt") == -1) {
+				var d = this.value.toString();
+				if (ogTasks.userPreferences.showDimensionCols.indexOf(d) != -1) {
+					og.breadcrumbs_skipped_dimensions[d] = d;
+				} else {
+					og.breadcrumbs_skipped_dimensions[d] = 0;
+				}
+			}
+			
+			ogTasks.redrawGroups = false;
+			ogTasks.draw();
+			ogTasks.redrawGroups = true;
+		}
+	};
+
+	return menu_config;
 }

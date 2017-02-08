@@ -56,6 +56,37 @@ class ApiController extends ApplicationController {
     }
     
 	/*
+     * Get an object's timeslots     
+     */
+	private function get_timeslots($request){
+		try {
+            $clean_timeslots = array();
+            $object = Objects::findObject($request['oid']);
+            if ($object instanceof ContentDataObject) {
+	            $timeslots = $object->getTimeslots();
+	            foreach($timeslots as $timeslot) {
+	            	
+	            	$data = $timeslot->getArrayInfo();
+	            	
+	            	$data['paused_desc'] = "";
+	            	$formatted = DateTimeValue::FormatTimeDiff($timeslot->getStartTime(), $timeslot->getEndTime(), "hm", 60, $timeslot->getSubtract());
+	            	if ($timeslot->getSubtract() > 0) {
+	            		$now = DateTimeValueLib::now();
+	            		$data['paused_desc'] = DateTimeValue::FormatTimeDiff($now, $now, "hm", 60, $timeslot->getSubtract());
+	            	}
+	            	$data['formatted'] = $formatted;
+	            	
+	            	$clean_timeslots[] = $data;
+	            }
+            }
+            return $this->response('json', $clean_timeslots);
+            
+        } catch (Exception $exception) {
+            throw $exception;
+        }
+    }
+    
+	/*
      * Get an object's comments     
      */
 	private function get_comments($request){
@@ -121,7 +152,7 @@ class ApiController extends ApplicationController {
         if ($name!=""){
         	$extra_conditions = "AND name LIKE '%".$name."%'";
         }
-        $params = array('dim_id' => $dimension_id, 'type_id' => $typeId, 'start'=>$start,'limit'=>$limit);
+        $params = array('dim_id' => $dimension_id, 'type_id' => $typeId, 'start'=>$start, 'limit'=>$limit, 'extra_conditions' => $extra_conditions);
         $memberController = new MemberController();
         $object = $memberController->listing($params);
         foreach ($object["members"] as $m) {
@@ -348,10 +379,9 @@ class ApiController extends ApplicationController {
                             $object->setText($request ['args'] ['description']);
                         }
                         if (!empty($request ['args'] ['due_date'])) {
-                        	if ($request ['args'] ['due_date'] != '' && $request ['args'] ['due_date'] != date_format_tip('dd/mm/yyyy')) {
-                        		$date_format = 'dd/mm/yyyy';
-                        		$object->setDueDate(DateTimeValueLib::dateFromFormatAndString($date_format, $value));
-                        	}                           
+                        	$dd = DateTimeValueLib::dateFromFormatAndString(DATE_MYSQL, $request['args']['due_date']);
+                        	$dd->add('s', -1*logged_user()->getUserTimezoneValue());
+                       		$object->setDueDate($dd);
                         }
                         if (!empty($request ['args'] ['completed'])) {
                             $object->setPercentCompleted($request ['args'] ['completed']);
@@ -413,47 +443,32 @@ class ApiController extends ApplicationController {
         return $this->response('json', $response);
     }
     
+
+
+	private function add_timeslot($request) {
+		$_POST['object_id'] = $request ['args'] ['object_id'];
+		$_REQUEST['object_id'] = $_POST['object_id'];
+		
+		$_POST['timeslot'] = array(
+			'contact_id' => $request ['args'] ['contact_id'],
+			'hours' => $request ['args'] ['hours'],
+			'minutes' => $request ['args'] ['minutes'],
+			'description' => $request ['args'] ['description'],
+		);
+		
+		$controller = new TimeslotController();
+		$controller->add_timespan();
+		
+		return $this->response('json', true);
+    }
+    
     private function add_comment($request) {
     	$_GET['object_id'] = $request ['args'] ['id'];
-    	$_POST['comment[text]'] = $request ['args'] ['comment'];
-    	CommentController::add();
-    	/*$response = false;
-    	if (!empty($request ['args'])) {
-    		$object = ProjectTasks::instance()->findByid($request ['args'] ['id']);
-    		$comment = new Comment();
-    		$comment_data = ($request ['args'] ['comment']);
-    		
-    		
-    		try {
-    			$comment->setFromAttributes($comment_data);
-	    		$comment->setRelObjectId($object->getId());
-	    		$comment->setObjectName(substr_utf($comment->getText(), 0, 250));
-
-	    		DB::beginWork();
-	    		$comment->save();
-    			
-	    		$comment->addToMembers($object->getMembers());
-	    		$comment->addToSharingTable();
-	    		
-	    		// Subscribe user to object
-	    		if(!$object->isSubscriber(logged_user())) {
-	    			$object->subscribeUser(logged_user());
-	    		}
-	    		if (strlen($comment->getText()) < 100) {
-	    			$comment_head = $comment->getText();
-	    		} else {
-	    			$lastpos = strpos($comment->getText(), " ", 100);
-	    			if ($lastpos === false) $comment_head = $comment->getText();
-	    			else $comment_head = substr($comment->getText(), 0, $lastpos) . "...";
-	    		}
-	    		$comment_head = html_to_text($comment_head);
-	    		DB::commit();
-    			$response = true;
-    		} catch (Exception $e) {
-    				DB::rollback();
-    				return false;
-    			}
-    		}*/
+    	$_POST['comment'] = array('text' => $request ['args'] ['comment']);
+    	
+    	$controller = new CommentController();
+    	$controller->add();
+    	
     	return $this->response('json', true);
     }
     

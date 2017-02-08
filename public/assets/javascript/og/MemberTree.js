@@ -659,7 +659,7 @@ Ext.extend(og.MemberTree, Ext.tree.TreePanel, {
 	},
 	
 	init: function ( callback  ) {
-		new Ext.tree.TreeSorter(this, {
+		/*new Ext.tree.TreeSorter(this, {
 		    dir: "asc",
 		    property: "text",
 		    sortType: function(node) {
@@ -669,9 +669,9 @@ Ext.extend(og.MemberTree, Ext.tree.TreePanel, {
 		    		// let text start with last char in order to set this node as the last one
 		    		return last_char + last_char + last_char + node.text;
 		    	}
-		    	return node.text;
+		    	return node.text.toLowerCase();
 		    }
-		});
+		});*/
 		
 		switch (this.expandMode) {
 			case "all":

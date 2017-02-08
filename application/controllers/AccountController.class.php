@@ -84,7 +84,7 @@ class AccountController extends ApplicationController {
 	          'username'      => $user->getUsername(),
 	          'email'         => $user->getEmailAddress(),
 	          'display_name'  => $user->getObjectName(),
-	          'timezone'      => $user->getTimezone(),
+	          'user_timezone_id' => $user->getUserTimezoneId(),
 	          'company_id'    => $user->getCompanyId(),
 	          'is_admin'      => $user->isAdministrator(),
 			  'type'          => $user->getUserType(),
@@ -589,13 +589,55 @@ class AccountController extends ApplicationController {
 	
 	
 	function set_timezone() {
-		$tz = array_var($_REQUEST, 'tz');
-		if ($tz != logged_user()->getTimezone()) {
-			$sql = "UPDATE ".TABLE_PREFIX."contacts SET timezone = '".$tz."'
-			WHERE object_id = ".logged_user()->getId();
-			DB::execute($sql);
+		$tz_name = array_var($_REQUEST, 'tz_name');
+		$tz_offset = array_var($_REQUEST, 'tz_offset');
+		
+		$zone_id = null;
+		$zone = Timezones::getTimezoneFromName($tz_name);
+		if (is_array($zone)) {
+			$zone_id = $zone['id'];
 		}
+		
+		$user_tz_hours = logged_user()->getUserTimezoneValue() / 3600;
+		
+		// change user timezone id
+		if ($zone_id && ($zone_id != logged_user()->getTimezoneId() || $tz_offset != $user_tz_hours)) {
+			$sql = "UPDATE ".TABLE_PREFIX."contacts SET 
+						user_timezone_id = '$zone_id',
+						timezone = '$tz_offset'
+					WHERE object_id = ".logged_user()->getId();
+			
+			DB::execute($sql);
+			
+			// @TODO: When DST has changed we have to create a reminder to the logged user and the administrator so they can change the timezone configuration.
+			/*
+			if ($zone['has_dst']) {
+				if ($zone['using_dst'] && ($tz_offset * 3600) == $zone['gmt_offset']) {
+					Timezones::updateUsingDst($zone['id'], '0');
+				}
+				if (!$zone['using_dst'] && ($tz_offset * 3600) == $zone['gmt_dst_offset']) {
+					Timezones::updateUsingDst($zone['id'], '1');
+				}
+			}
+			*/
+		}
+		
+		
 		ajx_current("empty");
+	}
+	
+	
+	function get_country_timezones() {
+		$ccode = array_var($_REQUEST, 'code');
+		$zones = Timezones::getTimezonesByCountryCode($ccode);
+		
+		$zones_data = array();
+		foreach ($zones as $z) {
+			$zones_data[$z['id']] = Timezones::getFormattedDescription($z);
+		}
+		
+		ajx_current("empty");
+		ajx_extra_data(array('timezones' => $zones_data));
 	}
 
 } // AccountController

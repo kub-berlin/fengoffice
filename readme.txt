@@ -1,5 +1,5 @@
 
-	About Feng Office 3.4.4.1
+	About Feng Office 3.5-alpha
 	================================
 	
 	Feng Office is a Collaboration Platform and Project Management System.
@@ -101,10 +101,321 @@
 	- JSSoundKit - http://jssoundkit.sourceforge.net
 	- PEAR - http://pear.php.net
 	- Gelsheet - http://www.gelsheet.org
+	- TimeZoneDB - https://timezonedb.com
 	
 	
 	Changelog
 	=========
+	
+	Since 3.4.4.X
+	----------------
+	feature: advanced reports allow to include comments below each object line.
+	feature: member relations history, tab in edition and widget.
+	feature: put client/project/workspaces/tags lists in a fixed tab.
+	
+	bugfix: when email type is text/calendar the ical file is not parsed.
+	bugfix: editors line breaks fixed.
+	bugfix: reload all tasks modified when editing a task and affecting other instantiated repetitions.
+
+	Since 3.4.4.51
+    ----------------
+    bugfix: in gantt if a task is in more than one group it is shown only once.
+    bugfix: missing lang in project types when the association is multiple.
+    bugfix: member selectors order.
+	bugfix: associated member selectors js error.
+	feature: config option to allow or not multiple lines in invoice line description.
+	
+	Since 3.4.4.50
+    ----------------
+    bugfix: after selecting first multiple associated member you need to click outside and then inside the textbox to load the list.
+    bugfix: disable multiple lines in invoice line description.   
+    feature: invocing module: credit notes must have at least one reference.
+	
+	Since 3.4.4.49
+    ----------------
+    bugfix: change delete member js prompt for a custom modal to avoid the browser to remember the last answer.
+    bugfix: make advanced_core a pre-requisite for expenses plugin.
+    bugfix: member listing group by "located under" column fixed.
+	
+	Since 3.4.4.48
+    ----------------
+    bugfix: when clasifying emails it was always clasifying all the conversation without looking the preference that defines that.
+    bugfix: breadcrumbs in emails must not be shown next to the subject.
+    bugfix: 'created_by_id' in where clause is ambiguous' on calendar widget.
+	
+	Since 3.4.4.47
+    ----------------
+    bugfix: email parser was not recognizing attachments in multipart/related content.
+	bugfix: missing lang in deleted emails notifications.
+	
+	Since 3.4.4.46
+    ----------------
+	feature: create member templates from received emails.
+	bugfix: performance of search component within the mail tab.
+	
+	Since 3.4.4.45
+    ----------------
+	bugfix: error in advanced reports when grouping by created by.
+	
+	Since 3.4.4.44
+    ----------------
+	bugfix: imap check mail function fail when last received mail was deleted from the mail server.
+
+    Since 3.4.4.43
+    ----------------
+    bugfix: imap checking fixed when last received mail is not in server.
+    feature: new plugin "working_cycles"
+    feature: new plugin "modules"
+
+    Since 3.4.4.42
+    ----------------
+    feature: hierarchical client types dimension.
+    bugfix: custom dimension name not used in associated dimensions.
+    bugfix: send mail sometimes saves draft.
+
+    Since 3.4.4.41
+    ----------------
+    bugfix: mail tracking.
+
+    Since 3.4.4.40
+    ----------------
+    bugfix: error parsing Message-ID from mail.
+
+    Since 3.4.4.39
+    ----------------
+    bugfix: unable to set can_update_other_users_invitations and can_link_objects permissions value.
+    bugfix: imap download mails from specific date.
+    bugfix: ambiguous column error when object subtype plugin is active and user group tasks by a date field.
+
+	Since 3.4.4.38
+    ----------------
+    bugfix: imap mail download
+
+	Since 3.4.4.37
+    ----------------
+	feature: mobile api updated
+	
+	Since 3.4.4.36
+    ----------------
+	bugfix: disable mail track
+	
+	Since 3.4.4.35
+    ----------------
+    bugfix: assigned to component does not fill with users
+	bugfix: when no context selected, the add task form is not shown
+
+	Since 3.4.4.34
+    ----------------
+    bugfix: mail contents - imap folder association normalized.
+	
+	Since 3.4.4.33
+    ----------------
+	feature: gantt chart includes dimension columns, custom property columns and basic properties columns
+	
+	Since 3.4.4.32
+    ----------------
+	bugfix: task member group breadcrumb shows wrong parent
+	
+	Since 3.4.4.31
+    ----------------
+    feature: action in document view - send document by email
+    bugfix: cannot open weblinks files from internal network
+    bugfix: tasks drag and drop between milestone groups
+	
+	Since 3.4.4.30
+    ----------------
+    bugfix: if sandbox defined then don't use the purifier to edit html documents.
+	bugfix: when downloading an email whose "from" is marked as "no spam" it is sent to spam folder if has spam level headers greater than the configured level.
+	bugfix: crpm types dimensions are not shown in separate columns.
+	feature: allow to separate clients and projects columns in tasks list.
+	
+	Since 3.4.4.29
+    ----------------
+	bugfix: not all tasks are included in monthly view if they are too many.
+
+	Since 3.4.4.28
+    ----------------
+	bugfix: newsletter cp filters not working
+
+	Since 3.4.4.27
+    ----------------
+	bugfix: don't save same email more than one time if it belongs to more than one imap folder.
+	bugfix: don't send reminders for template objects.
+	
+	Since 3.4.4.26
+    ----------------
+    bugfix: member custom reports pagination when hiding details
+    bugfix: total of rows is not shown in reports when grouping by and hiding details
+	bugfix: name column not forced in reports when grouping by and hiding details
+    bugfix: contact links cannot be clicked
+	bugfix: if contact/company links doesn't have scheme they are treated as relative urls.
+	
+	Since 3.4.4.25
+    ----------------
+    bugfix: check negative spam score when saving mail.
+	bugfix: in notifications subscribers section, the last two users are not separated by spaces.
+	feature: add column status in users list
+	feature: use different background color for inactive users in users list
+	
+	Since 3.4.4.24
+    ----------------
+	bugfix: don't show company name between brackets for companies.
+	bugfix: mail content fix when replying
+	bugfix: error when editing timeslot with advanced billing
+	bugfix: don't show add task form if user doesn't have permissions to add.
+	feature: migrate payment types to object subtypes
+	feature: add checkbox to select all object types in permissions definition interface.
+	
+	Since 3.4.4.23
+    ----------------
+	bugfix: custom reports not filtering by created on.
+	
+	Since 3.4.4.22
+    ----------------
+    bugfix: contacts listing order by last updated fixed.
+	
+	Since 3.4.4.21
+    ----------------
+	bugfix: when user triggers email dowload and has no permissions over the email rule's members the email is not classified there.
+	
+	Since 3.4.4.20
+    ----------------
+	bugfix: grid toolbar dissapears when entering an object, collapsing left panel and then closing the object view
+	
+	Since 3.4.4.19
+    ----------------
+    bugfix: in object view, changes in css of classification widget to use all available width 
+    bugfix: when deleting mail it is not removed from list until reloading
+	
+	Since 3.4.4.18
+    ----------------
+    bugfix: custom reports error when conditions uses "is_user".
+    bugfix: email addresses are not shown in custom reports.
+    bugfix: performance upgraded when grouping custom reports by dimension member types.
+    bugfix: in contacts list when clicking a company goes to other view.
+    bugfix: email custom reports fails when using "to" in conditions.
+    change: dont show payments table when editing expense.
+	
+	Since 3.4.4.17
+    ----------------
+    bugfix: in template instantiation error when calculating date from creation plus more days
+	
+	Since 3.4.4.16
+    ----------------
+    bugfix: when filtering object picker by object type the dimension filter is not applied
+    bugfix: performance issue in permissions table
+    bugfix: grouped reports should put the "unclassified" group in the last place
+    feature: reminders post due date
+    feature: config option to autoselect if milestone should be applied to subtasks
+	
+	Since 3.4.4.15
+    ----------------
+	bugfix: invoice updated_on column empty
+	bugfix: tree panels wrong ordering with lower/upper case members, also with characters with accents. 
+	bugfix: notifications from cron incorrect hostname
+	bugfix: pdf export with accents in filename fixed
+	feature: new dimension "Account executives"
+	feature: show custom properties in tasks list
+	
+	Since 3.4.4.14
+	----------------
+	feature: new address type: postal
+	feature: adminsitration users list using paginated grid filtering by active, inactive or all.
+	feature: new action "Classify only attachments" in email view actions panel.
+	
+	Since 3.4.4.13
+	----------------
+	bugfix: don't filter users without permissions in root in tasks user's filter
+	bugfix: permissions check when adding or removing task dependency
+	bugfix: error 500 logged_user()->getgetUserTimezoneHoursOffset();
+	bugfix: subtype assignation in invoicing module when generating next repetition
+	bugfix: reports pagination when grouped and not showing details
+	feature: more calculated columns in expenses/payments custom reports
+	
+	Since 3.4.4.12
+	----------------
+	bugfix: mail plugin installer and updater must put the max_spam_level in 5
+	bugfix: fixed created date display for objects created before dst change
+	feature: In event view, if event time zone is different than logged user time zone then show the original time with timezone below the calculated time for the logged user.
+	feature: allow to change the time zone of tasks and events
+	
+	Since 3.4.4.11
+    ----------------
+    feature: timezone improvements, dst usage.
+	
+	Since 3.4.4.10
+    ----------------
+	bugfix: user without delete permissions cannot edit file revision comment.
+	bugfix: file revision comment form is not modal
+	bugfix: several expenses fixes and upgrades
+	bugfix: invoice preview include expiration date
+	bugfix: resize objectGrid when resizing containers
+	feature: expenses cache tables for totals
+
+	Since 3.4.4.9
+    ----------------
+	config: notification from name
+	
+	Since 3.4.4.8
+	----------------
+	bugfix: when user does not have the "can manage tasks" permission and completes a task an error message is shown after the completion.
+	bugfix: automatic project status calculation not working
+	bugfix: member selector, when getting child if it has to be replaced sometimes it is not added again
+	
+	Since 3.4.4.7
+	----------------
+	feature: multiple currency integration with invoicing, expenses and advanced billing.
+	feature: electonic-invoice plugins.
+	feature: spam score verification upgraded.
+	feature: mail list - icon to show if it has been replied or forwarded.
+	feature: add fixed totals for invoices.
+	feature: allow to totalize content object's fixed numeric properties.
+	feature: separated list totals for each defined currency in expenses and invoicing.
+	bugfix: expense list and payment list totals does not use standard functions.
+	bugfix: expense and payment reports are not including totals.
+	
+	Since 3.4.4.6
+	----------------
+	bugfix: in member custom reports, when adding a list custom property condition the possible values are not loaded correctly.
+	
+	Since 3.4.4.5
+	----------------
+	bugfix: don't show object print options if object subtypes plugin is not installed
+	bugfix: don't use noreply@fengoffice.com as the from email address in notificacions/reminders
+	bugfix: check if object subtypes plugin is activated before using it in expenses
+	
+	feature: object type hierarchy options
+	feature: when custom properties are more than 10 then split them in two columns in the add/edit form
+	feature: ensure that notifications always has something in the from name.
+	feature: dont send notifications if demo_web plugin is active.
+	feature: add content object id to sent_notifications table
+	feature: dimension association config to autoclassify in parent member's associated member
+	
+	Since 3.4.4.4
+	----------------
+	bugfix: in grouped custom reports when a task is in more than one group then the hours are modified twice by the timezone.
+	bugfix: check that parent exists before copying task info from parent
+	
+	Since 3.4.4.2
+	----------------
+	bugfix: object picker for mail attachments is not filtering correctly
+	bugfix: group by parameters are not shown when adding a custom report
+	bugfix: when adding custom properties, show in lists and show in main tab should be selected by default
+	bugfix: list custom properties edition fails when values have '
+	bugfix: breadcrumbs in object view are not using the standard function
+	bugfix: expenses widget graph
+
+	feature: show payment history in payment edit form and view
+	feature: text filters in expense and payments list
+	feature: expense and payment listings double toolbar
+	feature: add custom property attribute to specify if the property is shown as a column in listings by default
+
+
+	Since 3.4.4.1
+	----------------
+	feature: inherit company addresses and phones in contact reports if contact doesn't have any.
+	bugfix: emails with no message_id header are not downloaded when connecting through imap
+	
 	Since 3.4.4
 	----------------
 	bugfix: upgrade script was setting version to beta.

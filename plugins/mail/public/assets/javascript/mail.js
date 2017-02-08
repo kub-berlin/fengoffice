@@ -26,7 +26,7 @@ og.mail.removeMailsFromList = function(ids) {
 	if (typeof(ids)=='object' && ids.length>0 && man && man.store && man.store.data) {
 		for (var i=0; i<man.store.data.items.length; i++) {
 			var row = man.store.data.items[i];
-			if (ids.indexOf(row.id) != -1 || ids.indexOf(row.id+"") != -1) {
+			if (ids.indexOf(row.data.object_id) != -1 || ids.indexOf(row.data.object_id+"") != -1) {
 				rows_to_remove.push(row);
 				processed++;
 				if (processed >= ids.length) {

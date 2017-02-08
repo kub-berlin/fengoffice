@@ -31,48 +31,66 @@ function render_member_selectors($content_object_type_id, $genid = null, $select
 					if ($selection instanceof Member) {
 						$selected_member_ids[] = $selection->getId();
 					
-						// get the related members that are defined to autoclassify in its association config
-						$associations = DimensionMemberAssociations::getAllAssociatationsForObjectType($selection->getDimensionId(), $selection->getObjectTypeId());
-						foreach ($associations as $a) {
-							$autoclassify_in_related = (bool)DimensionAssociationsConfigs::getConfigValue($a->getId(), 'autoclassify_in_property_member');
-							if ($autoclassify_in_related) {
-								$tmp = MemberPropertyMembers::getAllPropertyMemberIds($a->getId(), $selection->getId());
-								$tmp = array_filter(explode(',', $tmp));
-								if (is_array($tmp) && count($tmp) > 0) {
-									$assoc_member_ids = array_merge($assoc_member_ids, $tmp);
+						if (!array_var($options, 'dont_select_associated_members')) {
+							// get the related members that are defined to autoclassify in its association config
+							$associations = DimensionMemberAssociations::getAllAssociatationsForObjectType($selection->getDimensionId(), $selection->getObjectTypeId());
+							foreach ($associations as $a) {
+								$autoclassify_in_related = (bool)DimensionAssociationsConfigs::getConfigValue($a->getId(), 'autoclassify_in_property_member');
+								if ($autoclassify_in_related) {
+									$tmp = MemberPropertyMembers::getAllPropertyMemberIds($a->getId(), $selection->getId());
+									$tmp = array_filter(explode(',', $tmp));
+									if (is_array($tmp) && count($tmp) > 0) {
+										$assoc_member_ids = array_merge($assoc_member_ids, $tmp);
+									}
 								}
 							}
 						}
 					}
 				}
 				
-				// foreach autoclassified related member do the same
-				$assoc_members = array();
-				if (count($assoc_member_ids) > 0) {
-					$assoc_members = Members::findAll(array('conditions' => "id IN (".implode(',', $assoc_member_ids).")"));
-				}
-				foreach ($assoc_members as $assoc_member) {
-					if ($assoc_member instanceof Member) {
-						$associations = DimensionMemberAssociations::getAllAssociatationsForObjectType($assoc_member->getDimensionId(), $assoc_member->getObjectTypeId());
-						foreach ($associations as $a) {
-							$autoclassify_in_related = (bool)DimensionAssociationsConfigs::getConfigValue($a->getId(), 'autoclassify_in_property_member');
-							if ($autoclassify_in_related) {
-								$tmp = MemberPropertyMembers::getAllPropertyMemberIds($a->getId(), $assoc_member->getId());
-								$tmp = array_filter(explode(',', $tmp));
-								if (is_array($tmp) && count($tmp) > 0) {
-									$assoc_member_ids = array_merge($assoc_member_ids, $tmp);
+				if (!array_var($options, 'dont_select_associated_members')) {
+					// foreach autoclassified related member do the same
+					$assoc_members = array();
+					if (count($assoc_member_ids) > 0) {
+						$assoc_members = Members::findAll(array('conditions' => "id IN (".implode(',', $assoc_member_ids).")"));
+					}
+					foreach ($assoc_members as $assoc_member) {
+						if ($assoc_member instanceof Member) {
+							$associations = DimensionMemberAssociations::getAllAssociatationsForObjectType($assoc_member->getDimensionId(), $assoc_member->getObjectTypeId());
+							foreach ($associations as $a) {
+								$autoclassify_in_related = (bool)DimensionAssociationsConfigs::getConfigValue($a->getId(), 'autoclassify_in_property_member');
+								if ($autoclassify_in_related) {
+									$tmp = MemberPropertyMembers::getAllPropertyMemberIds($a->getId(), $assoc_member->getId());
+									$tmp = array_filter(explode(',', $tmp));
+									if (is_array($tmp) && count($tmp) > 0) {
+										$assoc_member_ids = array_merge($assoc_member_ids, $tmp);
+									}
 								}
 							}
 						}
 					}
+					// merge the resulting autoclassified related members with the original selected members
+					$selected_member_ids = array_merge($selected_member_ids, $assoc_member_ids);
 				}
 				
-				// merge the resulting autoclassified related members with the original selected members
-				$selected_member_ids = array_merge($selected_member_ids, $assoc_member_ids);
 			}
 			
 			
 			if (is_null($selected_member_ids)) $selected_member_ids = array();
+			
+			// additional selected member ids (e.g.: taken from ot hierarchy)
+			$additional_selected_member_ids = member_selector_additional_selected_ids(array_var($options,'object'), $dimensions);
+			if (is_array($additional_selected_member_ids)) {
+				$selected_member_ids = array_unique(array_filter(array_merge($selected_member_ids, $additional_selected_member_ids)));
+			}
+			
+			
+			// additional filters, by member id
+			$additional_filters = member_selector_additional_ids_filter(array_var($options,'object'), $dimensions);
+			if (is_array($additional_filters) && count($additional_filters) > 0) {
+				$options['filter_by_ids'] = $additional_filters;
+			}
+			
 			
 			$skipped_dimensions_cond = "";
 			if (is_array($skipped_dimensions) && count($skipped_dimensions) > 0) {
@@ -224,7 +242,10 @@ function save_associated_dimension_members($params) {
 			$rel_ot = ObjectTypes::findById($a->getObjectTypeId());
 		}
 		
-		if ($a->getIsMultiple()) {
+		// use multiple selectors if the association is multiple or if editing the associated member (e.g.: proj. status)
+		$is_multiple = $a->getIsMultiple() || $reverse_relation;
+		
+		if ($is_multiple) {
 			$memcol = $reverse_relation ? "property_member_id" : "member_id";
 			// if association is multiple delete all relations and add the new ones
 			MemberPropertyMembers::instance()->delete('association_id = '.$assoc_id.' AND '.$memcol.' = '.$member->getId());
@@ -309,14 +330,26 @@ function render_associated_dimensions_selectors($params) {
 				$selected_ids = get_all_associated_status_member_ids($member, $dimension, $ot, $reverse_relation);
 			}
 			
-			$select_fn = $dim_association->getIsMultiple() ? "og.onAssociatedMemberTypeSelectMultiple" : "og.onAssociatedMemberTypeSelect";
-			$remove_fn = $dim_association->getIsMultiple() ? "og.onAssociatedMemberTypeRemoveMultiple" : "og.onAssociatedMemberTypeRemove";
+			// use multiple selectors if the association is multiple or if editing the associated member (e.g.: proj. status)
+			$is_multiple = $dim_association->getIsMultiple() || $reverse_relation;
 			
-			$label = lang(str_replace('_',' ', $ot->getName()) . ($dim_association->getIsMultiple() ? 's' : ''));
+			$select_fn = $is_multiple ? "og.onAssociatedMemberTypeSelectMultiple" : "og.onAssociatedMemberTypeSelect";
+			$remove_fn = $is_multiple ? "og.onAssociatedMemberTypeRemoveMultiple" : "og.onAssociatedMemberTypeRemove";
+			
+			$custom_name = $dimension->getOptionValue('custom_dimension_name');
+			if ($custom_name && trim($custom_name) != "") {
+				$label = $custom_name;
+			} else {
+				$label = Localization::instance()->lang(str_replace('_',' ', $ot->getName()) . ($is_multiple ? 's' : ''));
+				if (is_null($label)) {
+					$label = $dimension->getName();
+				}
+			}
+			
 			$hf_name = 'associated_members['.$dim_association->getId().']';
 			
 			render_single_member_selector($dimension, $comp_genid, $selected_ids, array(
-					'is_multiple' => $dim_association->getIsMultiple(),
+					'is_multiple' => $is_multiple,
 					//'allowedMemberTypes' => array($ot->getId()),
 					'content_object_type_id' => $ot->getId(), 
 					'label' => $label, 
@@ -342,7 +375,106 @@ function render_associated_dimensions_selectors($params) {
 
 
 
+function member_selector_additional_selected_ids($object, $dimensions) {
+	$additional_sel_ids = null;
+	
+	if ($object instanceof ContentDataObject && $object->isNew()) {
+		// check if object has parent type 
+		$has_parent = ObjectTypeHierarchies::hasParentObjectType($object->getObjectTypeId());
+		if ($has_parent) {
+			
+			$parent_object = Objects::findObject($object->getParentObjectId());
+			if ($parent_object instanceof ContentDataObject) {
+				
+				$additional_sel_ids = array();
+				$parent_members = $parent_object->getMembers();
+				
+				// for each dimension, get the possible member types and check if this hierarchy allows the autoclassification in parent members
+				foreach ($dimensions as $dim) {
+					$dim_id = $dim['dimension_id'];
+					$member_type_ids = DimensionObjectTypes::getObjectTypeIdsByDimension($dim_id);
+					
+					foreach ($member_type_ids as $mem_type_id) {
+						$autoclassify_in_parent_members = ObjectTypeHierarchies::getHierarchyOptionValue($parent_object->getObjectTypeId(), $object->getObjectTypeId(), $dim_id, $mem_type_id, 'autoclassify_in_parent_members');
+						
+						$this_type_member_ids = array();
+						foreach ($parent_members as $pmem) {
+							if ($pmem->getDimensionId() == $dim_id && $pmem->getObjectTypeId() == $mem_type_id) {
+								$this_type_member_ids[] = $pmem->getId();
+							}
+						}
+						
+						if ($autoclassify_in_parent_members) {
+							$dotc = DimensionObjectTypeContents::findOne(array('conditions' => "`dimension_id`=$dim_id AND dimension_object_type_id=$mem_type_id AND `content_object_type_id`='".$object->getObjectTypeId()."'"));
+							if ($dotc->getIsMultiple()) {
+								$additional_sel_ids = array_merge($additional_sel_ids, $this_type_member_ids);
+							} else {
+								// if selection is not multiple then only autoselect if parent type has only one member of this type
+								if (count($this_type_member_ids) == 1) {
+									$additional_sel_ids[] = $this_type_member_ids[0];
+								}
+							}
+						}
+						
+					}
+				}
+				
+				
+			}
+		}
+	}
+	
+	return $additional_sel_ids;
+}
 
 
+/**
+ * 1) Esta función debe devolver los ids de los members del padre para una dimensión
+ * 2) Esos ids deben setearse en el componente para que cuando filtre los posibles members a seleccionar le pase estos ids al controlador
+ * 3) El controlador debe agregar estos ids a las condiciones de la consulta para no permitir otros members que no sean estos.
+ */
+function member_selector_additional_ids_filter($object, $dimensions) {
+	$additional_filters = array();
+
+	if ($object instanceof ContentDataObject && $object->isNew()) {
+		// check if object has parent type
+		$has_parent = ObjectTypeHierarchies::hasParentObjectType($object->getObjectTypeId());
+		if ($has_parent) {
+				
+			$parent_object = Objects::findObject($object->getParentObjectId());
+			if ($parent_object instanceof ContentDataObject) {
+
+				$additional_sel_ids = array();
+				$parent_members = $parent_object->getMembers();
+
+				// for each dimension, get the possible member types and check if this hierarchy allows the autoclassification in parent members
+				foreach ($dimensions as $dim) {
+					$dim_id = $dim['dimension_id'];
+					$member_type_ids = DimensionObjectTypes::getObjectTypeIdsByDimension($dim_id);
+						
+					foreach ($member_type_ids as $mem_type_id) {
+						$filter_by_parent_members = ObjectTypeHierarchies::getHierarchyOptionValue($parent_object->getObjectTypeId(), $object->getObjectTypeId(), $dim_id, $mem_type_id, 'filter_by_parent_members');
+
+						if ($filter_by_parent_members) {
+							$this_type_member_ids = array();
+							foreach ($parent_members as $pmem) {
+								if ($pmem->getDimensionId() == $dim_id && $pmem->getObjectTypeId() == $mem_type_id) {
+									$this_type_member_ids[] = $pmem->getId();
+								}
+							}
+
+							$additional_filters[$dim_id] = $this_type_member_ids;
+						}
+
+					}
+				}
+
+
+			}
+		}
+	}
+	
+	return $additional_filters;
+}
 
 

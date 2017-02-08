@@ -299,6 +299,16 @@ og.attachFromFileSystem = function(genid, account_member_id) {
 };
 
 og.attachFromWorkspace = function(genid) {
+	
+	var member_ids = [];
+	var context_ids = og.contextManager.dimensionMembers;
+	for (dim_id in context_ids) {
+		var mids = context_ids[dim_id];
+		for (i=0; i<mids.length; i++) {
+			if (mids[i] > 0) member_ids.push(mids[i]);
+		}
+	}
+	
 	og.ObjectPicker.show(function (objs) {
 		if (objs) {
 			var container = document.getElementById(genid + 'attachments');
@@ -308,8 +318,9 @@ og.attachFromWorkspace = function(genid) {
 				og.addMailAttachment(container, obj);
 			}
 		}
-	}, this, 
-	{
+	}, this, {
+		ignore_context: true, // ignore the current context
+		extra_member_ids: Ext.util.JSON.encode(member_ids), // initialize with current context member ids
 		selected_type:'file',
 		types: ['file']
 	});

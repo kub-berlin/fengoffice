@@ -52,6 +52,7 @@
 	'status' => 'Estado',
 	'options' => 'Opciones',
 	'active' => 'Activo',
+	'inactive' => 'Inactivo',
 	'completed' => 'Completado',
 	'administrator' => 'Administrador',
 	'error' => 'Error',
@@ -424,4 +425,9 @@
 	'all tasks' => 'Todas las tareas',
 	'general' => 'General',
 	'friendly date' => 'Formato usual',
+		
+	'set rwd permissions for all object types' => 'Asignar todos los permisos para todos los tipos de objeto.',
+	'set rw permissions for all object types' => 'Asignar permisos de lectura y escritura para todos los tipos de objeto.',
+	'set r permissions for all object types' => 'Asignar permisos de solo lectura para todos los tipos de objeto.',
+	'set none permissions for all object types' => 'Quitar todos los permisos en todos los tipos de objeto.',
 );

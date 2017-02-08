@@ -27,6 +27,7 @@
     	'visible_by_default' => DATA_TYPE_BOOLEAN,
     	'is_special' => DATA_TYPE_BOOLEAN,
     	'is_disabled' => DATA_TYPE_BOOLEAN,
+    	'show_in_lists' => DATA_TYPE_BOOLEAN,
     );
   
     /**

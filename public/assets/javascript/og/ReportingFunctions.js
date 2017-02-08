@@ -19,7 +19,7 @@ og.leaveCondition = function(id) {
 	$("#delete"+id).css('opacity', '0.6');
 };
 
-og.reportObjectTypeChanged = function(genid, order_by, order_by_asc, cols){
+og.reportObjectTypeChanged = function(genid, order_by, order_by_asc, cols, execute_callbacks){
 	var objectTypeSel = document.getElementById('objectTypeSel');
 	if(modified){
 		if(!confirm(lang('confirm discard changes'))){
@@ -47,7 +47,9 @@ og.reportObjectTypeChanged = function(genid, order_by, order_by_asc, cols){
 			scripts: true
 		});
 		
-		if (og.after_report_object_type_change_functions) {
+		if (typeof(execute_callbacks) == 'undefined') execute_callbacks = true;
+		
+		if (execute_callbacks && og.after_report_object_type_change_functions) {
 			for (var i=0; i<og.after_report_object_type_change_functions.length; i++) {
 				var fn = og.after_report_object_type_change_functions[i];
 				if (typeof(fn) == "function") {

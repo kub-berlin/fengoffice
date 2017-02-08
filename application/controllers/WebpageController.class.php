@@ -382,20 +382,18 @@ class WebpageController extends ApplicationController {
 			$ids = array();
 			foreach ($res->objects as $w) {
 				$ids[] = $w->getId();
-				$object["webpages"][$index] = array(
+				
+				$general_info = $w->getObject()->getArrayInfo();
+				
+				$info = array(
 					"ix" => $index,
-					"id" => $w->getId(),
-					"object_id" => $w->getObjectId(),
-					"ot_id" => $w->getObjectTypeId(),
-					"name" => $w->getObjectName(),
 					"description" => $w->getDescription(),
-					"url" => $w->getUrl(),
-					"updatedOn" => $w->getUpdatedOn() instanceof DateTimeValue ? ($w->getUpdatedOn()->isToday() ? format_time($w->getUpdatedOn()) : format_datetime($w->getUpdatedOn())) : '',
-					"updatedOn_today" => $w->getUpdatedOn() instanceof DateTimeValue ? $w->getUpdatedOn()->isToday() : 0,
-					"updatedBy" => $w->getUpdatedByDisplayName(),
-					"updatedById" => $w->getUpdatedById(),
+					"link_url" => $w->getUrl(),
 					"memPath" => json_encode($w->getMembersIdsToDisplayPath()),
 				);
+				$info = array_merge($info, $general_info);
+				
+				$object["webpages"][$index] = $info;
 				
 				foreach ($custom_properties as $cp) {
 					$object["webpages"][$index]['cp_'.$cp->getId()] = get_custom_property_value_for_listing($cp, $w);

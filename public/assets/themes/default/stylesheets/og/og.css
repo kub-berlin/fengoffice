@@ -154,6 +154,9 @@
 	/*background-image: url(../../images/16x16/mail_send.png) !important;*/
 	background-image: url(../../images/icons-feng-3/16x16/mail_send.png) !important;
 }
+.ico-mail-replied {
+	background-image: url(../../images/icons-feng-3/16x16/mail_replied.png) !important;
+}
 .ico-reply {
 	/*background-image: url(../../images/16x16/mail_reply.png) !important;*/
 	background-image: url(../../images/icons-feng-3/16x16/mail_reply.png) !important;
@@ -1584,6 +1587,23 @@ span.member-path span a:hover {
 	text-align: center;
 }
 
+.permission-form-container .permissions-title-row td, .root-permissions .permissions-title-row td {
+	vertical-align: middle;
+}
+.permission-form-container .permissions-title-row a, .root-permissions .permissions-title-row a {
+	font-size: 12px;
+}
+.permission-form-container .permissions-target-name, .root-permissions .permissions-target-name {
+	font-weight: bold;
+	font-size: 120%;
+	margin-bottom: 5px;
+	border-bottom: 2px solid #999;
+}
+.permission-form-container .permissions-checkall-row, .root-permissions .permissions-checkall-row {
+	border-bottom: 1px solid #888;
+}
+
+
 .simplemodal-overlay {
 	background-color: black;
 	opacity: 0.4;
@@ -1790,6 +1810,22 @@ a.underline {
 	margin-top: 3px;
 }
 
+.form-tab .custom-properties .cp-section {
+	float: left;
+	width: 49%;
+}
+.form-tab .custom-properties .cp-section label {
+	min-width: 110px;
+	width: 110px;
+}
+.form-tab .custom-properties .cp-section select, .form-tab .custom-properties .cp-section input {
+	max-width: 240px;
+}
+.form-tab .custom-properties .cp-section.cp-left {
+	border-right: 1px solid #ddd;
+	margin-right: 10px;
+}
+
 .custom-properties .multiple-list-custom-property {
 	float: left;
 	max-width: 250px;
@@ -1830,4 +1866,11 @@ a.underline {
 
 .x-layer.x-combo-list.custom-prop {
 	width: 298px !important;
+}
+
+.country-combo-container, .tz-combo-container {
+	float: left;
+}
+.dataBlock .country-combo-container select {
+	max-width:200px;
 }

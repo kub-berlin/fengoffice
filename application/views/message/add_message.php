@@ -76,9 +76,9 @@
 		<?php
 			$listeners = array('on_selection_change' => 'og.reload_subscribers("'.$genid.'",'.$object->manager()->getObjectTypeId().')');
 			if ($message->isNew()) {
-				render_member_selectors($message->manager()->getObjectTypeId(), $genid, null, array('select_current_context' => true, 'listeners' => $listeners), null, null, false);
+				render_member_selectors($message->manager()->getObjectTypeId(), $genid, null, array('select_current_context' => true, 'listeners' => $listeners, 'object' => $object), null, null, false);
 			} else {
-				render_member_selectors($message->manager()->getObjectTypeId(), $genid, $message->getMemberIds(), array('listeners' => $listeners), null, null, false);
+				render_member_selectors($message->manager()->getObjectTypeId(), $genid, $message->getMemberIds(), array('listeners' => $listeners, 'object' => $object), null, null, false);
 			} 
 		?>
 			</div>
@@ -119,7 +119,7 @@
 	            	height: '330px',
 	            	allowedContent: true,
 	            	resize_enabled: false,
-	            	//enterMode: CKEDITOR.ENTER_DIV,
+	            	enterMode: CKEDITOR.ENTER_BR,
 	            	shiftEnterMode: CKEDITOR.ENTER_BR,
 	            	disableNativeSpellChecker: false,
 	            	language: '<?php echo $loc ?>',
@@ -140,7 +140,8 @@
 	                                editor.resetDirty();
 	                        }
 	                    },
-	                removePlugins: 'magicline',
+					fillEmptyBlocks: false,
+					removePlugins: 'scayt,liststyle,magicline',
 	                entities_additional : '#336,#337,#368,#369,#124'
 	            });
 	

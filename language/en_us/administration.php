@@ -40,6 +40,8 @@
     'config category desc documents' => 'Manage file configurations.',
   	'config category name brand_colors' => 'Branding',
   	'config category desc brand_colors' => 'Configure system colors.',
+  	'config category name reports' => 'Reports',
+  	'config category desc reports' => 'Custom reports options.',
 	
 	//--------------------------------------------------
     // Validate Password
@@ -134,6 +136,7 @@
     'config option name check_spam_in_subject' => 'Check spam in subject',
   	'config option desc check_spam_in_subject' => 'Filter all the emails that contain the word "Spam" in the subject',
     'config option name show images in document notifications' => 'Attach images in document notifications',
+	'config option name notification_from_name' => 'From name',
     'config option desc show images in document notifications' => 'If the document is an image, it is attached in the content of the notification.',
     'config option name show company logo in notifications' => 'Attach company logo in notifications',
     'config option desc show company logo in notifications' => 'The company logo is attached in the content of the notification.',
@@ -170,6 +173,8 @@
     'config option desc block_login_after_x_tries' => 'If a user tries to login 5 times without success in the last 10 minutes, then the account will be blocked for 10 minutes.',
 	'config option name use_milestones' => 'Use milestones',
 	'config option desc use_milestones' => 'Enabling this option will allow to create milestones and associate tasks to them.',
+  	'config option name apply_milestone_subtasks' => 'Apply milestone to subtasks',
+  	'config option desc apply_milestone_subtasks' => 'If this option is enabled when editing a task, the option to apply milestone to subtasks will be selected by default.',
 	'config option name show_tab_icons' => 'Show tab icons',
 	'config option desc show_tab_icons' => 'Enabling this option will show each tab\'s icon.',
 	'config option name can_assign_tasks_to_companies' => 'Can assign tasks to companies',
@@ -872,6 +877,7 @@
   		'is required' => 'Is required',
   		'is multiple' => 'Multiple values',
   		'show in main tab' => 'Show in main tab',
+  		'show in lists' => 'Show in lists',
 		'numeric' => 'Numeric',
 		'boolean' => 'Boolean',
 		'list' => 'List',
@@ -918,6 +924,9 @@
 
   		'config category name mail module' => 'Email module',
   		'config category desc mail module' => 'General configurations of email module',
+  		
+  		'config category name timezones' => 'Time zones',
+  		'config category desc timezones' => 'General time zone settings',
 
   		'default value must be numeric' => 'Default value for {0} must be numeric.',
   		'default value must be date' => 'Default value for {0} must be a date.',
@@ -931,7 +940,26 @@
   		'dim assoc config desc allow_remove_from_property_member' => 'When auto-classification of {1} is enabled for {0} you can set if this classification can be removed or not.',
   		'dim assoc config name autoclassify_in_property_member' => 'Autoclassify in {1} when classifying in {0}',
   		'dim assoc config desc autoclassify_in_property_member' => 'Use this option if you want to pre-select the {1} of the selected {0} in the classification component.',
+
   		
+  		'config option name reports_inherit_company_address' => 'Inherit company address in contact custom reports',
+  		'config option desc reports_inherit_company_address' => 'When enabled if the contact has no address, the report will show the address of the associated company.',
+  		'config option name reports_inherit_company_phones' => 'Inherit company phone in contact custom reports',
+  		'config option desc reports_inherit_company_phones' => 'When enabled if the contact has no phone, the report will show the phone of the associated company.',
+  		
+  		
+  		'timezones' => 'Time zones',
+  		'timezones admin desc' => 'In this section you can define which time zones use daylight saving time.',
+  		'timezone' => 'Time zone',
+  		'timezone name' => 'Time zone name',
+  		'gmt offset' => 'GMT offset',
+  		'gmt dst offset' => 'DST offset',
+  		'using dst' => 'Using daylight saving time',
+  		'timezone options edited successfully' => 'Time zone options edited successfully',
+  		'default timezone' => 'Default timezone',
+  		'timezone options' => 'Time zone options',
+  		'in timezone' => 'For time zone',
+  		'original time' => 'Original time',
   ); // array
 
-?>
+

@@ -20,4 +20,6 @@
 	'field Objects body_html' => 'Html body',
 	'field Objects body_plain' => 'Plain Body',
 	'classify attachments' => 'Classify attachments',
+	'mail status col tooltip' => 'Shows if email has been replied or forwarded',
+	'classify only attachments' => 'Classify only attachments',
 );

@@ -78,6 +78,8 @@ ogTasksTask = function(){
 	this.canAddTimeslots = false;
 	
 	this.additional_data = {};
+	
+	this.custom_properties = {};
 }
 
 ogTasksTask.prototype.flatten = function(){
@@ -140,6 +142,8 @@ ogTasksTask.prototype.setFromTdata = function(tdata){
 	if (tdata.can_add_timeslots) this.canAddTimeslots = tdata.can_add_timeslots;
 	
 	if (tdata.additional_data) this.additional_data = tdata.additional_data;
+	
+	if (tdata.custom_properties) this.custom_properties = tdata.custom_properties;
 }
 
 ogTasksMilestone = function(id, title, dueDate, totalTasks, completedTasks, isInternal, isUrgent){

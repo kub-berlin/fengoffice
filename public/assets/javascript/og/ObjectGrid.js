@@ -41,10 +41,15 @@ og.ObjectGrid = function(config, ignore_context) {
 		});
 	}
 	
+	// filters
+	var filters = config.filters;
+	
+	this.needRefresh = false;
+	
 	
 	// FIELDS
 	this.fields = [
-		'id', 'object_id', 'type', 'ot_id', 'name', 'ix', 'isRead', 'memPath'
+		'id', 'object_id', 'type', 'ot_id', 'name', 'ix', 'isRead', 'memPath', 'type_controller'
 	];
 	
 	if (config.columns) {
@@ -92,28 +97,28 @@ og.ObjectGrid = function(config, ignore_context) {
 					this.lastOptions.params = this.baseParams;
 					this.lastOptions.params.count_results = 1;
 					
-					grid.reloadGridPagingToolbar(this.baseParams.url_controller, this.baseParams.url_action, grid_id);
-					
+					var h;
 					if (!config.fixed_height) {
 						var min_h = config.min_height | 245;
 						var max_h = config.max_height | 500;
-						var h = d[response_objects_root].length * 35 + 80;
+						h = (d[response_objects_root].length * 36) + 125;
 						if (h > max_h) h = max_h;
 						if (h < min_h) h = min_h;
 						
-						grid.setHeight(h);
-						
 					} else {
-						var h;
 						if (config.max_height) {
 							h = config.max_height;
 						} else {
 							h = grid.container.dom.offsetHeight;
 						}
-						grid.setHeight(h);
 					}
+					grid.setHeight(h);
 					
 					og.eventManager.fireEvent('after grid panel load', {man:grid, data:d});
+					
+					if (this.baseParams.url_controller && this.baseParams.url_action) {
+						grid.reloadGridPagingToolbar(this.baseParams.url_controller, this.baseParams.url_action, grid_id);
+					}
 				}
 				
 				og.eventManager.fireEvent('replace all empty breadcrumb', null);
@@ -145,31 +150,108 @@ og.ObjectGrid = function(config, ignore_context) {
 		}
 		return value;
 	}
+	
+	this.getSelectedIds = function() {
+		var ret = '';
+		var selections = this.getSelectionModel().getSelections();
+		for (var i=0; i < selections.length; i++) {
+			ret += (ret == "" ? "" : ",") + selections[i].data.object_id;
+		}
+		return ret;
+	}
+	
+	this.getFirstSelectedId = function() {
+		var selections = sm.getSelections();
+		if (selections.length <= 0) {
+			return '';
+		} else {
+			return selections[0].data.object_id;
+		}
+		return '';
+	}
 
-	var sm = new Ext.grid.RowSelectionModel();
-	var cm_info = [{
-    	id: 'icon',
-    	header: '&nbsp;',
-    	dataIndex: 'icon',
-    	width: 28,
-    	renderer: renderIcon,
-    	sortable: false,
-    	fixed:true,
-    	resizable: false,
-    	hideable:false,
-    	menuDisabled: true
-    },{
+	if (config.checkbox_sel_model) {
+		var sm = new Ext.grid.CheckboxSelectionModel();
+		sm.on('selectionchange', function() {
+			var selections = sm.getSelections();
+			var sel_count = sm.getCount();
+			
+			for (x in this.grid.tbar_items) {
+				var action = this.grid.tbar_items[x];
+				if (typeof(action) == 'object') {
+					// for actions that requires selected rows set if they are enabled or disabled
+					if (action.initialConfig.selection_dependant) {
+						if (sel_count == 0) {
+							// disable if there are no selections
+							action.setDisabled(true);
+						} else if (sel_count == 1) {
+							// enable all if there is only one row selected
+							action.setDisabled(false);
+						} else {
+							// if there are more than one rows selected, enable only the ones defined as multiple
+							action.setDisabled(!action.initialConfig.is_multiple);
+						}
+					}
+				}
+			}
+			
+		});
+		
+		var cm_info = [sm];
+		
+	} else {
+		var sm = new Ext.grid.RowSelectionModel();
+		var cm_info = [];
+	}
+	
+	
+	if (!config.no_icon_col) {
+		cm_info.push({
+	    	id: 'icon',
+	    	header: '&nbsp;',
+	    	dataIndex: 'icon',
+	    	width: 28,
+	    	renderer: renderIcon,
+	    	sortable: false,
+	    	fixed:true,
+	    	resizable: false,
+	    	hideable:false,
+	    	menuDisabled: true
+	    });
+	}
+	
+	if (config.columns) {
+		for (i=0; i<config.columns.length; i++) {
+			var col = config.columns[i];
+			if (col && !col.is_system && col.before_name) {
+				cm_info.push({
+					id: col.id ? col.id : col.name,
+			    	header: col.header ? col.header : lang(col.name),
+			    	dataIndex: col.dataIndex ? col.dataIndex : col.name,
+			    	width: col.width ? col.width : 100,
+			    	renderer: col.renderer ? col.renderer : og.clean,
+			    	sortable: col.sortable ? col.sortable : false,
+			    	fixed: col.fixed ? col.fixed : false,
+			    	align: col.align ? col.align : 'left',
+			    	resizable: col.resizable ? col.resizable : true,
+			    	menuDisabled: col.menuDisabled ? col.menuDisabled : false
+				});
+			}
+		}
+	}
+	
+	cm_info.push({
 		id: 'name',
 		header: lang("name"),
 		dataIndex: 'name',
     	width: 100,
 		renderer: config.nameRenderer ? config.nameRenderer : og.clean
-    }];
+    });
 	
 	if (config.columns) {
 		for (i=0; i<config.columns.length; i++) {
 			var col = config.columns[i];
-			if (col && !col.is_system) {
+			if (col && !col.is_system && !col.before_name) {
 				cm_info.push({
 					id: col.id ? col.id : col.name,
 			    	header: col.header ? col.header : lang(col.name),
@@ -190,7 +272,7 @@ og.ObjectGrid = function(config, ignore_context) {
 	for (i=0; i<cps.length; i++) {
 		cm_info.push({
 			id: 'cp_' + cps[i].id,
-			hidden: parseInt(cps[i].visible_def) == 0,
+			hidden: parseInt(cps[i].show_in_lists) == 0,
 			header: cps[i].name,
 			align: cps[i].cp_type=='numeric' ? 'right' : 'left',
 			dataIndex: 'cp_' + cps[i].id,
@@ -198,19 +280,22 @@ og.ObjectGrid = function(config, ignore_context) {
 			renderer: og.clean
 		});
 	}
-	// dimension columns
-	for (did in og.dimensions_info) {
-		if (isNaN(did)) continue;
-		var key = 'lp_dim_' + did + '_show_as_column';
-		if (og.preferences['listing_preferences'][key]) {
-			cm_info.push({
-				id: 'dim_' + did,
-				header: og.dimensions_info[did].name,
-				dataIndex: 'dim_' + did,
-				sortable: true,
-				renderer: og.renderDimCol
-			});
-			og.breadcrumbs_skipped_dimensions[did] = did;
+	
+	if (!config.skip_dimension_columns) {
+		// dimension columns
+		for (did in og.dimensions_info) {
+			if (isNaN(did)) continue;
+			var key = 'lp_dim_' + did + '_show_as_column';
+			if (og.preferences['listing_preferences'][key]) {
+				cm_info.push({
+					id: 'dim_' + did,
+					header: og.dimensions_info[did].name,
+					dataIndex: 'dim_' + did,
+					sortable: true,
+					renderer: og.renderDimCol
+				});
+				og.breadcrumbs_skipped_dimensions[did] = did;
+			}
 		}
 	}
 
@@ -218,12 +303,63 @@ og.ObjectGrid = function(config, ignore_context) {
     cm.defaultSortable = true;
     
     
+    // toolbar items
     var tbar = [];
     if (config.tbar_items) {
     	for (i=0; i<config.tbar_items.length; i++) {
-    		tbar.push(config.tbar_items[i]);
+    		if (!config.tbar_items[i].initialConfig || !config.tbar_items[i].initialConfig.secondToolbar) {
+    			tbar.push(config.tbar_items[i]);
+    		}
     	}
     }
+    
+    // toolbar filter items
+    if (config.filters) {
+    	for (var filter_name in config.filters) {
+    		var filter_data = config.filters[filter_name];
+    		if (!filter_data.secondToolbar) {
+    			
+	    		var items = og.buildToolbarFilterAction(filter_name, filter_data, grid_id);
+	    		
+	    		if (items.length > 0 && tbar.length == 0) {
+	    			tbar.push('&nbsp;'+lang('filters')+":");
+	    		}
+	    		for (var x=0; x<items.length; x++) {
+	    			tbar.push(items[x]);
+	    		}
+    		}
+    	}
+    }
+    
+    // second toolbar items
+    var tbar2 = [];
+    if (config.tbar_items) {
+    	for (i=0; i<config.tbar_items.length; i++) {
+    		if (config.tbar_items[i].initialConfig && config.tbar_items[i].initialConfig.secondToolbar) {
+    			tbar2.push(config.tbar_items[i]);
+    		}
+    	}
+    }
+    
+    // second toolbar filter items
+    if (config.filters) {
+    	for (var filter_name in config.filters) {
+    		var filter_data = config.filters[filter_name];
+    		if (filter_data.secondToolbar) {
+    			
+	    		var items = og.buildToolbarFilterAction(filter_name, filter_data, grid_id);
+	    		
+	    		if (items.length > 0 && tbar2.length == 0) {
+	    			tbar2.push('&nbsp;'+lang('filters')+":");
+	    		}
+	    		for (var x=0; x<items.length; x++) {
+	    			tbar2.push(items[x]);
+	    		}
+    		}
+    	}
+    }
+    
+    
 
     og.ObjectGrid.superclass.constructor.call(this, Ext.apply(config, {
         store: this.store,
@@ -245,10 +381,47 @@ og.ObjectGrid = function(config, ignore_context) {
         },
 		sm: sm,
 		tbar: tbar,
-		viewConfig: {
-			forceFit: true
-		},
 		listeners: {
+			'render': {
+				fn: function() {
+					this.innerMessage = document.createElement('div');
+					this.innerMessage.className = 'inner-message';
+					var msg = this.innerMessage;
+					var elem = Ext.get(this.getEl());
+					var scroller = elem.select('.x-grid3-scroller');
+					scroller.each(function() {
+						this.dom.appendChild(msg);
+					});
+					
+					// add the second toolbar
+					if (tbar2.length > 0) {
+						this.topTbar2 = new Ext.Toolbar({
+						    renderTo: this.tbar,
+						    items: tbar2,
+						});
+					}
+				},
+				scope: this
+			},
+			'resize': {
+				fn: function() {
+					if (!this.hidden) {
+						var v = this.getView();
+						if (v) {
+							// fit columns in the view
+							v.fitColumns();
+							// adjust containers width
+							$("#"+v.grid.id+" .x-grid3").css('width', '');
+							$("#"+v.grid.id+" .x-grid3 .x-grid3-header-inner").css('width', '');
+							$("#"+v.grid.id+" .x-grid3 .x-grid3-scroller").css('width', '');
+							// adjust panel height
+							var h = $("#"+v.grid.id).parent().height();
+							v.grid.setSize({height:h});
+						}
+					}
+				},
+				scope: this
+			},
 			'columnmove': {
 				fn: function(old_index, new_index) {
 					og.eventManager.fireEvent('replace all empty breadcrumb', null);
@@ -271,13 +444,37 @@ Ext.extend(og.ObjectGrid, Ext.grid.GridPanel, {
 			var start = 0;
 		}
 		
-		this.store.removeAll();
-		this.store.load({
-			params: Ext.apply(params, {
-				start: start,
-				limit: og.config['files_per_page']				
-			}),
-			callback: typeof(params.load_callback)=='function' ? params.load_callback : null
-		});
+		if (this.filters) {
+			for (var key in this.filters) {
+				var f_val = this.filters[key].value;
+				if (f_val) {
+					this.store.baseParams[key] = f_val;
+				} else if (this.store.baseParams[key]) {
+					delete this.store.baseParams[key];
+				}
+			}
+		}
+		
+		// don't make the request if panel is hidden
+		if (!this.hidden) {
+			this.store.removeAll();
+			this.store.load({
+				params: Ext.apply(params, {
+					start: start,
+					limit: og.config['files_per_page']
+				}),
+		//		callback: typeof(params.load_callback)=='function' ? params.load_callback : null
+			});
+		}
+	},
+	
+	activate: function() {
+		if (this.needRefresh) {
+			this.load({start:0});
+		}
+	},
+	
+	reset: function() {
+		this.load({start:0});
 	}
 });

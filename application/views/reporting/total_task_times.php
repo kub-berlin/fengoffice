@@ -100,23 +100,29 @@
 			echo "<td class='person'>" . clean($ts->getUser() instanceof Contact ? $ts->getUser()->getObjectName() : '') ."</td>";
 			
 			if (array_var($options, 'show_billing') == 'checked') {
+				$currency = Currencies::getCurrency($ts->getRateCurrencyId());
+				$c_symbol = $currency instanceof Currency ? $currency->getSymbol() : config_option('currency_code', '$');
+				
 				if($ts->getIsFixedBilling()){
-					echo "<td class='nobr right'>" . config_option('currency_code', '$') . " " . number_format($ts->getFixedBilling(), 2) . "</td>";
+					echo "<td class='nobr right'>" . $c_symbol . " " . number_format($ts->getFixedBilling(), 2) . "</td>";
 					$sub_total_billing += $ts->getFixedBilling();
 				}else{
 					$min = $ts->getMinutes();
-					echo "<td class='nobr right'>" . config_option('currency_code', '$') . " " . number_format(($ts->getHourlyBilling()/60) * $min, 2) . "</td>";
+					echo "<td class='nobr right'>" . $c_symbol . " " . number_format(($ts->getHourlyBilling()/60) * $min, 2) . "</td>";
 					$sub_total_billing += ($ts->getHourlyBilling()/60) * $min;
 				}
 			}
 			
 			if (array_var($options, 'show_cost') == 'checked') {
+				$currency = Currencies::getCurrency($ts->getColumnValue('cost_currency_id'));
+				$c_symbol = $currency instanceof Currency ? $currency->getSymbol() : config_option('currency_code', '$');
+				
 				if($ts->getColumnValue('is_fixed_cost')){
-					echo "<td class='nobr right' style='width:140px;'>" . config_option('currency_code', '$') . " " . number_format($ts->getColumnValue('fixed_cost'), 2) . "</td>";
+					echo "<td class='nobr right' style='width:140px;'>" . $c_symbol . " " . number_format($ts->getColumnValue('fixed_cost'), 2) . "</td>";
 					$sub_total_cost += $ts->getColumnValue('fixed_cost');
 				}else{
 					$min = $ts->getMinutes();
-					echo "<td class='nobr right' style='width:140px;'>" . config_option('currency_code', '$') . " " . number_format(($ts->getColumnValue('hourly_cost')/60) * $min, 2) . "</td>";
+					echo "<td class='nobr right' style='width:140px;'>" . $c_symbol . " " . number_format(($ts->getColumnValue('hourly_cost')/60) * $min, 2) . "</td>";
 					$sub_total_cost += ($ts->getColumnValue('hourly_cost')/60) * $min;
 				}
 			}
@@ -185,8 +191,8 @@
 	$date_format = user_config_option('date_format');
 
 	if (array_var($post, 'date_type') != 6) {
-		if ($start_time instanceof DateTimeValue) $start_time->advance(3600*logged_user()->getTimezone(), true);
-		if ($end_time instanceof DateTimeValue) $end_time->advance(3600*logged_user()->getTimezone(), true);
+		if ($start_time instanceof DateTimeValue) $start_time->advance(logged_user()->getUserTimezoneValue(), true);
+		if ($end_time instanceof DateTimeValue) $end_time->advance(logged_user()->getUserTimezoneValue(), true);
 	}
 	
 	if ($start_time instanceof DateTimeValue) { ?>

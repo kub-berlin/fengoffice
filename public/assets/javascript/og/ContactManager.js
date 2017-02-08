@@ -9,9 +9,9 @@ og.ContactManager = function() {
 	this.needRefresh = false;
 	
 	this.fields = [
-        'object_id', 'picture', 'type', 'ot_id', 'name', 'companyId', 'companyName', 'email', 'website', 'jobTitle', 'createdBy', 'createdById', 'createdOn', 'createdOn_today', 'role', 'tags',
-        'department', 'email2', 'email3', 'workWebsite', 'workAddress', 'workPhone1', 'workPhone2', 'jobTitle', 'birthday',
-        'homeWebsite', 'homeAddress', 'homePhone1', 'homePhone2', 'mobilePhone','wsIds','workspaceColors','updatedBy','updatedById', 'updatedOn', 'updatedOn_today', 'ix', 'memPath', 'userType', 'contacts', 'users'
+        'object_id', 'picture', 'type', 'ot_id', 'name', 'companyId', 'companyName', 'email', 'website', 'jobTitle', 'createdBy', 'createdById', 'dateCreated', 'dateCreated_today', 'role', 'tags',
+        'department', 'email2', 'email3', 'workWebsite', 'workAddress', 'workPhone1', 'workPhone2', 'jobTitle', 'birthday', 'postalAddress',
+        'homeWebsite', 'homeAddress', 'homePhone1', 'homePhone2', 'mobilePhone','wsIds','workspaceColors','updatedBy','updatedById', 'dateUpdated', 'dateUpdated_today', 'ix', 'memPath', 'userType', 'contacts', 'users'
     ];
 	var cps = og.custom_properties_by_type['contact'] ? og.custom_properties_by_type['contact'] : [];
    	var cp_names = [];
@@ -91,7 +91,7 @@ og.ContactManager = function() {
 	
     function renderContactName(value, p, r) {
 		if (isNaN(r.data.object_id)) {
-			return '<span class="bold" id="'+r.data.id+'">'+ (value ? og.clean(value) : '') +'</span>';
+			return '<span class="bold" id="'+r.data.object_id+'">'+ (value ? og.clean(value) : '') +'</span>';
 		}
     	var name = lang('n/a');
 		if (r.data.type == 'company'){
@@ -111,7 +111,10 @@ og.ContactManager = function() {
 			} //end else
 		}
 		mem_path = "";
-		var mpath = Ext.util.JSON.decode(r.data.memPath);
+		var mpath = null;
+		if (r.data.memPath) {
+			var mpath = Ext.util.JSON.decode(r.data.memPath);
+		}
 		if (mpath){ 
 			mem_path = "<div class='breadcrumb-container' style='display: inline-block;'>";
 			mem_path += og.getEmptyCrumbHtml(mpath, '.breadcrumb-container', og.breadcrumbs_skipped_dimensions);
@@ -159,10 +162,10 @@ og.ContactManager = function() {
 	
 		var now = new Date();
 		var dateString = '';
-		if (!r.data.updatedOn_today) {
+		if (!r.data.dateUpdated_today) {
 			return lang('last updated by on', userString, value);
 		} else {
-			return lang('last updated by at', userString, value);
+			return userString +", "+ value;
 		}
 	}
 	
@@ -174,10 +177,10 @@ og.ContactManager = function() {
 	
 		var now = new Date();
 		var dateString = '';
-		if (!r.data.createdOn_today) {
+		if (!r.data.dateCreated_today) {
 			return lang('last updated by on', userString, value);
 		} else {
-			return lang('last updated by at', userString, value);
+			return userString +", "+ value;
 		}
 	}
 	
@@ -245,7 +248,7 @@ og.ContactManager = function() {
 	//In case of being userts returns 2 and in case of being companies with contacts 3
 	function getSelectedIdsDeleteContacts() {
 		var selections = sm.getSelections();
-		if (selections.length <= 0) {
+		if (!selections || selections.length <= 0) {
 			return '';
 		} else {
 			var ret = '';
@@ -258,7 +261,8 @@ og.ContactManager = function() {
 						retString = "user";
 					}
 				}else{
-					if(selections[i].data.contacts.length < 1 && selections[i].data.users.length < 1){
+					if(selections[i].data.contacts && selections[i].data.contacts.length < 1 && 
+							selections[i].data.users && selections[i].data.users.length < 1){
 						ret += "," + selections[i].data.object_id;
 					}else{
 						retString = "company";
@@ -396,6 +400,13 @@ og.ContactManager = function() {
 			hidden: true,
 			renderer: og.clean
         },{
+			id: 'postalAddress',
+			header: lang("postalAddress"),
+			dataIndex: 'postalAddress',
+			width: 120,
+			hidden: true,
+			renderer: og.clean
+        },{
 			id: 'homeWebsite',
 			header: lang("homeWebsite"),
 			dataIndex: 'homeWebsite',
@@ -433,7 +444,7 @@ og.ContactManager = function() {
         },{
 			id: 'updated',
 			header: lang("last updated by"),
-			dataIndex: 'updatedOn',
+			dataIndex: 'dateUpdated',
 			width: 120,
 			hidden: true,
 			renderer: renderDateUpdated,
@@ -441,7 +452,7 @@ og.ContactManager = function() {
         },{
 			id: 'created',
 			header: lang("created by"),
-			dataIndex: 'createdOn',
+			dataIndex: 'dateCreated',
 			width: 120,
 			hidden: true,
 			renderer: renderDateCreated,
@@ -468,7 +479,7 @@ og.ContactManager = function() {
 	for (i=0; i<cps.length; i++) {
 		cm_info.push({
 			id: 'cp_' + cps[i].id,
-			hidden: parseInt(cps[i].visible_def) == 0,
+			hidden: parseInt(cps[i].show_in_lists) == 0,
 			header: cps[i].name,
 			align: cps[i].cp_type=='numeric' ? 'right' : 'left',
 			dataIndex: 'cp_' + cps[i].id,

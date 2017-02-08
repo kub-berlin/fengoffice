@@ -273,9 +273,9 @@ Hook::fire('object_edit_categories', $object, $categories);
 			<?php
 			$listeners = array('on_selection_change' => 'og.reload_subscribers("'.$genid.'",'.$object->manager()->getObjectTypeId().')'); 
 			if ($file->isNew()) {
-				render_member_selectors($file->manager()->getObjectTypeId(), $genid, null, array('select_current_context' => true, 'listeners' => $listeners), null, null, false);
+				render_member_selectors($file->manager()->getObjectTypeId(), $genid, null, array('select_current_context' => true, 'listeners' => $listeners, 'object' => $object), null, null, false);
 			} else {
-				render_member_selectors($file->manager()->getObjectTypeId(), $genid, $file->getMemberIds(), array('listeners' => $listeners), null, null, false);
+				render_member_selectors($file->manager()->getObjectTypeId(), $genid, $file->getMemberIds(), array('listeners' => $listeners, 'object' => $object), null, null, false);
 			} ?>
 			<?php if (!$file->isNew()) {?>
 				<div id="<?php echo $genid ?>addFileFilenameCheck" style="display: none">

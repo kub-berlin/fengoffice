@@ -8,7 +8,7 @@ og.WebpageManager = function() {
 	
 	this.fields = [
         'object_id','name', 'description',  'ot_id', 'url', 'updatedBy', 'updatedById',
-        'updatedOn', 'updatedOn_today', 'ix', 'isRead', 'memPath'
+        'dateUpdated', 'dateUpdated_today', 'ix', 'isRead', 'memPath', 'link_url'
     ];
 	var cps = og.custom_properties_by_type['weblink'] ? og.custom_properties_by_type['weblink'] : [];
    	var cp_names = [];
@@ -80,19 +80,19 @@ og.WebpageManager = function() {
 	
     function renderName(value, p, r) {
 		if (isNaN(r.data.object_id)) {
-			return '<span class="bold" id="'+r.data.id+'">'+ (value ? og.clean(value) : '') +'</span>';
+			return '<span class="bold" id="'+r.data.ix+'">'+ (value ? og.clean(value) : '') +'</span>';
 		}
-    	var classes = readClass + r.id;
+    	var classes = readClass + r.data.object_id;
 		if (!r.data.isRead) classes += " bold";
 		
 		var name = String.format(
 			'<a style="font-size:120%;" class="{3}" title="{2}" href="{1}" onclick="og.openLink(\'{1}\');return false;">{0}</a>',
-			og.clean(value), og.getUrl('webpage', 'view', {id: r.id}), lang('view weblink'), classes);
+			og.clean(value), og.getUrl('webpage', 'view', {id: r.data.object_id}), lang('view weblink'), classes);
 		
 		var actionStyle= ' style="color:#777777;padding-top:3px;padding-left:18px;background-repeat:no-repeat;background-position:0px 1px;" ';
 		
 		var actions = String.format('<a class="list-action ico-open-link" href="{0}" target="_blank" title="{1}" ' + actionStyle + '>&nbsp;</a>',
-			r.data.url.replace(/\"/g, escape("\"")).replace(/\'/g, escape("'")), lang('open link in new window', og.clean(value)));
+			r.data.link_url.replace(/\"/g, escape("\"")).replace(/\'/g, escape("'")), lang('open link in new window', og.clean(value)));
 		actions = '<span>' + actions + '</span>';
 			
 		var text = '';
@@ -138,10 +138,10 @@ og.WebpageManager = function() {
 
 		var now = new Date();
 		var dateString = '';
-		if (!r.data.updatedOn_today) {
+		if (!r.data.dateUpdated_today) {
 			return lang('last updated by on', userString, value);
 		} else {
-			return lang('last updated by at', userString, value);
+			return userString +", "+ value;
 		}
 	}
     
@@ -152,7 +152,7 @@ og.WebpageManager = function() {
 		} else {
 			var ret = '';
 			for (var i=0; i < selections.length; i++) {
-				ret += "," + selections[i].id;
+				ret += "," + selections[i].data.object_id;
 			}
 			og.lastSelectedRow.webpages = selections[selections.length-1].data.ix;
 			return ret.substring(1);
@@ -243,7 +243,7 @@ og.WebpageManager = function() {
         },{
         	id: 'updated',
 			header: lang("last updated by"),
-			dataIndex: 'updatedOn',
+			dataIndex: 'dateUpdated',
 			width: 90,
 			renderer: renderDateUpdated,
 			sortable: true
@@ -253,7 +253,7 @@ og.WebpageManager = function() {
 	for (i=0; i<cps.length; i++) {
 		cm_info.push({
 			id: 'cp_' + cps[i].id,
-			hidden: parseInt(cps[i].visible_def) == 0,
+			hidden: parseInt(cps[i].show_in_lists) == 0,
 			header: cps[i].name,
 			align: cps[i].cp_type=='numeric' ? 'right' : 'left',
 			dataIndex: 'cp_' + cps[i].id,

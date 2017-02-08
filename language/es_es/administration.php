@@ -21,6 +21,8 @@
 	'config category desc documents' => 'Configuraciones para documentos.',
   	'config category name brand_colors' => 'Colores',
   	'config category desc brand_colors' => 'Configuración de colores del sistema',
+  	'config category name reports' => 'Reportes',
+  	'config category desc reports' => 'Opciones de reportes personalizados.',
 	'config option name site_name' => 'Nombre del sitio',
 	'config option desc site_name' => 'Este valor va a ser desplegado como el nombre del sitio en la página Panel principal',
 	'config option name file_storage_adapter' => 'Almacenamiento de archivos',
@@ -85,6 +87,8 @@
 	'config option desc wysiwyg_projects' => 'Habilite esta opción para poder escribir las descripciones de sus Proyectos utilizando formato de texto enriquecido.',
 	'config option name use_milestones' => 'Utilizar hitos',
 	'config option desc use_milestones' => 'Habilitando esta opción se podrán crear hitos y asociar tareas a los mismos.',
+	'config option name apply_milestone_subtasks' => 'Aplicar hito a subtareas',
+	'config option desc apply_milestone_subtasks' => 'Si esta opción está habilitada, al editar una tarea la opción de aplicar hito a las subtareas estará selccionada.',
 	'config option name show_tab_icons' => 'Mostrar íconos de pestañas',
 	'config option desc show_tab_icons' => 'Habilitando esta opción se podrá ver el ícono de cada pestaña.',
 	'config option name let_users_create_objects_in_root' => 'Permitir crear objetos sin clasificarlos',
@@ -366,6 +370,7 @@
 	'file extension no allow' => 'Su Administrador no permite esta extensión de archivos. Por favor utilice otro formato.',
 	'file extension no allow classify' => 'No se pudo clasificar el adjunto \'{0}\'. Su Administrador no permite esta extensión de archivos.',
 	'config option name show images in document notifications' => 'Adjuntar imágenes al contenido de notificaciones',
+	'config option name notification_from_name' => 'Nombre del emisor',
 	'config option desc show images in document notifications' => 'Si el documento es una imagen se incluirá la misma en el contenido de la notificación.',
 	'config option name show company logo in notifications' => 'Adjuntar el logo de la organización al contenido de notificaciones',
     'config option desc show company logo in notifications' => 'Se incluirá el logo de la organización en el contenido de la notificación.',
@@ -637,6 +642,7 @@
 		'is required' => 'Es requerido',
 		'is multiple' => 'Es múltiple',
 		'show in main tab' => 'Mostrar en pestaña principal',
+		'show in lists' => 'Mostrar en listados',
 		'numeric' => 'Numérica',
 		'boolean' => 'Booleana',
 		'list' => 'Lista',
@@ -647,6 +653,9 @@
 
 		'config category name mail module' => 'Módulo de correos',
 	    'config category desc mail module' => 'Configuraciones generales del módulo de correos.',
+  		
+  		'config category name timezones' => 'Zonas horarias',
+  		'config category desc timezones' => 'Ajustes generales de zonas horarias',
 
   		'default value must be numeric' => 'El valor por defecto para {0} debe ser numérico.',
   		'default value must be date' => 'El valor por defecto para {0} debe ser una fecha.',
@@ -663,4 +672,23 @@
 		'dim assoc config desc autoclassify_in_property_member' => 'Utilice esta opción si desea pre-seleccionar el {1} del {0} seleccionado en los formularios de clasificación.',
 		
 		'config option name brand_colors_texture' => 'Utilizar textura en los colores',
-); ?>
+		
+		'config option name reports_inherit_company_address' => 'Heredar dirección de la empresa en reportes de contactos',
+		'config option desc reports_inherit_company_address' => 'Si el contacto no tiene dirección, el reporte mostrará la dirección de la empresa asociada al mismo.',
+		'config option name reports_inherit_company_phones' => 'Heredar teléfono de la empresa en reportes de contactos',
+		'config option desc reports_inherit_company_phones' => 'Si el contacto no tiene teléfono, el reporte mostrará el teléfono de la empresa asociada al mismo.',
+		
+
+		'timezones' => 'Zonas horarias',
+		'timezones admin desc' => 'En esta sección se pueden definir las zonas horarias que utilizan horario de verano.',
+		'timezone' => 'Zona horarias',
+		'timezone name' => 'Nombre de zona horaria',
+  		'gmt offset' => 'Diferencia GMT',
+  		'gmt dst offset' => 'Diferencia z. verano',
+		'using dst' => 'Utiliza hora de verano',
+  		'timezone options edited successfully' => 'Opciones de zonas horarias modificadas exitosamente',
+  		'default timezone' => 'Zona horaria por defecto',
+  		'timezone options' => 'Opciones de zonas horarias',
+  		'in timezone' => 'En zona horaria',
+  		'original time' => 'Hora original',
+);

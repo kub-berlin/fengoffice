@@ -340,6 +340,8 @@ class AdministrationController extends ApplicationController {
 			flash_success(lang('custom properties updated'));
 			ajx_current("back");
 			
+			evt_add("reload custom property definition", array('ot' => $object_type->getArrayInfo(array('id','name'))));
+			
 		  } catch (Exception $e) {
 			DB::rollback();
 			flash_error($e->getMessage());
@@ -669,7 +671,7 @@ class AdministrationController extends ApplicationController {
 						$this->parseTime($data['time'], $hour, $minute);
 						$date->add("m", $minute);
 						$date->add("h", $hour);
-						$date = new DateTimeValue($date->getTimestamp() - logged_user()->getTimezone() * 3600);
+						$date = new DateTimeValue($date->getTimestamp() - logged_user()->getUserTimezoneValue());
 						$event->setDate($date);
 					}
 					$delay = $data['delay'];
@@ -912,4 +914,69 @@ class AdministrationController extends ApplicationController {
 	
 	
 
+	
+
+
+	function timezones() {
+		if(!can_manage_configuration(logged_user())) {
+			flash_error(lang('no access permissions'));
+			ajx_current("empty");
+			return;
+		}
+		
+		$countries = Countries::getAll();
+		$grouped_time_zones = Timezones::getAllTimezonesGroupedByCountry();
+		
+		tpl_assign('countries', $countries);
+		tpl_assign('grouped_time_zones', $grouped_time_zones);
+	}
+	
+	
+	function timezones_submit() {
+		ajx_current("empty");
+		
+		$default_timezone = array_var($_REQUEST, 'default_timezone');
+		
+		$data = array_var($_REQUEST, 'timezones');
+		$with_dst = array();
+		$without_dst = array();
+		
+		foreach ($data as $zone_id => $options) {
+			$using_dst = array_var($options, 'using_dst');
+			if ($using_dst == 1) {
+				$with_dst[] = $zone_id;
+			} else {
+				$without_dst[] = $zone_id;
+			}
+		}
+		
+		try {
+			DB::beginWork();
+			
+			set_config_option('default_timezone', $default_timezone);
+			
+			if (count($with_dst) > 0) {
+				DB::execute("
+					UPDATE ".TABLE_PREFIX."timezones SET using_dst=1 WHERE id IN (".implode(',', $with_dst).");
+				");
+			}
+			
+			if (count($without_dst) > 0) {
+				DB::execute("
+					UPDATE ".TABLE_PREFIX."timezones SET using_dst=0 WHERE id IN (".implode(',', $without_dst).");
+				");
+			}
+			
+			DB::commit();
+
+			flash_success(lang('timezone options edited successfully'));
+			ajx_current("back");
+		
+		} catch (Exception $e) {
+			DB::rollback();
+			flash_error($e->getMessage());
+			ajx_current("empty");
+		}
+		
+	}
 } 

@@ -20,4 +20,6 @@
 	'field Objects body_plain' => 'Contenido texto plano',
 	'classify attachments' => 'Clasificar adjuntos',
 	'by subject or address' => 'Buscar por asunto o dirección',
+	'mail status col tooltip' => 'Muestra un ícono si el correo ha sido reenviado o respondido',
+	'classify only attachments' => 'Clasificar solo adjuntos',
 );

@@ -530,6 +530,9 @@ class Contact extends BaseContact {
 		if($address->getCity() != '') {
 			$out .= ' - ' . $address->getCity();
 		}
+		if($address->getZipCode() != '') {
+			$out .= ' - ' . $address->getZipCode();
+		}
 		if($address->getState() != '') {
 			$out .= ' - ' . $address->getState();
 		}
@@ -2060,6 +2063,29 @@ class Contact extends BaseContact {
 		} else {
 			return $this->setColumnValue('job_title', $value);
 		}
+	}
+	
+
+
+
+	function getUserTimezoneValue() {
+		return Timezones::getTimezoneOffset($this->getUserTimezoneId());
+	}
+	
+	function getUserTimezoneHoursOffset() {
+		$offset_seconds = Timezones::getTimezoneOffset($this->getUserTimezoneId());
+		$offset_hours = $offset_seconds / 3600;
+	
+		return $offset_hours;
+	}
+	
+	/**
+	 * Method overriden from BaseContact to calculate the timezone using 
+	 * the timezones table and not reading the attribute "timezone" of the contact
+	 */
+	function getTimezone() {
+		$offset_hours = $this->getUserTimezoneHoursOffset();
+		return $offset_hours;
 	}
 	
 }

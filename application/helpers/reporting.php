@@ -21,7 +21,8 @@ function report_values_to_arrays($results, $report) {
 	$columns = array_var($results, 'columns');
 	foreach ($columns['order'] as $col) {
 		if ($col == 'object_type_id' || $col == 'link') continue;
-		$headers[] = $columns['names'][$col];
+		$h = array_var($columns['names'], $col);
+		if ($h) $headers[] = $h;
 	}
 	
 	$all_report_rows = array();
@@ -65,7 +66,8 @@ function report_values_to_arrays_plain($results, $report, $with_header = true) {
 			if ($val_type == 'DATETIME') {
 				$formatted_val = $value;
 			} else {
-				$formatted_val = format_value_to_print($col, $value, $val_type, array_var($row, 'object_type_id'), '', $date_format);
+				$tz_offset = array_var($row, 'tz_offset');
+				$formatted_val = format_value_to_print($col, $value, $val_type, array_var($row, 'object_type_id'), '', $date_format, $tz_offset);
 			}
 			if ($formatted_val == '--') $formatted_val = "";
 				
@@ -75,6 +77,8 @@ function report_values_to_arrays_plain($results, $report, $with_header = true) {
 		}
 		
 		$all_data_rows[] = $values_array;
+		
+		Hook::fire('after_report_table_plain_row', array('row' => $row, 'report' => $report, 'results' => $results), $all_data_rows);
 	}
 	
 	$add_data_rows = array();
@@ -164,7 +168,8 @@ function report_table_html_plain($results, $report, $parametersUrl="", $to_print
 			$isAlt = !$isAlt;
 			$i = 0; 
 	?>
-		<tr<?php echo ($isAlt ? ' style="background-color:#F4F8F9"' : "");?>>
+	<tbody class="report-row-tbody <?php echo ($isAlt ? 'alt' : '')?>">
+		<tr>
 		<?php
 			foreach ($columns['order'] as $col) {
 				if ($col == 'object_type_id') continue;
@@ -180,7 +185,8 @@ function report_table_html_plain($results, $report, $parametersUrl="", $to_print
 				if ($val_type == 'DATETIME') {
 					echo $value;
 				} else {
-					echo format_value_to_print($col, $value, $val_type, array_var($row, 'object_type_id'), '', $date_format);
+					$tz_offset = array_var($row, 'tz_offset');
+					echo format_value_to_print($col, $value, $val_type, array_var($row, 'object_type_id'), '', $date_format, $tz_offset);
 				}
 		?>
 			</td>
@@ -189,6 +195,11 @@ function report_table_html_plain($results, $report, $parametersUrl="", $to_print
 			}
 		?>
 		</tr>
+		<?php
+			$null = null;
+			Hook::fire('after_report_table_html_row', array('row' => $row, 'report' => $report, 'results' => $results), $null);
+		?>
+	</tbody>
 	<?php 
 		} // end foreach rows
 		
@@ -211,7 +222,13 @@ function echo_report_group_html($group_data, $results, $report, $level=0) {
 	foreach ($group_data as $gd) {
 		
 		if ($i == 0) {
-			echo '<tr><th colspan="'.count($columns['order']).'" class="report-group-heading-'.$level.'">'.$gd['name'].'</th></tr>';
+			if (!$report->getColumnValue("hide_group_details")) {
+				echo '<tr><th colspan="'.count($columns['order']).'" class="report-group-heading-'.$level.'">'.$gd['name'].'</th></tr>';
+			} else {
+				// when hiding details dont show the title and show the totals before the subgroups
+				$null=null;
+				Hook::fire('render_additional_report_group_rows', array('results' => $results, 'report' => $report, 'group' => $gd, 'level' => $level), $null);
+			}
 		}
 		
 		$i++;
@@ -220,7 +237,8 @@ function echo_report_group_html($group_data, $results, $report, $level=0) {
 			
 			echo_report_group_html($gd['groups'], $results, $report, $level+1);
 			
-			if ($i == count($group_data)) {
+			if ($i == count($group_data) && !$report->getColumnValue("hide_group_details")) {
+				// when hiding details dont show the title and show the totals before the subgroups
 				$null=null;
 				Hook::fire('render_additional_report_group_rows', array('results' => $results, 'report' => $report, 'group' => $gd, 'level' => $level), $null);
 			}
@@ -249,15 +267,18 @@ function echo_report_group_html($group_data, $results, $report, $level=0) {
 						if ($col == 'object_type_id') continue;
 						
 						$value = array_var($row, $col);
+						$type = array_var($columns['types'], $col);
+						$numeric_type = in_array($type, array(DATA_TYPE_INTEGER, DATA_TYPE_FLOAT, 'numeric'));
 				?>
-					<td style="padding-right:10px;" <?php echo is_numeric($value) ? 'class="right"' : ''?>>
+					<td style="padding-right:10px;" <?php echo $numeric_type ? 'class="right"' : ''?>>
 				<?php 
 						$val_type = ($col == 'link' ? '' : array_var($types, $col));
 						$date_format = is_numeric($col) ? "Y-m-d" : user_config_option('date_format');
 						if ($val_type == 'DATETIME') {
 							echo $value;
 						} else {
-							echo format_value_to_print($col, $value, $val_type, array_var($row, 'object_type_id'), '', $date_format);
+							$tz_offset = array_var($row, 'tz_offset');
+							echo format_value_to_print($col, $value, $val_type, array_var($row, 'object_type_id'), '', $date_format, $tz_offset);
 						}
 				?>
 					</td>
@@ -270,8 +291,11 @@ function echo_report_group_html($group_data, $results, $report, $level=0) {
 				} // end foreach rows
 			}
 			
-			$null=null;
-			Hook::fire('render_additional_report_group_rows', array('results' => $results, 'report' => $report, 'group' => $gd, 'level' => $level), $null);
+			if (!$report->getColumnValue("hide_group_details")) {
+				// when hiding details dont show the title and show the totals before the subgroups
+				$null=null;
+				Hook::fire('render_additional_report_group_rows', array('results' => $results, 'report' => $report, 'group' => $gd, 'level' => $level), $null);
+			}
 				
 			?></tbody><?php
 		}
@@ -380,7 +404,8 @@ function get_report_grouped_values_as_array($group_data, $results, $report, $lev
 						if ($val_type == 'DATETIME') {
 							$formatted_val = $value;
 						} else {
-							$formatted_val = format_value_to_print($col, $value, $val_type, array_var($row, 'object_type_id'), '', $date_format);
+							$tz_offset = array_var($row, 'tz_offset');
+							$formatted_val = format_value_to_print($col, $value, $val_type, array_var($row, 'object_type_id'), '', $date_format, $tz_offset);
 						}
 
 						if ($formatted_val == '--') $formatted_val = "";
@@ -396,7 +421,9 @@ function get_report_grouped_values_as_array($group_data, $results, $report, $lev
 
 			$row_vals=null;
 			Hook::fire('get_additional_report_group_rows_csv', array('results' => $results, 'report' => $report, 'group' => $gd, 'level' => $level), $row_vals);
-			$all_rows = array_merge($all_rows, $row_vals);
+			if (is_array($row_vals)) {
+				$all_rows = array_merge($all_rows, $row_vals);
+			}
 
 		}
 	}
@@ -646,7 +673,7 @@ function custom_report_info_blocks($params) {
 
 
 
-function parse_custom_report_group_by($group_by) {
+function parse_custom_report_group_by($group_by, $group_by_options = array()) {
 	
 	$group_by_criterias = array();
 	
@@ -657,16 +684,21 @@ function parse_custom_report_group_by($group_by) {
 			$type = array_shift($exploded);
 			$id = implode('_', $exploded);
 			
+			$options = null;
+			if (is_array($group_by_options)) {
+				$options = array_var($group_by_options, $gb);
+			}
+			
 			switch ($type) {
-				case 'a': $group_by_criterias[] = array('type' => 'association', 'id' => $id);
+				case 'a': $group_by_criterias[] = array('type' => 'association', 'id' => $id, 'options' => $options);
 					break;
-				case 'cp': $group_by_criterias[] = array('type' => 'custom_property', 'id' => $id);
+				case 'cp': $group_by_criterias[] = array('type' => 'custom_property', 'id' => $id, 'options' => $options);
 					break;
-				case 'pm': $group_by_criterias[] = array('type' => 'parent_member', 'id' => $id);
+				case 'pm': $group_by_criterias[] = array('type' => 'parent_member', 'id' => $id, 'options' => $options);
 					break;
-				case 'dim': $group_by_criterias[] = array('type' => 'classification', 'id' => $id);
+				case 'dim': $group_by_criterias[] = array('type' => 'classification', 'id' => $id, 'options' => $options);
 					break;
-				case 'fp': $group_by_criterias[] = array('type' => 'fixed_property', 'id' => $id);
+				case 'fp': $group_by_criterias[] = array('type' => 'fixed_property', 'id' => $id, 'options' => $options);
 					break;
 				default:
 					break;
@@ -712,81 +744,113 @@ function build_report_conditions_sql($parameters) {
 			if ($model_instance) {
 				$col_type = $model_instance->getColumnType($condField->getFieldName());
 			}
-	
-			$allConditions .= ' AND ';
-			$dateFormat = 'm/d/Y';
-			if(isset($params[$condField->getId()])){
+			
+
+			if (isset($params[$condField->getId()])) {
 				$value = $params[$condField->getId()];
 				if ($col_type == DATA_TYPE_DATE || $col_type == DATA_TYPE_DATETIME) {
 					$dateFormat = user_config_option('date_format');
 				}
 				if ($value == date_format_tip($dateFormat)) $value = "";
-				
+					
 			} else {
 				$value = $condField->getValue();
+				$dateFormat = 'm/d/Y';
 			}
 			
-			if ($value == '' && $condField->getIsParametrizable()) $skip_condition = true;
-	
-			if (!$skip_condition) {
-				$field_name = $condField->getFieldName();
-					
-				if (in_array($ot->getType(), array('dimension_object', 'dimension_group'))) {
-					if (in_array($condField->getFieldName(), Members::getColumns())) {
-						$field_name = 'm`.`'.$condField->getFieldName();
-		
-					} else  if (in_array($condField->getFieldName(), Objects::getColumns())) {
-						$field_name = 'o`.`'.$condField->getFieldName();
-					}
-				} else {
-					if (in_array($condField->getFieldName(), Objects::getColumns())) {
-						$field_name = 'o`.`'.$condField->getFieldName();
-					} else {
-						$field_name = $condField->getFieldName();
-					}
-				}
+			$possible_columns = $model_instance->getColumns();
+			if (in_array($ot->getType(), array('dimension_object', 'dimension_group'))) {
+				$possible_columns = array_merge($possible_columns, Members::getColumns());
+			} else {
+				$possible_columns = array_merge($possible_columns, Objects::getColumns());
+			}
+			
+			if (in_array($condField->getFieldName(), $possible_columns)) {
 				
-				if($condField->getCondition() == 'like' || $condField->getCondition() == 'not like'){
-					$value = '%'.$value.'%';
-				}
-				if ($col_type == DATA_TYPE_DATE || $col_type == DATA_TYPE_DATETIME) {
-					if ($value == date_format_tip($dateFormat)) {
-						$value = EMPTY_DATE;
+				$allConditions .= ' AND ';
+				
+				if ($value == '' && $condField->getIsParametrizable()) $skip_condition = true;
+		
+				if (!$skip_condition) {
+					$field_name = $condField->getFieldName();
+						
+					if (in_array($ot->getType(), array('dimension_object', 'dimension_group'))) {
+						if (in_array($condField->getFieldName(), Members::getColumns())) {
+							$field_name = 'm`.`'.$condField->getFieldName();
+			
+						} else  if (in_array($condField->getFieldName(), Objects::getColumns())) {
+							$field_name = 'o`.`'.$condField->getFieldName();
+						}
 					} else {
-						Logger::log_r(array('f' => $dateFormat, 'v' => $value));
-						$dtValue = DateTimeValueLib::dateFromFormatAndString($dateFormat, $value);
-						$value = $dtValue->format('Y-m-d');
-					}
-				}
-				if($condField->getCondition() != '%'){
-					if ($col_type == DATA_TYPE_INTEGER || $col_type == DATA_TYPE_FLOAT) {
-						$allConditions .= '`'.$field_name.'` '.$condField->getCondition().' '.DB::escape($value);
-					} else {
-						if ($condField->getCondition()=='=' || $condField->getCondition()=='<=' || $condField->getCondition()=='>='){
-							if ($col_type == DATA_TYPE_DATETIME || $col_type == DATA_TYPE_DATE) {
-								$equal = 'datediff('.DB::escape($value).', `'.$field_name.'`)=0';
-							} else {
-								$equal = '`'.$field_name.'` '.$condField->getCondition().' '.DB::escape($value);
-							}
-							switch($condField->getCondition()){
-								case '=':
-									$allConditions .= $equal;
-									break;
-								case '<=':
-								case '>=':
-									$allConditions .= '(`'.$field_name.'` '.$condField->getCondition().' '.DB::escape($value).' OR '.$equal.') ';
-									break;
-							}
+						if (in_array($condField->getFieldName(), Objects::getColumns())) {
+							$field_name = 'o`.`'.$condField->getFieldName();
 						} else {
-							$allConditions .= '`'.$field_name.'` '.$condField->getCondition().' '.DB::escape($value);
+							$field_name = 'e`.`'.$condField->getFieldName();
 						}
 					}
-				} else {
-					$allConditions .= '`'.$field_name.'` like '.DB::escape("%$value");
-				}
-				
-			} else $allConditions .= ' true';
+					
+					if($condField->getCondition() == 'like' || $condField->getCondition() == 'not like'){
+						$value = '%'.$value.'%';
+					}
+					if ($col_type == DATA_TYPE_DATE || $col_type == DATA_TYPE_DATETIME) {
+						if ($value == date_format_tip($dateFormat)) {
+							$value = EMPTY_DATE;
+						} else {
+							$dtValue = DateTimeValueLib::dateFromFormatAndString($dateFormat, $value);
+							$value = $dtValue->format('Y-m-d');
+						}
+					}
+					if($condField->getCondition() != '%'){
+						if ($col_type == DATA_TYPE_INTEGER || $col_type == DATA_TYPE_FLOAT) {
+							$allConditions .= '`'.$field_name.'` '.$condField->getCondition().' '.DB::escape($value);
+						} else {
+							if ($condField->getCondition()=='=' || $condField->getCondition()=='<=' || $condField->getCondition()=='>='){
+								if ($col_type == DATA_TYPE_DATETIME || $col_type == DATA_TYPE_DATE) {
+									$equal = 'datediff('.DB::escape($value).', `'.$field_name.'`)=0';
+								} else {
+									$equal = '`'.$field_name.'` '.$condField->getCondition().' '.DB::escape($value);
+								}
+								switch($condField->getCondition()){
+									case '=':
+										$allConditions .= $equal;
+										break;
+									case '<=':
+									case '>=':
+										$allConditions .= '(`'.$field_name.'` '.$condField->getCondition().' '.DB::escape($value).' OR '.$equal.') ';
+										break;
+								}
+							} else {
+								$allConditions .= '`'.$field_name.'` '.$condField->getCondition().' '.DB::escape($value);
+							}
+						}
+					} else {
+						$allConditions .= '`'.$field_name.'` like '.DB::escape("%$value");
+					}
+					
+				} else $allConditions .= ' true';
 	
+			} else {
+				if ($model_instance instanceof Contacts) {
+					
+					$allConditions .= " AND ". Reports::get_extra_contact_column_condition($condField->getFieldName(), $condField->getCondition(), $value);
+				
+				} else if (Plugins::instance()->isActivePlugin('mail') && $model_instance instanceof MailContents) {
+					
+					if (in_array($condField->getFieldName(), array('to', 'cc', 'bcc', 'body_plain', 'body_html'))){
+						$pre = '';
+						$post = '';
+						$oper = $condField->getCondition();
+						if ($oper == '%') {
+							$oper = 'like';
+							$pre = '%';
+						} else if($oper == 'like' || $oper == 'not like') {
+							$pre = '%';
+							$post = '%';
+						}
+						$allConditions .= ' AND jt.`'.$condField->getFieldName().'` '.$oper.' '.DB::escape($pre. $value .$post);
+					}
+				}
+			}
 		}
 	}
 	

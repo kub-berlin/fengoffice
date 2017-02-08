@@ -89,3 +89,30 @@ UPDATE `<?php echo $table_prefix ?>contact_config_options`
 UPDATE `<?php echo $table_prefix ?>contact_config_options` 
  SET default_value = concat((SELECT `id` FROM `<?php echo $table_prefix ?>dimensions` WHERE `code`='workspaces'),',', (SELECT `id` FROM `<?php echo $table_prefix ?>dimensions` WHERE `code`='tags'),',',(default_value)) 
  WHERE name='add_timeslot_view_dimensions_combos';
+
+INSERT INTO `<?php echo $table_prefix ?>tab_panels` (`id`,`title`,`icon_cls`,`refresh_on_context_change`,`default_controller`,`default_action`,`initial_controller`,`initial_action`,`enabled`,`type`,`ordering`,`plugin_id`,`object_type_id`,`url_params`) VALUES
+ ('workspaces-panel', 'workspaces', 'ico-workspaces', 1, 'member', 'init', '', '', 0, 'system', 20, (SELECT `id` FROM `<?php echo $table_prefix ?>plugins` WHERE `name`='workspaces'), (SELECT id FROM <?php echo $table_prefix ?>object_types WHERE name='workspace'),
+	CONCAT('{"dim_id":',(SELECT `id` FROM `<?php echo $table_prefix ?>dimensions` WHERE `code`='workspaces'),', "type_id":',(SELECT id FROM <?php echo $table_prefix ?>object_types WHERE name='workspace'),'}') ),
+ ('tags-panel', 'tags', 'ico-tags', 1, 'member', 'init', '', '', 0, 'system', 20, (SELECT `id` FROM `<?php echo $table_prefix ?>plugins` WHERE `name`='workspaces'), (SELECT id FROM <?php echo $table_prefix ?>object_types WHERE name='tag'),
+	CONCAT('{"dim_id":',(SELECT `id` FROM `<?php echo $table_prefix ?>dimensions` WHERE `code`='tags'),', "type_id":',(SELECT id FROM <?php echo $table_prefix ?>object_types WHERE name='tag'),'}') )
+ON DUPLICATE KEY UPDATE id=id;
+
+INSERT INTO <?php echo $table_prefix ?>tab_panel_permissions (permission_group_id, tab_panel_id)
+ SELECT pg.id, 'workspaces-panel' FROM <?php echo $table_prefix ?>permission_groups pg WHERE pg.type='roles' AND pg.name IN ('Super Administrator','Administrator','Manager','Executive')
+ON DUPLICATE KEY UPDATE tab_panel_id=tab_panel_id;
+
+INSERT INTO <?php echo $table_prefix ?>tab_panel_permissions (permission_group_id, tab_panel_id)
+ SELECT pg.id, 'tags-panel' FROM <?php echo $table_prefix ?>permission_groups pg WHERE pg.type='roles' AND pg.name IN ('Super Administrator','Administrator','Manager','Executive')
+ON DUPLICATE KEY UPDATE tab_panel_id=tab_panel_id;
+
+INSERT INTO <?php echo $table_prefix ?>tab_panel_permissions (permission_group_id, tab_panel_id)
+ SELECT pg.id, 'workspaces-panel' FROM <?php echo $table_prefix ?>permission_groups pg WHERE pg.type='permission_groups' AND pg.contact_id IN (
+	SELECT c.object_id FROM <?php echo $table_prefix ?>contacts c WHERE c.user_type IN (SELECT pg.id FROM <?php echo $table_prefix ?>permission_groups pg WHERE pg.name IN ('Super Administrator','Administrator','Manager','Executive'))
+ )
+ON DUPLICATE KEY UPDATE tab_panel_id=tab_panel_id;
+
+INSERT INTO <?php echo $table_prefix ?>tab_panel_permissions (permission_group_id, tab_panel_id)
+ SELECT pg.id, 'tags-panel' FROM <?php echo $table_prefix ?>permission_groups pg WHERE pg.type='permission_groups' AND pg.contact_id IN (
+	SELECT c.object_id FROM <?php echo $table_prefix ?>contacts c WHERE c.user_type IN (SELECT pg.id FROM <?php echo $table_prefix ?>permission_groups pg WHERE pg.name IN ('Super Administrator','Administrator','Manager','Executive'))
+ )
+ON DUPLICATE KEY UPDATE tab_panel_id=tab_panel_id;

@@ -556,6 +556,10 @@ div.add-person-form div.field label.checkbox {
 	color: #003562;
 }
 
+.edit-form-tabs .ui-tabs-panel.ui-widget-content .breadcrumb-container a {
+	color: inherit;
+}
+
 .edit-form-tabs .editor-container {
 	
 }

@@ -29,6 +29,8 @@
 	    'can_manage_billing' => DATA_TYPE_BOOLEAN,
 	    'can_view_billing' => DATA_TYPE_BOOLEAN,
 	    'can_see_assigned_to_other_tasks' => DATA_TYPE_BOOLEAN,
+        'can_update_other_users_invitations' => DATA_TYPE_BOOLEAN,
+        'can_link_objects' => DATA_TYPE_BOOLEAN,
     );
   
     /**
@@ -53,7 +55,7 @@
     * @return array
     */
     function getColumns() {
-      return get_table_columns(self::instance()->getTableName());
+    	return array_keys(self::$columns);
     } // getColumns
     
     /**
