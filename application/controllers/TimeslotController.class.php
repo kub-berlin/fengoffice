@@ -122,15 +122,13 @@ class TimeslotController extends ApplicationController {
 			try{
 				DB::beginWork();
 				$timeslot->save();
-				/*	dont add timeslots to members, members are taken from the related object
-				 $object_controller = new ObjectController();
-				$object_controller->add_to_members($timeslot, $object->getMemberIds());
-				*/
-				
 
 				$task = ProjectTasks::findById($object_id);
 				if($task instanceof ProjectTask) {
-					$task->calculatePercentComplete();	
+					$task->calculatePercentComplete();
+					
+					$object_controller = new ObjectController();
+					$object_controller->add_to_members($timeslot, $task->getMemberIds());
 				}
 					
 				DB::commit();
@@ -442,6 +440,12 @@ class TimeslotController extends ApplicationController {
 				$task = ProjectTasks::findById($timeslot->getRelObjectId());
 				if($task instanceof ProjectTask) {
 					$task->calculatePercentComplete();
+				}
+				
+				$member_ids = json_decode(array_var($_POST, 'members'));
+				if (!is_null($member_ids)) {
+					$object_controller = new ObjectController();
+					$object_controller->add_to_members($timeslot, $member_ids);
 				}
 				
 				DB::commit();

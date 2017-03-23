@@ -14,6 +14,25 @@ og.eventManager.addListener('update email list', function (data) {
 	}
 });
 
+
+og.eventManager.addListener('mark mail as read', function(data){
+	var man = Ext.getCmp("mails-manager");
+	if (man) {
+		var store = man.getStore();
+		if (store) {
+			for (var k=0; k<store.data.items.length; k++) {
+				var r = store.data.items[k];
+				if (r.data.object_id == data.id) {
+					var record = store.getById(r.id);
+					record.data.isRead = true;
+					record.commit();
+					break;
+				}
+			}
+		}
+	}
+});
+
 og.mail = {};
 
 og.mail.signature_div_attributes = 'class="fengoffice_signature" contenteditable="false"';

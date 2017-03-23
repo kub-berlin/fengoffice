@@ -1,5 +1,5 @@
 
-	About Feng Office 3.5-alpha
+	About Feng Office 3.5-beta
 	================================
 	
 	Feng Office is a Collaboration Platform and Project Management System.
@@ -106,6 +106,12 @@
 	
 	Changelog
 	=========
+	
+	Since 3.5-alpha
+	----------------
+	feature: separate timeslots classification from its task
+	bugfix: click in mail subject, from, to and open link in new tab doesn't open the email.
+	bugfix: when downloading image it is an inline image of another document or an email attachment then check the permissions of the container doc or email.
 	
 	Since 3.4.4.X
 	----------------

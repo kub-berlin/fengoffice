@@ -3992,7 +3992,7 @@ og.get_dimension_member_association_by_id = function (dim_assoc_id) {
 			if (isNaN(ot)) continue;
 			for (i=0; i<assocs_by_ot[ot].length; i++) {
 				var a = assocs_by_ot[ot][i];
-				if (a.id == dim_assoc_id) {
+				if (!a.is_reverse && a.id == dim_assoc_id) {
 					return a;
 				}
 			}

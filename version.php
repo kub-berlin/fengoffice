@@ -12,6 +12,6 @@
   *
   * @author Ilija Studen <ilija.studen@gmail.com>
   */
-  return '3.5-alpha';
+  return '3.5-beta';
   
 ?>

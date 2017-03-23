@@ -426,7 +426,7 @@ class Timeslot extends BaseTimeslot {
 	 * Returns an array with the ids of the members that this object belongs to
 	 *
 	 */
-	function getMemberIds() {
+/*	function getMemberIds() {
 		
 		if (is_null($this->memberIds)) {
 			 $this->memberIds = ObjectMembers::getMemberIdsByObject($this->getRelObjectId() > 0 ? $this->getRelObjectId() : $this->getId());
@@ -435,18 +435,19 @@ class Timeslot extends BaseTimeslot {
 		
 		//return ObjectMembers::getMemberIdsByObject($this->getId());
 	}
-	
+	*/
 	
 	/**
 	 * Returns an array with the members that this object belongs to
 	 *
 	 */
-	function getMembers() {
+/*	function getMembers() {
 		if ( is_null($this->members) ) {
 			$this->members =  ObjectMembers::getMembersByObject($this->getRelObjectId() > 0 ? $this->getRelObjectId() : $this->getId());
 		}
 		return $this->members ;
 	}
+	*/
 } // Timeslot
 
 ?>

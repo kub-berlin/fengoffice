@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Paella upgrade script will upgrade FengOffice 3.4.4.52 to FengOffice 3.5-alpha
+ * Paella upgrade script will upgrade FengOffice 3.4.4.52 to FengOffice 3.5-beta
  *
  * @package ScriptUpgrader.scripts
  * @version 1.0
@@ -39,7 +39,7 @@ class PaellaUpgradeScript extends ScriptUpgraderScript {
 	function __construct(Output $output) {
 		parent::__construct($output);
 		$this->setVersionFrom('3.4.4.52');
-		$this->setVersionTo('3.5-alpha');
+		$this->setVersionTo('3.5-beta');
 	} // __construct
 
 	function getCheckIsWritable() {
@@ -112,6 +112,20 @@ class PaellaUpgradeScript extends ScriptUpgraderScript {
 			
 			$upgrade_script .= "
 				ALTER TABLE `".$t_prefix."tab_panels` ADD COLUMN `url_params` varchar(255) COLLATE 'utf8_unicode_ci' NOT NULL DEFAULT '';
+			";
+		}
+		
+		if (version_compare($installed_version, '3.5-beta') < 0) {
+			$upgrade_script .= "
+				insert into ".$t_prefix."object_members
+					select t.object_id, om.member_id, om.is_optimization from ".$t_prefix."timeslots t
+					inner join ".$t_prefix."object_members om on om.object_id=t.rel_object_id
+					where t.rel_object_id>0
+				on duplicate key update ".$t_prefix."object_members.object_id=".$t_prefix."object_members.object_id;
+			";
+			
+			$upgrade_script .= "
+				ALTER TABLE `".$t_prefix."config_options` ADD COLUMN `url_params` varchar(255) COLLATE 'utf8_unicode_ci' DEFAULT '';
 			";
 		}
 		

@@ -659,7 +659,8 @@ Ext.extend(og.MemberTree, Ext.tree.TreePanel, {
 	},
 	
 	init: function ( callback  ) {
-		/*new Ext.tree.TreeSorter(this, {
+		// ensure the correct member sort by name by using the accent replace function before the comparison
+		new Ext.tree.TreeSorter(this, {
 		    dir: "asc",
 		    property: "text",
 		    sortType: function(node) {
@@ -669,9 +670,9 @@ Ext.extend(og.MemberTree, Ext.tree.TreePanel, {
 		    		// let text start with last char in order to set this node as the last one
 		    		return last_char + last_char + last_char + node.text;
 		    	}
-		    	return node.text.toLowerCase();
+		    	return og.replaceStringAccents(node.text).toLowerCase();
 		    }
-		});*/
+		});
 		
 		switch (this.expandMode) {
 			case "all":

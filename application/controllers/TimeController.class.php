@@ -273,6 +273,12 @@ class TimeController extends ApplicationController {
 			if (!isset($member_ids) || !is_array($member_ids) || count($member_ids) == 0) {
 				$member_ids = json_decode(array_var($parameters, 'members'));
 			}
+			$additional_member_ids = array_var($timeslot_data, 'additional_member_ids');
+			if (is_array($additional_member_ids)) {
+				if (!is_array($member_ids)) $member_ids = array();
+				$member_ids = array_filter(array_merge($member_ids, $additional_member_ids));
+			}
+			
 			$object_controller = new ObjectController();
 			if (!is_null($member_ids)) {
 				$object_controller->add_to_members($timeslot, $member_ids);

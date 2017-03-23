@@ -167,6 +167,7 @@
 						'is_multiple' => $assoc->getIsMultiple(),
 						'keeps_record' => $assoc->getKeepsRecord(),
 						'allows_default_selection' => $assoc->getAllowsDefaultSelection(),
+						'is_reverse' => $dim->getId() != $assoc->getDimensionId(),
 						// load the configs only in one direction
 						'config' => $dim->getId() == $assoc->getDimensionId() ? $assoc->getConfig() : array(),
 					);

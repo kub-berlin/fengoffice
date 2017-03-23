@@ -56,10 +56,16 @@
 					<?php }?>
 				<?php } // foreach ?>
 			</div>
-			<?php echo submit_button(lang('save')) ?>&nbsp;<button class="submit" type="reset"><?php echo lang('reset') ?></button>
+			
 	<?php } else { ?>
 		<p><?php echo lang('config category is empty') ?></p>
 	<?php } // if ?>
+	
+	<?php $ret = null; Hook::fire('more_config_category_sections', array('category' => $category), $ret); ?>
+	
+	<?php if (is_array($options) && count($options)) { ?>
+	<?php 	echo submit_button(lang('save')) ?>&nbsp;<button class="submit" type="reset"><?php echo lang('reset') ?></button>
+	<?php } ?>
 	</div>
 </form>
 </div>

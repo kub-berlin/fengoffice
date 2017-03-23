@@ -72,6 +72,31 @@
 				<tr class="timeslot <?php echo $counter % 2 ? 'even' : 'odd'; echo $timeslot->isOpen() ? ' openTimeslot' : '' ?>" ><td></td>
 				<td colspan=6 style="color:#666666"><?php echo nl2br(clean($timeslot->getDescription())) ?></td></tr>
 			<?php } //if ?>
+			
+			<?php if (count($timeslot->getMemberIds())) { ?>
+				<tr class="timeslot <?php echo $counter % 2 ? 'even' : 'odd'; echo $timeslot->isOpen() ? ' openTimeslot' : '' ?>" >
+					<td></td>
+					<td colspan="6">
+						<div class='breadcrumb-container' style='max-width:800px; width:100%;' id="breadcrumb-container-<?php echo $random."-".$timeslot->getId()?>">
+							<script>
+							
+								var dim_mem_path = '<?php echo json_encode($timeslot->getMembersIdsToDisplayPath())?>';
+								var mpath = null;
+								if (dim_mem_path){
+									mpath = Ext.util.JSON.decode(dim_mem_path);
+								}
+								var mem_path = "";			
+								if (mpath){
+									mem_path = og.getEmptyCrumbHtml(mpath, '.breadcrumb-container');
+								}
+								$("#breadcrumb-container-<?php echo $random."-".$timeslot->getId() ?>").html(mem_path);
+							
+							</script>
+						</div>
+					</td>
+				</tr>
+			<?php } ?>
+			
 		<?php } //if 
 		} // foreach ?>
 		</table>
@@ -88,3 +113,14 @@
 	} // if
 	} // if ?>
 <br/>
+
+<script>
+$(function() {
+	// set max breadcrumb width
+	<?php foreach ($timeslots as $timeslot) { ?>
+		$("#breadcrumb-container-<?php echo $random."-".$timeslot->getId()?>").css('max-width', ($("#breadcrumb-container-<?php echo $random."-".$timeslot->getId()?>").parent().width()-10)+'px');
+	<?php } ?>
+	// draw breadcrumbs
+	og.eventManager.fireEvent('replace all empty breadcrumb', null);
+});
+</script>

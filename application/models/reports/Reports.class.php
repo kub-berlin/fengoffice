@@ -449,7 +449,9 @@ class Reports extends BaseReports {
 							} else {
 								$dimension = array_var($dimensions_cache, $dim_id);
 							}
-							$om_object_id = $object instanceof Timeslot ? $object->getRelObjectId() : $object->getId();
+							
+							//$om_object_id = $object instanceof Timeslot ? $object->getRelObjectId() : $object->getId();
+							$om_object_id = $object->getId();
 							$members = ObjectMembers::getMembersByObjectAndDimension($om_object_id, $dim_id, " AND om.is_optimization=0");
 							
 							$value = "";

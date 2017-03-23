@@ -130,7 +130,7 @@ og.MailManager = function() {
 		
 		var js = 'var r = og.MailManager.store.getById(\'' + r.id + '\'); r.data.isRead = true;og.openLink(\'{1}\');r.commit();og.eventManager.fireEvent(\'replace all empty breadcrumb\', null);return false;';
 		name = String.format(
-				'{4}<a style="font-size:120%;" class="{3}" href="#" onclick="' + js + '" title="{2}">{0}</a>',
+				'{4}<a style="font-size:120%;" class="{3}" href="{1}" onclick="' + js + '" title="{2}">{0}</a>',
 				subject + conv_str, og.getUrl('mail', strAction, {id: r.data.object_id}), og.clean(r.data.text),classes,strDraft);
 				
 		if (r.data.isSent) {
@@ -162,7 +162,7 @@ og.MailManager = function() {
 		
 		var js = 'var r = og.MailManager.store.getById(\'' + r.id + '\'); r.data.isRead = true;og.openLink(\'{1}\');r.commit();og.eventManager.fireEvent(\'replace all empty breadcrumb\', null);return false;';
 		name = String.format(
-				'<a style="font-size:120%;" class="{3}" href="#" onclick="' + js + '" title="{2}">{0}</a>',
+				'<a style="font-size:120%;" class="{3}" href="{1}" onclick="' + js + '" title="{2}">{0}</a>',
 				sender, og.getUrl('mail', strAction, {id: r.data.object_id}), title, classes);
 		return name;
 	}
@@ -214,9 +214,11 @@ og.MailManager = function() {
 		if (!r.data.isRead) classes += ' bold';
 		
 		var receiver = value && og.clean(value.trim()) || '<span class="italic">' + lang("no recipient") + '</span>';
+		
+		var js = 'var r = og.MailManager.store.getById(\'' + r.id + '\'); r.data.isRead = true;og.openLink(\'{1}\');r.commit();og.eventManager.fireEvent(\'replace all empty breadcrumb\', null);return false;';
 
 		name = String.format(
-				'<a style="font-size:120%;" class="{3}" href="#" onclick="og.openLink(\'{1}\');return false;" title="{2}">{0}</a>',
+				'<a style="font-size:120%;" class="{3}" href="{1}" onclick="'+ js +'" title="{2}">{0}</a>',
 				receiver, og.getUrl('mail', strAction, {id: r.data.object_id}), og.clean(value), classes);
 		return name;
 	}

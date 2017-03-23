@@ -1216,7 +1216,12 @@ class MailUtilities {
 								debug_log("    PEAR ERROR in imap->getSummary(numMessages). numMessages=$numMessages. errmsg: ".$server_max_summary->getMessage(), "checkmail_log.php");
 								Logger::log($server_max_summary->getMessage());
 							}else{
-								$server_max_uid = $server_max_summary[0]['UID'];
+								if ($server_max_summary) {
+									$server_max_uid = $server_max_summary[0]['UID'];
+								} else {
+									$is_last_mail_on_mail_server = false;
+									debug_log("    imap->getSummary(numMessages) NO ESTA EN EL SERVIDOR => pongo is_last_mail_on_mail_server=false", "checkmail_log.php");
+								}
 							}
 							debug_log("    summary of msg:$numMessages received", "checkmail_log.php");
 						} else {
@@ -1246,6 +1251,8 @@ class MailUtilities {
 									debug_log(print_r($server_uids_list, true), "checkmail_log.php");
 									if(count($server_uids_list)){
 										$lastReceived = $server_uids_list[0]["msg_id"];
+										// overwrite the numMessages variable with the last msg_id in server
+										$numMessages = $server_uids_list[count($server_uids_list)-1]["msg_id"];
 									}else{
 										// if there are no messages with uid > max_uid => dont download any messages from this folder, continue with next folder.
 										continue;
@@ -1253,6 +1260,7 @@ class MailUtilities {
 								}
 								$lastReceived = $lastReceived - 1;
 							}
+							debug_log("			max_uid=$max_uid - is_last_mail_on_server=$is_last_mail_on_mail_server - lastReceived=$lastReceived - numMessages=$numMessages", "checkmail_log.php");
 						}else{
 							//we don't have any mails on the system yet
 							$lastReceived = 0;
@@ -1278,6 +1286,7 @@ class MailUtilities {
 									continue;
 								}
 							}
+							debug_log("			max_uid es null - lastReceived=$lastReceived - numMessages=$numMessages", "checkmail_log.php");
 						}
 						debug_log("    lastReceived = $lastReceived", "checkmail_log.php");
 						
@@ -1304,6 +1313,8 @@ class MailUtilities {
 									//get the state (read/unread) from the server
 									if ($account->getGetReadStateFromServer() > 0 && $imap->isSeen($index)) $read = 1;
 									else $read = 0;
+									
+									debug_log("      getting email content index:$index - uid:".$summary[0]['UID'], "checkmail_log.php");
 									
 									$messages = $imap->getMessages($index);
 									if (PEAR::isError($messages)) {
@@ -1593,9 +1604,42 @@ class MailUtilities {
 		if ($stream !== FALSE) {
 			$ret = imap_append($stream, $connection, $content);
 			imap_close($stream);
-			debug_log("b) connection stream ok - imap_append returned ".($ret?"true":"false"), "sent_emails_sync.log");
+			debug_log("b) connection stream ok - imap_append returned $ret", "sent_emails_sync.log");
 		} else {
 			debug_log("b) no connection stream", "sent_emails_sync.log");
+		}
+	}
+	
+	
+	function appendMailThroughIMAP($account, $content) {
+		if ($account instanceof MailAccount && $account->getSyncFolder() && $content != "") {
+			
+			try{
+				if ($account->getIncomingSsl()) {
+					$imap = new Net_IMAP($ret, "ssl://" . $account->getServer(), $account->getIncomingSslPort());
+				} else {
+					$imap = new Net_IMAP($ret, "tcp://" . $account->getServer());
+				}
+				if (PEAR::isError($imap)) {
+					throw new Exception($ret->getMessage());
+				}
+				
+				$login_ret = $imap->login($account->getEmail(), $this->ENCRYPT_DECRYPT($account->getPassword()),null,false);
+				if (PEAR::isError($login_ret)) {
+					throw new Exception($login_ret->getMessage());
+				}
+				
+				$folder = $account->getSyncFolder();
+				
+				$result = $imap->appendMessage($content, $folder);
+				if (PEAR::isError($result)) {
+					throw new Exception($result->getMessage());
+				}
+				return true;
+				
+			} catch(Exception $e) {
+				Logger::log_r($e->getMessage()."\n".$e->getTraceAsString());
+			}
 		}
 	}
 	

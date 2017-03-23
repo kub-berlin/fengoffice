@@ -28,4 +28,7 @@
 	'the tags' => 'las etiquetas',
 	'workspace report' => 'Reporte de espacios de trabajo',
 	'tag report' => 'Reporte de etiquetas',
+
+	'system module workspaces-panel hint' => 'Ver el listado de espacios de trabajo en una pestaña separada.',
+	'system module tags-panel hint' => 'Ver el listado de etiquetas en una pestaña separada.',
 );

@@ -27,4 +27,7 @@
 	'the tags' => 'the tags',
 	'workspace report' => 'Workspaces report',
 	'tag report' => 'Tags report',
+
+	'system module workspaces-panel hint' => 'View the workspaces list in a separate tab.',
+	'system module tags-panel hint' => 'View the tags list in a separate tab.',
 );

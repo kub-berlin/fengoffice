@@ -90,6 +90,9 @@ class MailController extends ApplicationController {
 			ajx_current("empty");
 		}
 		
+		// mark mail as read in listing
+		evt_add('mark mail as read', array('id' => $original_mail->getId()));
+		
 		$def_acc = $this->getDefaultAccountId();
 		if ($def_acc > 0){
 			tpl_assign('default_account_replay', $def_acc);
@@ -940,6 +943,14 @@ class MailController extends ApplicationController {
 						
 						$sentOK = $utils->sendMail($account->getSmtpServer(), $to, $from, $subject, $body, $cc, $bcc, $attachments, $account->getSmtpPort(), $account->smtpUsername(), $account->smtpPassword(), $type, $account->getOutgoingTrasnportType(), $msg_id, $in_reply_to_id, $images, $complete_mail, $att_version);
 						$mail->orderConversation();
+						
+						// save the message_id in mail_content_imap_folders
+						DB::execute("
+							INSERT INTO ".TABLE_PREFIX."mail_content_imap_folders (account_id, message_id, folder, uid, object_id) VALUES
+								(".$mail->getAccountId().", ".DB::escape($msg_id).", '', ".DB::escape($mail->getUid()).", ".$mail->getId().")
+							ON DUPLICATE KEY UPDATE uid=".DB::escape($mail->getUid()).";
+						");
+						
 					} catch (Exception $e) {
 						// actions are taken below depending on the sentOK variable
 						Logger::log("Could not send email: ".$e->getMessage()."\nmail_id=".$mail->getId());
@@ -965,12 +976,20 @@ class MailController extends ApplicationController {
 						
 					if (defined('DEBUG') && DEBUG) file_put_contents(ROOT."/cache/log_mails.txt", gmdate("d-m-Y H:i:s") . " despues de enviar: ".$mail->getId() . "\n", FILE_APPEND);
 					
-					try {	
+					try {
+						
+						if ($sentOK && config_option("sent_mails_sync")) {
+							$mu = new MailUtilities();
+							$appended = $mu->appendMailThroughIMAP($account, $complete_mail);
+							debug_log("mail_id=".$mail->getId()." - appended=$appended", "sent_emails_sync.log");
+						}
+						/*
 						//if user selected the option to keep a copy of sent mails on the server						
 						if ($sentOK && config_option("sent_mails_sync") && $account->getSyncServer() != null && $account->getSyncSsl()!=null && $account->getSyncSslPort()!=null && $account->getSyncFolder()!=null && $account->getSyncAddr()!=null && $account->getSyncPass()!=null){							
 							$check_sync_box = MailUtilities::checkSyncMailbox($account->getSyncServer(), $account->getSyncSsl(), $account->getOutgoingTrasnportType(), $account->getSyncSslPort(), $account->getSyncFolder(), $account->getSyncAddr(), $account->getSyncPass());
 							if ($check_sync_box) MailUtilities::sendToServerThroughIMAP($account->getSyncServer(), $account->getSyncSsl(), $account->getOutgoingTrasnportType(), $account->getSyncSslPort(), $account->getSyncFolder(), $account->getSyncAddr(), $account->getSyncPass(), $complete_mail, $mail->getId());
 						}
+						*/
 					} catch (Exception $e) {
 						Logger::log("Could not save sent mail in server through imap: ".$e->getMessage()."\nmail_id=".$mail->getId());
 					}
@@ -1331,6 +1350,7 @@ class MailController extends ApplicationController {
 		if(!$email->getIsRead(logged_user()->getId())){
 			$object_controler = new ObjectController();
 			$object_controler->do_mark_as_read_unread_objects(array($email->getId()), true);
+			evt_add('mark mail as read', array('id' => $email->getId()));
 		}
 		ApplicationReadLogs::createLog($email, null , ApplicationReadLogs::ACTION_READ);
 	}
@@ -2628,6 +2648,9 @@ class MailController extends ApplicationController {
 			ajx_current("empty");
 		}
 		$mail_data = array_var($_POST, 'mail', null);
+		
+		// mark mail as read in listing
+		evt_add('mark mail as read', array('id' => $original_mail->getId()));
 
 		if(!is_array($mail_data)) {
 			$mail_data = MailUtilities::construct_mail_data_foward($original_mail);

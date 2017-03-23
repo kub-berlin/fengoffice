@@ -765,9 +765,11 @@ og.promptAddParameter = function(before, edit, pos) {
 	}
 	
 	var variable_types = [['string', lang('text')],['user', lang('user')],['date', lang('date')]];
-	for (var i=0; i<og.templates.more_var_types.length; i++) {
-		var t = og.templates.more_var_types[i];
-		variable_types.push([t, lang(t)]);
+	if (og.templates.more_var_types) {
+		for (var i=0; i<og.templates.more_var_types.length; i++) {
+			var t = og.templates.more_var_types[i];
+			variable_types.push([t, lang(t)]);
+		}
 	}
 	
 	var dialog_items = [

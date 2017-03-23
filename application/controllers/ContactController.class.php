@@ -745,7 +745,7 @@ class ContactController extends ApplicationController {
 						"picture" => $c->getPictureUrl(),
 						'email' => $c->getEmailAddress(),
 						'website' => $c->getWebpage('work') ? cleanUrl($c->getWebpageUrl('work'), false) : '',
-						'workPhone1' => $c->getPhone('work',true) ? $c->getPhoneNumber('work',true) : '',
+						'workPhone1' => $c->getPhone('work',true) ? $c->getPhoneNumber('work',true) : ($c->getPhone('work') ? $c->getPhoneNumber('work') : ''),
                         'workPhone2' => $c->getPhone('fax',true) ? $c->getPhoneNumber('fax',true) : '',
                         'workAddress' => $w_address ? $c->getFullAddress($w_address) : '',
 						"companyId" => $c->getId(),

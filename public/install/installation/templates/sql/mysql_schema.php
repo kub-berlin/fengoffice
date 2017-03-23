@@ -479,6 +479,8 @@ CREATE TABLE `<?php echo $table_prefix ?>config_options` (
   `is_system` tinyint(1) unsigned NOT NULL default '0',
   `option_order` smallint(5) unsigned NOT NULL default '0',
   `dev_comment` varchar(255) <?php echo $default_collation ?> default NULL,
+  `options` varchar(255) <?php echo $default_collation ?> default '',
+  `url_params` varchar(255) <?php echo $default_collation ?> default '',
   PRIMARY KEY  (`id`),
   UNIQUE KEY `name` (`name`),
   KEY `order` (`option_order`),
@@ -1043,6 +1045,7 @@ CREATE TABLE IF NOT EXISTS `<?php echo $table_prefix ?>tab_panels` (
   `ordering` int(10) NOT NULL,
   `plugin_id` int(10) unsigned NOT NULL default 0,
   `object_type_id` int(10) unsigned NOT NULL default 0,
+  `url_params` varchar(255) <?php echo $default_collation ?> default '',
   PRIMARY KEY (`id`),
   KEY `enabled` (`enabled`,`type`,`plugin_id`)
 ) ENGINE=<?php echo $engine ?> <?php echo $default_charset ?>;

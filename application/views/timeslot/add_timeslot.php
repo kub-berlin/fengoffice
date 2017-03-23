@@ -1,26 +1,39 @@
 <?php $genid = gen_id(); ?>
-
+<style>
+.timeslot .coInputMainBlock .dimension-selector-container label {
+	margin-right: 10px;
+	min-width: 0px;
+}
+.timeslot .left-section {
+	max-width:550px;
+}
+.timeslot .right-section {
+	margin-left: 5px;
+	margin-top: 7px;
+}
+</style>
 <form style="height:100%;background-color:white" class="internalForm" action="<?php echo $timeslot->getEditUrl() ?>" method="post">
 
 <div class="timeslot">
 <div class="coInputHeader">
 <div class="coInputHeaderUpperRow">
-	<div class="coInputTitle"><table style="width:535px"><tr><td><?php echo $timeslot->isNew() ? lang('new timeslot') : lang('edit timeslot') ?>
+	<div class="coInputTitle"><table style="width:1000px"><tr><td><?php echo $timeslot->isNew() ? lang('new timeslot') : lang('edit timeslot') ?>
 	</td><td style="text-align:right"><?php echo submit_button($timeslot->isNew() ? lang('add timeslot') : lang('save changes'),'s',array('style'=>'margin-top:0px;margin-left:10px', 'class'=>'blue')) ?></td></tr></table>
 	</div>
 	
 	</div>
 </div>
 
-<div class="coInputMainBlock">
 
+<div class="coInputMainBlock task-data">
+  <div class="left-section">
 	<table style="margin-top:10px;width:100%;">
 		<tr>
-		  <td style="width:200px">
+		  <td style="width:150px">
 			<span class="bold" style="vertical-align: top;"><?php echo lang('description') ?>:&nbsp;</span>
 		  </td>
 		  <td>
-			<?php echo textarea_field("timeslot[description]", array_var($timeslot_data, 'description'), array('class' => 'long', 'id' => 'addTimeslotDescription', 'style' => 'width:100%')) ?>
+			<?php echo textarea_field("timeslot[description]", array_var($timeslot_data, 'description'), array('class' => 'long', 'id' => 'addTimeslotDescription', 'style' => 'width:300px;')) ?>
 		  </td>
 		</tr>
 <?php
@@ -141,11 +154,26 @@
   	
   		$ret = null;
   		Hook::fire("edit_timeslot_form_additional_fields", $timeslot, $ret);
-  	
+  	//style="float:left; width:auto; margin:10px; padding-left:10px; border-left:1px dotted #ccc;"
   	?>
 	<div class="clear"></div>
+  </div>
+  <div class="right-section">
+  	<div class="dimension-selector-container">
+	<?php
+		$listeners = array('on_selection_change' => 'og.reload_subscribers("'.$genid.'",'.$timeslot->manager()->getObjectTypeId().')');
+		if ($timeslot->isNew()) {
+			render_member_selectors($timeslot->manager()->getObjectTypeId(), $genid, null, array('select_current_context' => true, 'listeners' => $listeners, 'object' => $timeslot), null, null, false);
+		} else {
+			render_member_selectors($timeslot->manager()->getObjectTypeId(), $genid, $timeslot->getMemberIds(), array('listeners' => $listeners, 'object' => $timeslot), null, null, false);
+		} 
+	?>
+	</div>
+  </div>
+  <div class="clear"></div>
     <?php echo submit_button($timeslot->isNew() ? lang('add timeslot') : lang('save changes'), 's', array('tabindex' => '80')); ?>
 </div>
 </div>
+
 
 </form>
