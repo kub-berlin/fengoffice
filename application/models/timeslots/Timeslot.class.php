@@ -333,6 +333,9 @@ class Timeslot extends BaseTimeslot {
 				}
 			}
 		}
+		DB::execute("UPDATE ".TABLE_PREFIX."timeslots 
+				SET worked_time=GREATEST(TIMESTAMPDIFF(MINUTE,start_time,end_time),0) - (subtract/60)
+				WHERE object_id=".$this->getId());
 		return $saved;
 	}
 

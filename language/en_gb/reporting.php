@@ -47,7 +47,7 @@
 	'field Objects contact_id' => 'Person',
 	'field Objects description' => 'Description',
 	'field Objects paused_on' => 'Paused on',
-	'field Objects subtract' => 'Subtract',
+	'field Objects subtract' => 'Paused time',
 	'field Objects fixed_billing' => 'Fixed billing',
 	'field Objects hourly_billing' => 'Hourly billing',
 	'field Objects is_fixed_billing' => 'Is fixed billing',

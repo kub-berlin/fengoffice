@@ -74,6 +74,8 @@ class TemplateController extends ApplicationController {
 				$propValueOperation = array_var($_POST, 'propValueOperation');
 				$propValueAmount = array_var($_POST, 'propValueAmount');
 				$propValueUnit = array_var($_POST, 'propValueUnit');
+				$propValueTime = array_var($_POST, 'propValueTime');
+				
 				if (is_array($objectPropertyValues)) {
 					foreach($objectPropertyValues as $objInfo => $propertyValues){
 						foreach($propertyValues as $property => $value){
@@ -94,6 +96,16 @@ class TemplateController extends ApplicationController {
 								$amount = $propValueAmount[$objInfo][$property];
 								$unit = $propValueUnit[$objInfo][$property];
 								$propValue = '{'.$param.'}'.$operation.$amount.$unit;
+								
+								if (isset($propValueTime[$objInfo])) {
+									$time = array_var($propValueTime[$objInfo], $property);
+									if ($param == 'task_creation' && config_option('use_time_in_task_dates')) {
+										$tval = getTimeValue($time);
+										if (is_array($tval)) {
+											$propValue .= "|".str_pad($tval['hours'], 2, '0', STR_PAD_LEFT).":".str_pad($tval['mins'], 2, '0', STR_PAD_LEFT);
+										}
+									}
+								}
 							}else{
 								if(is_array($value)){
 									$propValue = $value[0];
@@ -298,6 +310,8 @@ class TemplateController extends ApplicationController {
 				$propValueOperation = array_var($_POST, 'propValueOperation');
 				$propValueAmount = array_var($_POST, 'propValueAmount');
 				$propValueUnit = array_var($_POST, 'propValueUnit');
+				$propValueTime = array_var($_POST, 'propValueTime');
+				
 				if (is_array($objectPropertyValues)) {
 					foreach($objectPropertyValues as $objInfo => $propertyValues){
 						foreach($propertyValues as $property => $value){
@@ -316,6 +330,16 @@ class TemplateController extends ApplicationController {
 								$amount = array_var($propValueAmount[$objInfo], $property);
 								$unit = array_var($propValueUnit[$objInfo], $property);
 								$propValue = '{'.$param.'}'.$operation.$amount.$unit;
+								
+								if (isset($propValueTime[$objInfo])) {
+									$time = array_var($propValueTime[$objInfo], $property);
+									if ($param == 'task_creation' && config_option('use_time_in_task_dates')) {
+										$tval = getTimeValue($time);
+										if (is_array($tval)) {
+											$propValue .= "|".str_pad($tval['hours'], 2, '0', STR_PAD_LEFT).":".str_pad($tval['mins'], 2, '0', STR_PAD_LEFT);
+										}
+									}
+								}
 							}else{
 								if(is_array($value)){
 									$propValue = $value[0];
@@ -527,10 +551,7 @@ class TemplateController extends ApplicationController {
 			return;
 		}
 		
-		$instantiation_id = 0;
-		if (count($parameters) > 0 ) {
-			$instantiation_id = $this->save_instantiated_parameters($template, $parameters, $parameterValues);
-		}
+		$instantiation_id = $this->save_instantiated_parameters($template, $parameters, $parameterValues);
 		
 		if(array_var($_REQUEST, 'members') || array_var($arguments, 'members')){
 			$selected_members = array_var($arguments, 'members', json_decode(array_var($_REQUEST, 'members')));
@@ -646,7 +667,7 @@ class TemplateController extends ApplicationController {
 				$object_members[] = $object_member->getId();
 			}
 			
-			$controller->add_to_members($copy, $object_members);
+			$controller->add_to_members($copy, $object_members, null, false);
 			
 			// set property values as defined in template
 			instantiate_template_task_parameters($object, $copy, $parameterValues);
@@ -673,6 +694,27 @@ class TemplateController extends ApplicationController {
 
 		foreach ($copies as $c) {
 			if ($c instanceof ProjectTask) {
+				
+				// check permissions for the assigned user
+				$assigned = $c->getAssignedToContact();
+				if ($assigned instanceof Contact) {
+					$allowed_users = allowed_users_to_assign($c->getMembers(), true, false);
+					$allowed = false;
+					foreach ($allowed_users as $auser) {
+						if ($auser->getId() == $assigned->getId()) {
+							$allowed = true;
+							break;
+						}
+					}
+					if (!$allowed) {
+						$text = lang('couldnt assign user to task due to permissions', $assigned->getObjectName(), $c->getObjectName());
+						evt_add("popup", array('title' => lang('information'), 'message' => $text));
+						
+						$c->setAssignedToContactId(0);
+						$c->save();
+					}
+				}
+				
 				if ($c->getMilestoneId() > 0) {
 					// find milestone in copies
 					foreach ($copies as $m) {
@@ -725,6 +767,9 @@ class TemplateController extends ApplicationController {
 			if ($c instanceof ProjectTask) {
 				ApplicationLogs::createLog($c, ApplicationLogs::ACTION_ADD);
 			}
+			
+			$ret = null;
+			Hook::fire('after_template_object_instantiation_and_commit', array('template' => $template, 'object' => $c), $ret);
 		}
 		
 		if (is_array($parameters) && count($parameters) > 0){

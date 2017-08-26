@@ -98,16 +98,12 @@ $(document).ready(function() {
 	
 	og.is_new_contact = <?php echo $new_contact ? 'true' : 'false'?>;
 	
-	og.addressCount = 0;
 	og.address_types = Ext.util.JSON.decode('<?php echo json_encode($all_address_types)?>');
 
-	og.webpageCount = 0;
 	og.webpage_types = Ext.util.JSON.decode('<?php echo json_encode($all_webpage_types)?>');
 
-	og.emailCount = 0;
 	og.email_types = Ext.util.JSON.decode('<?php echo json_encode($all_email_types)?>');
 	
-	og.telephoneCount = 0;
 	og.telephone_types = Ext.util.JSON.decode('<?php echo json_encode($all_telephone_types)?>');
 
 	if (!og.is_new_contact) {

@@ -39,11 +39,8 @@ sig.actualHtmlSignature = '';
 <form style="height:100%;background-color:white;" id="<?php echo $genid ?>form" name="frmMail"  class="internalForm" action="<?php echo $mail->getSendMailUrl()?>" method="post"  onsubmit="return og.checkFrom() && og.mailSetBody('<?php echo $genid ?>')">
 <input type="hidden" name="instanceName" value="<?php echo $genid?>" />
 <input type="hidden" name="mail[body]" value="" />
-<input type="hidden" name="mail[sendBtnClick]" id="<?php echo $genid ?>sendBtnClick" value="false" />
-<input type="hidden" name="mail[isDraft]" id="<?php echo $genid ?>isDraft" value="true" />
 <input type="hidden" name="mail[id]" id="<?php echo $genid ?>id" value="<?php echo  array_var($mail_data, 'id') ?>" />
 <input type="hidden" name="mail[hf_id]" id="<?php echo $genid ?>hf_id" value="<?php echo $genid ?>id" />
-<input type="hidden" name="mail[isUpload]" id="<?php echo $genid ?>isUpload" value="false" />
 <input type="hidden" name="mail[autosave]" id="<?php echo $genid ?>autosave" value="false" />
 <input type="hidden" name="mail[link_to_objects]" id="<?php echo $genid ?>link_to_objects" value="<?php echo $link_to_objects?>" />
 
@@ -105,7 +102,7 @@ sig.actualHtmlSignature = '';
   			array('id'=>'sendMail','onclick'=>"return og.checkAttach();"))?>
   		</td><td>
   			<?php echo submit_button(lang('save')." ".lang('draft'), '', 
-  			array('id'=>'saveMail','onclick'=>"og.setHfValue('$genid', 'isDraft', 'true');og.stopAutosave('$genid');")) ?>
+  			array('id'=>'saveMail','onclick'=>"og.saveDraftEmail('$genid');og.stopAutosave('$genid');")) ?>
   		</td><td>
   			<?php
   			$strDisabled = "";//array_var($mail_data, 'id') == ''?'disabled':'';
@@ -201,7 +198,7 @@ sig.actualHtmlSignature = '';
 	<div id="add_mail_attachments" style="display:none;">
  	<fieldset>
  	    <legend><?php echo lang('mail attachments')?></legend>
- 	    <div id="<?php echo $genid ?>attachments" style="max-height: 60px; max-width: 550px; margin-bottom:5px;"></div>
+ 	    <div id="<?php echo $genid ?>attachments" style="max-height: 60px; max-width: 550px; margin-bottom:5px; overflow:auto;"></div>
  	<a href="#" onclick="og.attachFromWorkspace('<?php echo $genid ?>')">
  		<?php  echo lang('attach from fengoffice') ?>		
  	</a>
@@ -321,7 +318,7 @@ var editor = CKEDITOR.replace(genid+'ckeditor', {
 	enterMode: CKEDITOR.ENTER_BR,
 	shiftEnterMode: CKEDITOR.ENTER_BR,
 	disableNativeSpellChecker: false,
-	resize_enabled: false, //this causes a bug when pasting info into Google Chrome and other browsers 
+	resize_enabled: false, //this causes a bug when pasting info into Google Chrome and other browsers
 	customConfig: '',
 	contentsCss: og.getUrl('mail', 'get_mail_css'),
 	language: '<?php echo $loc ?>',
@@ -371,7 +368,7 @@ var editor = CKEDITOR.replace(genid+'ckeditor', {
 		}
 	},
 	fillEmptyBlocks: false,
-	removePlugins: 'scayt,liststyle,magicline',
+	removePlugins: 'scayt,liststyle,magicline,contextmenu,tabletools',
 	entities_additional : '#39,#336,#337,#368,#369'
 });
 } catch (e) {
@@ -445,6 +442,17 @@ Ext.onReady(function() {
 	});
 });
 
+og.saveDraftEmail = function(genid){
+	var prev_action = document.frmMail.action;
+	document.frmMail.action = og.getUrl('mail', 'save_draft', {ajax:'true'});
+
+	var form = document.getElementById(genid + 'form');
+	if (form) form.onsubmit();
+
+	document.frmMail.action = prev_action;
+};
+
+
 og.checkAttach = function() {
 	var attach = $("#<?php echo $genid;?>attachments").children().length;
 	var editor = og.getCkEditorInstance(genid + 'ckeditor');	
@@ -455,18 +463,12 @@ og.checkAttach = function() {
 	if(config && !attach && ((text.indexOf(lang('attach')) !== -1 && (text.indexOf(lang('attach')) < originalMail || originalMail == -1)) || (text.indexOf(lang('attach')) !== -1 && (text.indexOf(lang('attach')) < originalMail || originalMail == -1)))){
 		var conf = confirm(lang("confirm_mail_without_attach"));
 		if (conf==true){
-			og.setHfValue('<?php echo $genid;?>', 'sendBtnClick', 'true');	
-			og.setHfValue('<?php echo $genid;?>', 'isDraft', 'false');
 			og.stopAutosave('<?php echo $genid;?>');
 			return true;
 		}else{
-			og.setHfValue('<?php echo $genid;?>', 'sendBtnClick', 'false');	
-			og.setHfValue('<?php echo $genid;?>', 'isDraft', 'false');
 			return false;
 		}
 	}else{
-		og.setHfValue('<?php echo $genid;?>', 'sendBtnClick', 'true');	
-		og.setHfValue('<?php echo $genid;?>', 'isDraft', 'false');
 		og.stopAutosave('<?php echo $genid;?>');
 		return true;
 	}

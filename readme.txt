@@ -1,5 +1,5 @@
 
-	About Feng Office 3.5-beta
+	About Feng Office 3.5.0.9
 	================================
 	
 	Feng Office is a Collaboration Platform and Project Management System.
@@ -107,6 +107,83 @@
 	Changelog
 	=========
 	
+	Since 3.5.0.8
+	----------------
+	feature: advanced reports: new condition type to check the availability of users in contact custom reports.
+	feature: advanced reports: grouped timeslots report.
+	feature: advanced services: render time amount config options as hour:minutes.
+	feature: templates: add fixed time when assigning vairable "date of task creation".
+	bugfix: advanced billing categories list does not filter by context.
+	bugfix: template tasks does not copy the repetition options added in plugins to instantiated tasks.
+	bugfix: repetitive tasks generated from templates are not chained correctly with the rest of the repetitions of the same instantiation.
+	
+	
+	Since 3.5.0.7
+	----------------
+	bugfix: prevent use of browser cache when downloading files.
+	bugfix: when completing a task and the wokflow changes the project/client status the member status history is not saved.
+	
+	Since 3.5.0.6
+	----------------
+	bugfix: phone number form component shares variable with other phone components and causes malfunction when adding new phones in contacts.
+	bugfix: breadcrumbs displayed near name on object lists.
+	bugfix: assigned to logged user by default when creating task from email.
+	bugfix: when editing timeslot starting at 12:00 am and depending in the timezone of the user, sometimes it adds 24 hours.
+	feature: user preference to show the inactive users or not in the contacts list.
+
+	
+	Since 3.5.0.5
+	----------------
+	bugfix: permissions error when trying to view a document associated to an email.
+	bugfix: when instantiating templates the permissions are not checked for the assigned person.
+	
+	Since 3.5.0.4
+    ----------------
+	bugfix: general search is checking permissions for super administrators.
+    bugfix: when trying to complete task with uncompleted dependencies the notification is sent anyways.
+    bugfix: object picker filters after removing the filter (continues to use the active context)
+    bugfix: currency in total tasks time time report not correct
+    feature: add invoice description to the preview.
+    feature: mail account option to specify if the ssl certificate has to be validated
+	feature: pear/net/socket connection function updated to use stream_socket_client() if needed
+
+	Since 3.5.0.3
+    ----------------
+    bugfix: list custom property values are not shown in object view.
+    bugfix: custom properties config to hide in listings is not working. 
+	bugfix: Contact report mysql error when filtering by phone or webpage
+	
+	Since 3.5.0.2
+	----------------
+	bugfix: don't check permissions when auto classifying instantaited tasks from templates
+	feature: in timeslot form optional start time field
+	feature: modal form to add worked hours in tasks
+	featere: config option to choose if show the name or picture of the assigned person
+	
+	Since 3.5.0.1
+	----------------
+	bugfix: template instantiation, text in variable property editor is always instantiated in lowercase
+	bugfix: when tying to classify in a member where you don't have permissions the system doesn't tell you that the object was not classfied.
+	bugfix: when you press 'check mail' it tells you an email has been received but it doesn't show up in your mailbox. You have to refresh the mailbox.
+	
+	Since 3.5.0.0
+	----------------
+	bugfix: disabling clients and projects lists deactivates the plugin
+	bugfix: mime parser does not parse correclty pdf sent as application/octet-stream
+
+	Since 3.5-beta
+    ----------------
+	bugfix: ensure that the last_uid_in_folder is updated correctly always.
+	bugfix: spellcheck on mail ckeditor.
+	bugfix: mail paging toolbar is disabled after search.
+	bugfix: js error when custom dimension names have single quotes.
+	bugfix: template tasks instantiation: conditional tasks with subtasks does not create the subtasks correctly.
+	bugfix: when email attachments are parsed as "Related" they are not included when forwarding.
+	bugfix: when email is classified only in dimensions that doesn't define permissions and user is not the mail account owner, the email cannot be reclassified.
+	bugfix: object_id is not saved in sent_notifications table.
+	feature: advanced services: config option to check the minimum percentage of the work shift that must be worked to allow night hours classification
+	feature: advanced services: work shift break configuration and usage when calculating automatic timeslots.
+
 	Since 3.5-alpha
 	----------------
 	feature: separate timeslots classification from its task
@@ -118,11 +195,107 @@
 	feature: advanced reports allow to include comments below each object line.
 	feature: member relations history, tab in edition and widget.
 	feature: put client/project/workspaces/tags lists in a fixed tab.
+	feature: separate timeslots classification from its task.
+	feature: timeslot custom reports new column "paused time".
+	feature: group reports by date does: put the dates of the same day in the same group
+	feature: advanced services: repetitive tasks by fixed days
+	feature: advanced services: generate first repetitive instnaces when creating a repetitive task.
+	feature: advanced services: config option to define the minimum amount of night hours to classify the timeslots
+	feature: advanced services: night hours administration section, work shifts administration section, contact work shifts assignation
+	feature: advanced services: new member type - station in crpm dim.
+	feature: advanced services: allow custom reports to group by hour types and service types and show these dims as columns
+	feature: advanced services: automatic split of timeslots by hour types.
+	feature: advanced services: config options for normal, extra and holiday hours
+	feature: advanced billing: allow to specify more than one member for each billing category dimensions.
+	feature: advanced billing: modifications for timeslot reports and generation.
+	feature: advanced billing: billing cat with conflict timeslots in a separate section and allow to make custom reports.
+	feature: custom report groups ordered alphabetically
+	feature: set color to mails panel filter buttons when filtering mail listing.
+	feature: set color to current mail folder in mail listing.
+	feature: adv. mail: allow to select more than one account in the mail account filter menu.
+	feature: add/edit timeslot reports: separate task and timeslot columns
+	feature: css improved in grouped reports
+	feature: new redundant column "worked_time" in timeslots
+	feature: config handler to select members
+	feature: marketing channels dimension.
+	feature: config option to allow or not multiple lines in invoice line description.
+	
+	language: nl_nl fixed for "first name" and "surname".
+	language: missing langs in tickets module.
 	
 	bugfix: when email type is text/calendar the ical file is not parsed.
 	bugfix: editors line breaks fixed.
 	bugfix: reload all tasks modified when editing a task and affecting other instantiated repetitions.
-
+	bugfix: member listing group by "located under" column fixed
+	bugfix: sometimes associated member selectors are filtered by current context.
+	bugfix: timeslot reports replicates task columns.
+	bugfix: reporting timeslots - if ts has no name or desc, use associated task name
+	bugfix: reporting - group by three criterias, in the third sometimes generates separated groups for timeslots in the same group.
+	bugfix: sometimes click on email opens it in a new tab.
+	bugfix: contacts search does not find if searching by name and surname together
+	bugfix: click in mail subject, from, to and open link in new tab doesn't open the email
+	bugfix: in gantt if a task is in more than one group it is displayed only once
+	
+	
+	Since 3.4.4.63
+	----------------
+	bugfix: mail rules that forward text mails does the forwarding as html.
+	
+	Since 3.4.4.62
+	----------------
+	bugfix: sent emails imap synchronization fixed.
+	
+	Since 3.4.4.61
+	----------------
+	bugfix: gantt task dependencies not rendered.
+	bugfix: ensure that the last_uid_in_folder is updated correctly always
+	bugfix: delete mails from server fixes.
+	
+	Since 3.4.4.60
+	----------------
+	bugfix: when email attachments are parsed as "Related" they are not included when forwarding.
+	bugfix: mysql scape on mail list query.
+	bugfix: prevent sending e-invoice twice.
+	
+	Since 3.4.4.59
+	----------------
+	bugfix: templates with tasks and subtasks that are generated through conditional actions does not generate the subtasks correctly.
+	
+	Since 3.4.4.58
+	----------------
+	bugfix: export ticket custom reports to csv and excel does not change the html entities for the characters in the description.
+	bugfix: missing lang in tickets custom report columns.
+	
+	Since 3.4.4.57
+	----------------
+	bugfix: in contacts view - don't show job title data if the custom property is disabled.
+	
+	Since 3.4.4.56
+	----------------
+	bugfix: sometimes when send email btn is pressed it saves a draft.
+	
+	Since 3.4.4.56
+	----------------
+	bugfix: contacts search does not find if searching by name and surname together
+	
+	Since 3.4.4.55
+	----------------
+	bugfix: email download performance when trying to request emails that are not in server.
+	bugfix: sent email message_ids are not saved in mail_contents_imap_folders.
+	
+	Since 3.4.4.54
+	----------------
+	bugfix: when viewing mail its read status is not always reloaded until the complete list is reloaded. 
+	
+	Since 3.4.4.53
+	----------------
+	bugfix: missing langs in tickets notifications.
+	bugfix: ticket description spacing fixed.
+	
+	Since 3.4.4.52
+    ----------------
+    bugfix: added constant to disable verify_peer and verify_peer_name when sending emails using ssl/tls and using php >= 5.6.
+	
 	Since 3.4.4.51
     ----------------
     bugfix: in gantt if a task is in more than one group it is shown only once.

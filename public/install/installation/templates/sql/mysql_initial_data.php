@@ -162,6 +162,7 @@ INSERT INTO `<?php echo $table_prefix ?>contact_config_categories` (`name`, `is_
 	('calendar panel', 0, 0, 4),
 	('context help', 1, 0, 5),
 	('time panel', 0, 0, 3),
+	('contact panel', 0, 0, 8),
 	('listing preferences', 0, 0, 10),
 	('reporting', 0, 0, 15);
 	
@@ -202,6 +203,7 @@ INSERT INTO `<?php echo $table_prefix ?>contact_config_options` (`category_name`
  ('task panel', 'zoom in gantt', '3', 'IntegerConfigHandler', 1, 0, ''),
  ('task panel', 'tasksShowDimensionCols', '', 'StringConfigHandler', 1, 0, ''),
  ('task panel', 'tasksUseDateFilters', '1', 'BoolConfigHandler', 0, 0, ''),
+ ('task panel', 'tasksShowAssignedToName', '0', 'BoolConfigHandler', 0, 0, ''),
  ('general', 'listingContactsBy', '0', 'BoolConfigHandler', '0', '0', NULL),
  ('general', 'localization', '', 'LocalizationConfigHandler', 0, 100, ''),
  ('general', 'search_engine', 'match', 'SearchEngineConfigHandler', 0, 700, ''),
@@ -344,6 +346,7 @@ INSERT INTO `<?php echo $table_prefix ?>contact_config_options` (`category_name`
  ('general', 'view_mail_attachs_expanded', '1', 'BoolConfigHandler', 1, 0, ''),
  ('general', 'timeReportShowBilling', '0', 'BoolConfigHandler', 1, 0, ''),
  ('general', 'settings_closed', '0', 'BoolConfigHandler', 1, 0, ''),
+ ('contact panel', 'show_inactive_users_in_list', '1', 'BoolConfigHandler', '0', '0', NULL),
  ('reporting', 'report_time_colums_display', 'friendly', 'TimeFormatConfigHandler', 0, 1, '');
 
 INSERT INTO `<?php echo $table_prefix ?>object_types` (`name`,`handler_class`,`table_name`,`type`,`icon`,`plugin_id`) VALUES

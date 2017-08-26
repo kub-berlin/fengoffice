@@ -22,4 +22,6 @@
 	'by subject or address' => 'Buscar por asunto o dirección',
 	'mail status col tooltip' => 'Muestra un ícono si el correo ha sido reenviado o respondido',
 	'classify only attachments' => 'Clasificar solo adjuntos',
+	'incoming ssl verify peer' => 'Verificar certificado SSL',
+	'incoming ssl verify peer desc' => 'Especifica si el servidor requiere un certificado válido para establecer la conexión. Algunos servidores pueden habilitar la conexión con o sin este requerimiento.',
 );

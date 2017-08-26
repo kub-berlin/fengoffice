@@ -575,3 +575,32 @@ function core_dimensions_quickadd_extra_fields($parameters) {
 		tpl_display(PLUGIN_PATH."/core_dimensions/templates/quickadd_extra_fields.php");
 	}
 }
+
+
+/**
+ * If no multiple currencies, then replicate the config option "currency_code" in the default currency
+ */
+function core_dimensions_after_update_config_category($params, &$ret) {
+	$category = array_var($params, 'category');
+	$post = array_var($params, 'post');
+
+	if ($category->getName() == 'general' && !Plugins::instance()->isActivePlugin("multiple_currencies")) {
+		$options = array_var($post, 'options', array());
+		$cur_code = array_var($options, "currency_code");
+		if ($cur_code) {
+			$def_currency = Currencies::findOne();
+			if (!$def_currency instanceof Currency) {
+				$def_currency = new Currency();
+				$def_currency->setIsDefault(true);
+				$def_currency->setName($cur_code);
+			}
+			if ($cur_code != $def_currency->getSymbol()) {
+				$def_currency->setShortName($cur_code);
+				$def_currency->setSymbol($cur_code);
+				$def_currency->save();
+			}
+		}
+	}
+}
+
+

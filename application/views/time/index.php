@@ -107,7 +107,7 @@
 	</tr>
 </table>
 
-
+<?php $null=null; Hook::fire('timeslots_list_additional_sections', $null, $null); ?>
 
 <table style="width:100%;" class="general-timeslots">
 

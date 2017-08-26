@@ -724,11 +724,17 @@ class ExternalCalendarController extends ApplicationController {
 												}									
 										}
 										
+										debug_log(date("H:i:s")." EVENT: ".$new_event->getId()." - classify in: ".(count($member)?implode(',',$member):'none'), 'external_cal.log');
+										
+										
 										if(count($member) > 0){
 											$object_controller = new ObjectController();
 											$object_controller->add_to_members($new_event, $member,$contact);
+											debug_log(date("H:i:s")." EVENT: ".$new_event->getId()." - after add_to_members - contact_id:".($contact ? $contact->getId():''), 'external_cal.log');
+											
 										}else{
 											$new_event->addToSharingTable();
+											debug_log(date("H:i:s")." EVENT: ".$new_event->getId()." - no members, not classified", 'external_cal.log');
 										}
 									}else{
 										$new_event->addToSharingTable();

@@ -28,6 +28,7 @@
 	    'is_fixed_billing' => DATA_TYPE_BOOLEAN, 
 	    'billing_id' => DATA_TYPE_INTEGER,
     	'rate_currency_id' => DATA_TYPE_INTEGER,
+    	'worked_time' => DATA_TYPE_INTEGER,
     );
   
     /**
@@ -90,7 +91,7 @@
     
     
 	function getExternalColumns() {
-		return array_merge(parent::getExternalColumns(), array('contact_id', 'time', 'billing'));
+		return array_merge(parent::getExternalColumns(), array('contact_id', 'rel_object_id'));
 	}
 	
 	/**
@@ -98,7 +99,7 @@
 	 * Must be overriden by the specific object classes
 	 */
 	function getTimeColumns() {
-		return array('time');
+		return array('worked_time', 'subtract');
 	}
 	
 	
@@ -111,7 +112,7 @@
 	 */
 	function getSystemColumns() {
 		return array_merge(parent::getSystemColumns(), array(
-      		'end_time', 'paused_on', 'subtract', 'fixed_billing', 'hourly_billing', 'is_fixed_billing', 'billing_id'
+      		'paused_on', 'is_fixed_billing', 'billing_id', 
 		));
 	} // getSystemColumns
     

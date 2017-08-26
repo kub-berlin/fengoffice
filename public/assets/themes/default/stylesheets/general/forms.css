@@ -160,6 +160,11 @@ button.add-first-btn.blue {
 	border-color: #5d92dc;
 	color: #fff;
 }
+button.add-new-user-btn {
+	background-position: left 5px center!important;
+	margin: 3px!important;
+}
+
 .coInputHeader .coInputButtons button.submit:hover,
 .coInputMainBlock button.submit:hover, 
 .adminConfiguration .adminMainBlock button.submit:hover,

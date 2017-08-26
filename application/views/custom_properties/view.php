@@ -63,6 +63,8 @@ if (!($visibility == 'all' || $visibility == 'visible_by_default')) {
 						if ($customProp->getIsSpecial()) {
 							$lang_value = Localization::instance()->lang($value);
 							$htmlValue = is_null($lang_value) ? $value : $lang_value;
+						} else {
+							$htmlValue = $value;
 						}
 						
 					} else if ($customProp->getType() == 'boolean'){

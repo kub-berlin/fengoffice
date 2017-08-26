@@ -13,9 +13,11 @@
 		$on_submit = "return true;";
 	}
 	
+	if (!isset($pre_selected_member_ids)) $pre_selected_member_ids = null;
+	
 	$has_custom_properties = CustomProperties::countAllCustomPropertiesByObjectType($object->getObjectTypeId()) > 0;
 ?>
-<form onsubmit="<?php echo $on_submit?>" class="add-timeslot" id="<?php echo $genid ?>submit-edit-form" action="<?php echo $timeslot->isNew() ? get_url('time', 'add_timeslot') : get_url('time', 'edit_timeslot', array('id' => $timeslot->getId())); ?>" method="post" enctype="multipart/form-data">
+<form onsubmit="<?php echo $on_submit?>" class="add-timeslot" id="<?php echo $genid ?>submit-edit-form" action="<?php echo $timeslot->isNew() ? get_url('time', 'add') : get_url('time', 'edit_timeslot', array('id' => $timeslot->getId())); ?>" method="post" enctype="multipart/form-data">
 <div class="timeslot">
 
 <div class="coInputHeader">
@@ -39,6 +41,9 @@
 </div>
 
 <div class="coInputMainBlock">
+	
+	<input type="hidden" name="object_id" value="<?php echo $timeslot->getRelObjectId()?>" />
+	<input type="hidden" name="dont_reload" value="<?php echo $dont_reload?>" />
 	
 	<div id="<?php echo $genid?>tabs" class="edit-form-tabs">
 	
@@ -69,7 +74,7 @@
 			<div class="dataBlock" style="<?php echo (can_manage_time(logged_user())) ? '':'display: none;'?>">
 				<?php echo label_tag(lang('user')) ?>
 				<?php
-					$options = array();
+					$options = array(option_tag(lang('none'), 0));
 					foreach ($users as $user) {
 						$options[] = option_tag($user->getObjectName(), $user->getId(), $timeslot->getContactId() == $user->getId() ? array("selected" => "selected") : null);
 					}
@@ -84,8 +89,15 @@
 					
 					$tz_offset = Timezones::getTimezoneOffsetToApply($timeslot);
 					$date = $timeslot->isNew() ? DateTimeValueLib::now() : new DateTimeValue($timeslot->getStartTime()->getTimestamp() + $tz_offset);
-					echo pick_date_widget2('timeslot[date]', $date, $genid, 1000, false);
-				?>
+					
+					?><table><tr><td><?php 
+						echo pick_date_widget2('timeslot[date]', $date, $genid, null, false);
+					?></td><td><?php 
+						echo pick_time_widget2('timeslot[start_time]', $timeslot->isNew() ? null : $date, $genid);
+					?></td><td><?php 
+						echo '&nbsp;<span class="desc">'.lang('if not specified then current time will be used').'</span>';
+					?></td></tr></table>
+					
 			</div>
 			
 			<div class="dataBlock" >
@@ -120,7 +132,7 @@
 		<?php 
 			$listeners = array('on_selection_change' => 'og.reload_subscribers("'.$genid.'",'.$object->manager()->getObjectTypeId().')');
 			if ($timeslot->isNew()) {
-				render_member_selectors($timeslot->manager()->getObjectTypeId(), $genid, null, array('select_current_context' => true, 'listeners' => $listeners, 'object' => $object), null, null, false);
+				render_member_selectors($timeslot->manager()->getObjectTypeId(), $genid, $pre_selected_member_ids, array('select_current_context' => true, 'listeners' => $listeners, 'object' => $object), null, null, false);
 			} else {
 				render_member_selectors($timeslot->manager()->getObjectTypeId(), $genid, $timeslot->getMemberIds(), array('listeners' => $listeners, 'object' => $object), null, null, false);
 			} 

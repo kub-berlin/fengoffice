@@ -269,17 +269,7 @@ og.ObjectGrid = function(config, ignore_context) {
 	}
 	// custom property columns
 	var cps = og.custom_properties_by_type[config.type_name] ? og.custom_properties_by_type[config.type_name] : [];
-	for (i=0; i<cps.length; i++) {
-		cm_info.push({
-			id: 'cp_' + cps[i].id,
-			hidden: parseInt(cps[i].show_in_lists) == 0,
-			header: cps[i].name,
-			align: cps[i].cp_type=='numeric' ? 'right' : 'left',
-			dataIndex: 'cp_' + cps[i].id,
-			sortable: true,
-			renderer: og.clean
-		});
-	}
+	this.addCustomPropertyColumns(cps, cm_info);
 	
 	if (!config.skip_dimension_columns) {
 		// dimension columns
@@ -397,7 +387,7 @@ og.ObjectGrid = function(config, ignore_context) {
 					if (tbar2.length > 0) {
 						this.topTbar2 = new Ext.Toolbar({
 						    renderTo: this.tbar,
-						    items: tbar2,
+						    items: tbar2
 						});
 					}
 				},
@@ -457,6 +447,9 @@ Ext.extend(og.ObjectGrid, Ext.grid.GridPanel, {
 		
 		// don't make the request if panel is hidden
 		if (!this.hidden) {
+			
+			this.updateColumnModelHiddenColumns();
+			
 			this.store.removeAll();
 			this.store.load({
 				params: Ext.apply(params, {

@@ -877,14 +877,7 @@ class MemberController extends ApplicationController {
 			if (!$is_new) {
 				$old_parent = $member->getParentMemberId();
 				
-				$previous_data['original_member'] = Members::findById($member->getId());
-				$previous_data['custom_properties'] = MemberCustomPropertyValues::instance()->getAllCustomPropertyValues($member->getId());
-				
-				$prev_assocs = MemberPropertyMembers::getAllAssociatedMemberIds($member->getId());
-				$prev_assocs_rev = MemberPropertyMembers::getAllAssociatedMemberIds($member->getId(), true);
-				foreach ($prev_assocs_rev as $a_id => $mem_ids) $prev_assocs[$a_id] = $mem_ids;
-				
-				$previous_data['associations'] = $prev_assocs;
+				$previous_data = $member->getDataForHistory();
 			}
 			
 			if (!isset($member_data['color']) && array_var($member_data, 'parent_member_id') > 0) {

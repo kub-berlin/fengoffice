@@ -38,7 +38,7 @@ if (isset($email)){
 	add_page_action(lang('mark as unread'), get_url('mail', 'mark_as_unread', array('id' => $email->getId())), 'ico-mark-as-unread');
 	
 	if ( !logged_user()->isGuest()) {
-		add_page_action(lang('create task from email'), "javascript:og.render_modal_form('', {c:'task', a:'add_task', params: {id:".$email->getId().", from_email:".$email->getId()."}});", 'ico-task', null, null, true);
+		add_page_action(lang('create task from email'), "javascript:og.render_modal_form('', {c:'task', a:'add_task', params: {id:".$email->getId().", from_email:".$email->getId().", assigned_to_contact_id:".logged_user()->getId()."}});", 'ico-task', null, null, true);
 		$ret = null;
 		Hook::fire('additional_email_actions', array('email' => $email), $ret);
 	}
@@ -203,7 +203,7 @@ if (isset($email)){
 					$conversation_block .= '<div class="db-ico ico-user"></div>';
 				}
 				
-				$info_text = $info->getTextBody();
+				$info_text = html_to_text($info->getTextBody());
 				if (strlen_utf($info_text) > 90) $info_text = substr_utf($info_text, 0, 90) . "...";		
 				
 				$view_url = get_url('mail', 'view', array('id' => $info->getId(), 'replace' => 1));

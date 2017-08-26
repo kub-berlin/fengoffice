@@ -100,16 +100,8 @@ og.WebpageManager = function() {
 			text = '&nbsp;-&nbsp;<span class="desc nobr">';
 			text += og.clean(r.data.description) + "</span>";
 		}
-		
-		mem_path = "";
-		var mpath = Ext.util.JSON.decode(r.data.memPath);
-		if (mpath){ 
-			mem_path = "<div class='breadcrumb-container' style='display: inline-block;'>";
-			mem_path += og.getEmptyCrumbHtml(mpath, '.breadcrumb-container', og.breadcrumbs_skipped_dimensions);
-			mem_path += "</div>";
-		}
-	    
-		return name + actions + mem_path + text;
+
+		return name + actions + text;
 	}
     
     function renderIcon(value, p, r) {
@@ -250,17 +242,8 @@ og.WebpageManager = function() {
         }];
     // custom property columns
 	var cps = og.custom_properties_by_type['weblink'] ? og.custom_properties_by_type['weblink'] : [];
-	for (i=0; i<cps.length; i++) {
-		cm_info.push({
-			id: 'cp_' + cps[i].id,
-			hidden: parseInt(cps[i].show_in_lists) == 0,
-			header: cps[i].name,
-			align: cps[i].cp_type=='numeric' ? 'right' : 'left',
-			dataIndex: 'cp_' + cps[i].id,
-			sortable: false,
-			renderer: og.clean
-		});
-	}
+	this.addCustomPropertyColumns(cps, cm_info);
+
 	// dimension columns
 	for (did in og.dimensions_info) {
 		if (isNaN(did)) continue;
@@ -466,6 +449,8 @@ Ext.extend(og.WebpageManager, Ext.grid.GridPanel, {
 		this.store.baseParams = {
 			context: og.contextManager.plainContext()
 		};
+		
+		this.updateColumnModelHiddenColumns();
 		
 		this.store.removeAll();
 		this.store.load({

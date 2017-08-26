@@ -980,7 +980,7 @@ og.updateDimensionTreeNode = function(dimension_id, member, extra_params) {
 		dimension_tree.resumeEvents();
 		og.eventManager.fireEvent('member tree node click', new_node);
 	}
-	new_node.expand();
+	if (new_node.attributes.expandable)	new_node.expand();
 	
 	// ensure that first level nodes are ordered after the insertion
 	dimension_tree.root.sort(og.sortNodesFn);

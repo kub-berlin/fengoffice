@@ -478,3 +478,69 @@ function member_selector_additional_ids_filter($object, $dimensions) {
 }
 
 
+
+function get_member_paths_for_object_list($object_ids) {
+	$member_path_cache = array();
+	
+	if (count($object_ids) > 0) {
+		$member_path_sql = "
+				SELECT om.object_id, om.member_id, m.dimension_id, m.object_type_id
+				FROM ".TABLE_PREFIX."object_members om
+				INNER JOIN ".TABLE_PREFIX."members m ON m.id=om.member_id
+				WHERE
+					om.is_optimization=0 AND
+					m.dimension_id != (select id FROM ".TABLE_PREFIX."dimensions where code='feng_persons') AND
+					om.object_id IN (".implode(',', $object_ids).")
+				ORDER BY om.object_id, m.dimension_id, m.object_type_id
+			";
+			
+		$member_path_rows = DB::executeAll($member_path_sql);
+		foreach ($member_path_rows as $row) {
+			if (!isset($member_path_cache[$row['object_id']])) {
+				$member_path_cache[$row['object_id']] = array();
+			}
+			if (!isset($member_path_cache[$row['object_id']][$row['dimension_id']])) {
+				$member_path_cache[$row['object_id']][$row['dimension_id']] = array();
+			}
+			if (!isset($member_path_cache[$row['object_id']][$row['dimension_id']][$row['object_type_id']])) {
+				$member_path_cache[$row['object_id']][$row['dimension_id']][$row['object_type_id']] = array();
+			}
+			$member_path_cache[$row['object_id']][$row['dimension_id']][$row['object_type_id']][] = $row['member_id'];
+		}
+			
+	}
+	
+	return $member_path_cache;
+}
+
+function get_members_info_for_object_list($object_ids) {
+	$member_names = array();
+	
+	if (count($object_ids) > 0) {
+		$member_path_sql = "
+				SELECT om.object_id, om.member_id, m.dimension_id, m.name, m.color
+				FROM ".TABLE_PREFIX."object_members om
+				INNER JOIN ".TABLE_PREFIX."members m ON m.id=om.member_id
+				WHERE
+					om.is_optimization=0 AND
+					m.dimension_id != (select id FROM ".TABLE_PREFIX."dimensions where code='feng_persons') AND
+					om.object_id IN (".implode(',', $object_ids).")
+				ORDER BY om.object_id, m.dimension_id, m.name
+			";
+			
+		$member_path_rows = DB::executeAll($member_path_sql);
+		foreach ($member_path_rows as $row) {
+			if (!isset($member_names[$row['object_id']])) {
+				$member_names[$row['object_id']] = array();
+			}
+			if (!isset($member_names[$row['object_id']][$row['dimension_id']])) {
+				$member_names[$row['object_id']][$row['dimension_id']] = array();
+			}
+			$member_names[$row['object_id']][$row['dimension_id']][$row['member_id']] = array('name' => $row['name'], 'color' => $row['color']);
+		}
+			
+	}
+	
+	return $member_names;
+}
+

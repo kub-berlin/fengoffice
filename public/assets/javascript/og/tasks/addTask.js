@@ -146,13 +146,22 @@ ogTasks.checkEnterPress = function (e,id)
 
 ogTasks.drawAddNewTaskFromData = function(container_id){
 	var task = {
-		name:''
+		name:'',
+        assigned_to_contact_id: 0
 	};
 	$("#"+container_id+" :input").each(function(){
 		var input = $(this);
 		task[input.attr("name")]=input.val();
 		input.val("");
 	});
+
+    var toolbar = Ext.getCmp('tasksPanelBottomToolbarObject');
+    if (toolbar.filterNamesCompaniesCombo.isVisible()){
+        var value = toolbar.filterNamesCompaniesCombo.getValue();
+        if (value) {
+            task['assigned_to_contact_id'] = value;
+        }
+    }
 	
 	og.render_modal_form('', {c:'task', a:'add_task', params: task});
 }

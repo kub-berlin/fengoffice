@@ -49,19 +49,20 @@
 }
 
 .report-group-heading-0 {
+	border: 1px solid #bbb;
 	border-bottom:2px solid #888;
 	font-size:150%;
 	font-weight:bold;
 	margin-top: 10px;
 }
 .report-group-heading-1 {
-	border-bottom:2px solid #888;
+	border: 1px solid #bbb;
 	font-size:125%;
 	font-weight:bold;
 	margin-top: 8px;
 }
 .report-group-heading-2, .report-group-heading-all {
-	border-bottom:2px solid #888;
+	border: 1px solid #bbb;
 	font-size:110%;
 	font-weight:bold;
 	margin-top: 8px;
@@ -473,8 +474,9 @@
 
 
 th.report-group-heading-0 {
-    padding-top: 15px;
-    padding-left: 2px;
+    padding-top: 11px;
+    padding-bottom: 4px;
+    padding-left: 9px;
 }
 th.report-group-heading-1 {
     padding-top: 10px;
@@ -506,6 +508,16 @@ tr.list-totals-row.level-2 {
 	background-color: #EEEEEE;
 }
 
+tr.list-totals-row.level-0 td {
+	background-color: #E0E0E0;
+}
+tr.list-totals-row.level-1 td {
+	background-color: #EEEEEE;
+}
+tr.list-totals-row.level-2 td {
+	font-weight: normal;
+}
+
 tr.list-totals-row td {
 	border-top: 1px solid #CCC;
 	border-bottom: 1px solid #CCC;
@@ -514,25 +526,33 @@ tr.list-totals-row td {
 	text-align: right;
 }
 .report tr.list-totals-row td {
-	padding-right:10px;
+	padding: 0 10px;
 }
 tr.list-totals-row td.textrow, tr.list-totals-row td.x-grid3-td-name {
 	text-align: left;
 }
 tr.list-totals-row.level-0 td.textrow {
 	min-width: 200px;
-	padding: 8px 2px;
+}
+tr.list-totals-row.indent-0 td.textrow {
+	padding: 8px 10px;
 }
 tr.list-totals-row.level-1 td.textrow {
 	min-width: 200px;
+}
+tr.list-totals-row.indent-1 td.textrow {
 	padding: 5px 15px;
 }
 tr.list-totals-row.level-2 td.textrow {
 	min-width: 200px;
+}
+tr.list-totals-row.indent-2 td.textrow {
 	padding: 3px 25px;
 }
+
 tr.list-totals-row.level-0 td, tr.list-totals-row.level-1 td, tr.list-totals-row.level-2 td {
 	vertical-align: middle;
+	border-right: 1px solid #ccc;
 }
 
 tr.list-totals-row td.x-grid3-td-checker {
@@ -575,4 +595,23 @@ tr.list-totals-row td.x-grid3-col.x-grid3-cell.x-grid3-td-name {
 
 .report-row-tbody.alt {
 	background-color:#F4F8F9;
+}
+
+.og-double-list-sel optgroup {
+	margin-bottom: 6px;
+}
+
+
+
+
+tbody.report-data {
+    border: 1px solid #aaa;
+}
+tbody.report-data.altRow {
+    background-color: #F4F8F9;
+}
+
+tbody.report-data td {
+	border-right: 1px solid #ccc;
+	padding: 2px 10px;
 }

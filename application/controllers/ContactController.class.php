@@ -488,7 +488,9 @@ class ContactController extends ApplicationController {
 		if(!user_config_option("viewUsersChecked")){
 			$extra_conditions.= ' AND `user_type` < 1 ';
 		}
-		//$extra_conditions.= " AND disabled = 0 " ;
+		if (!user_config_option("show_inactive_users_in_list")) {
+			$extra_conditions.= " AND disabled = 0 ";
+		}
 		
 		if (strpos($order, 'p_') == 1 ){
 			$cp_order = substr($order, 3);
@@ -1064,7 +1066,7 @@ class ContactController extends ApplicationController {
 					$newCompany = true;
 				}
 
-				$contact_data['birthday'] = getDateValue($contact_data["birthday"]);
+				$contact_data['birthday'] = getDateValue(array_var($contact_data,"birthday"));
 				$contact_data['name'] = $contact_data['first_name']." ".$contact_data['surname'];
 				
 				$contact->setFromAttributes($contact_data);
@@ -1691,12 +1693,12 @@ class ContactController extends ApplicationController {
 		if (is_array($addresses_data)) {
 			foreach ($addresses_data as $data) {
 				$obj = null;
-				if ($data['id'] > 0) {
+				if (array_var($data,'id') > 0) {
 					$obj = ContactAddresses::findById($data['id']);
 				} else {
 					if (trim($data['street']) == '' && trim($data['city']) == '' && trim($data['state']) == '' && trim($data['zip_code']) == '' && trim($data['country']) == '') continue;
 				}
-				if ($data['deleted'] && $obj instanceof ContactAddress) {
+				if (array_var($data,'deleted') && $obj instanceof ContactAddress) {
 					$obj->delete();
 					continue;
 				}

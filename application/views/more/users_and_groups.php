@@ -110,8 +110,8 @@ user_group_columns.push({
 // buttons
 var user_group_tbar_items = [];
 var new_btn = new Ext.Button({
-	iconCls: 'ico-new',
-	text: '<?php echo lang('add new internal user')?>',
+	iconCls: 'ico-new add-first-btn blue add-new-user-btn',
+	text: '<?php echo lang('add user')?>',
 	id: 'new_user_btn',
 	handler: function() {
 		og.openLink(og.getUrl('contact','add',{is_user:1, user_type:'<?php echo $exe_user_type?>'}));

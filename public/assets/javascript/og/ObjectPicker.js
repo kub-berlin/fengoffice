@@ -177,13 +177,10 @@ og.ObjectPicker = function(config, object_id, object_id_no_select, ignore_contex
 				}
 			}
 			
-			this.store.baseParams.extra_member_ids = Ext.util.JSON.encode(member_ids);
+			// always igonre context, use the filters that the user has chosen 
+			this.store.baseParams.ignore_context = 1;
 			
-			if (filter && filter.filter == 'type') {
-				this.store.baseParams.ignore_context = member_ids.length > 0 ? '1' : '0';
-			} else {
-				this.store.baseParams.ignore_context = this.store.baseParams.ignore_context || member_ids.length > 0 ? '1' : '0';
-			}
+			this.store.baseParams.extra_member_ids = Ext.util.JSON.encode(member_ids);
 			
 			this.load();
 		},
@@ -485,14 +482,36 @@ Ext.extend(og.ObjectPicker, Ext.Window, {
 
 og.ObjectPicker.show = function(callback, scope, config, object_id, object_id_no_select) {
 	if (!config) config = {};
-	if (!config.ignore_context) config.ignore_context = 0;
     
 	this.dialog = new og.ObjectPicker(config, object_id, object_id_no_select, config.ignore_context);
 	
 	this.dialog.loadFilters(config);
 	if (config.context) {
 		this.dialog.grid.store.baseParams.context = config.context;
+		var con = eval(config.context);
+	} else {
+		var con = og.contextManager.dimensionMembers;
 	}
+	
+	var has_extra_member_ids = typeof(config.extra_member_ids) != 'undefined';
+	if (!has_extra_member_ids) config.extra_member_ids = [];
+	
+	config.ignore_context = 1;
+	this.dialog.grid.member_filter = {};
+	
+	// initialize the member filters with the current context
+	for (x in con) {
+		this.dialog.grid.member_filter[x] = [];
+		for (i=0; i<con[x].length; i++) {
+			if (parseInt(con[x][i]) > 0) {
+				this.dialog.grid.member_filter[x].push(con[x][i]);
+				if (!has_extra_member_ids) {
+					config.extra_member_ids.push(con[x][i]);
+				}
+			}
+		}
+	}
+	
 	this.dialog.load();
 	this.dialog.purgeListeners();
 	this.dialog.on('objectselected', callback, scope, {single:true});

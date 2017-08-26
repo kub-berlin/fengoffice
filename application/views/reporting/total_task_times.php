@@ -50,6 +50,8 @@
 		$cost_total += $group_cost_total;
 		$estimated_total += $group_estimated_total;
 		
+		$def_currency = Currencies::getDefaultCurrencyInfo();
+		$def_c_symbol = !empty($def_currency) ? $def_currency['symbol'] : config_option('currency_code', '$');
 		
 		echo '<div style="margin-left:' . $margin_left . 'px;padding-right:4px;" class="report-group-footer">' . $group_name;
 		if ((array_var($options, 'timeslot_type') == 0 || array_var($options, 'timeslot_type') == 2) && array_var($options, 'show_estimated_time')) {
@@ -58,11 +60,11 @@
 		echo '<div style="float:right;width:140px;" class="bold right">' . DateTimeValue::FormatTimeDiff(new DateTimeValue(0), new DateTimeValue($group_total * 60), "hm", 60) . '</div>';
 
 		if (array_var($options, 'show_cost') == 'checked') {
-			echo '<div style="float:right;width:140px;text-align:right;margin-left:8px;" class="bold">' . config_option('currency_code', '$') . " " . number_format($cost_total, 2) . '</div>';
+			echo '<div style="float:right;width:140px;text-align:right;margin-left:8px;" class="bold">' . $def_c_symbol . " " . number_format($cost_total, 2) . '</div>';
 		}
 		
 		if (array_var($options, 'show_billing') == 'checked') {
-			echo '<div style="float:right;" class="bold">' . config_option('currency_code', '$') . " " . number_format($billing_total, 2) . '</div>';
+			echo '<div style="float:right;" class="bold">' . $def_c_symbol . " " . number_format($billing_total, 2) . '</div>';
 		}
 		echo '</div>';
 		
@@ -186,6 +188,10 @@
 			return count($cols);
 	}
 	
+
+	$def_currency = Currencies::getDefaultCurrencyInfo();
+	$def_c_symbol = !empty($def_currency) ? $def_currency['symbol'] : config_option('currency_code', '$');
+	
 	$sectionDepth = 0;
 	$totCols = 7 + count_extra_cols($columns);
 	$date_format = user_config_option('date_format');
@@ -257,11 +263,11 @@
             	<div style="float:right;width:140px;" class="bold right"><?php echo DateTimeValue::FormatTimeDiff(new DateTimeValue(0), new DateTimeValue($total * 60), "hm", 60) ?></div>
             	
             	<?php if (array_var(array_var($_SESSION, 'total_task_times_report_data'), 'show_cost') == 'checked') { ?>
-            	<div style="float:right;width:140px;text-align:right;margin-left:8px;" class="bold"><?php echo config_option('currency_code', '$') . " " . number_format($cost_total, 2) ?></div>
+            	<div style="float:right;width:140px;text-align:right;margin-left:8px;" class="bold"><?php echo $def_c_symbol . " " . number_format($cost_total, 2) ?></div>
             	<?php }?>
             	
             	<?php if (array_var(array_var($_SESSION, 'total_task_times_report_data'), 'show_billing') == 'checked') { ?>
-            	<div style="float:right;" class="bold"><?php echo config_option('currency_code', '$') . " " . number_format($billing_total, 2) ?></div>
+            	<div style="float:right;" class="bold"><?php echo $def_c_symbol . " " . number_format($billing_total, 2) ?></div>
             	<?php }?>
             	
             </div>
@@ -330,13 +336,13 @@
 	
 	<?php if ($showBillingCol) {
 		?><td style="width:30px;padding:4px;border-top:2px solid #888;text-align:right;">
-			<?php echo config_option('currency_code', '$') ?>&nbsp;<?php echo $sumBillings[$i] ?>
+			<?php echo $def_c_symbol ?>&nbsp;<?php echo $sumBillings[$i] ?>
 		</td><?php 
 	} ?>
 	
 	<?php if ($showCostsCol) {
 		?><td style="width:30px;padding:4px;border-top:2px solid #888;text-align:right;">
-			<?php echo config_option('currency_code', '$') ?>&nbsp;<?php echo $sumCosts[$i] ?>
+			<?php echo $def_c_symbol ?>&nbsp;<?php echo $sumCosts[$i] ?>
 		</td><?php 
 	} ?>
 	
@@ -418,13 +424,13 @@
 	
 	<?php if ($showBillingCol) { ?>
 	<td style="padding:4px;text-align:right;<?php echo $isAlt? 'background-color:#F2F2F2':'' ?>">
-		<?php echo config_option('currency_code', '$') ?>&nbsp;<?php echo $ts->getFixedBilling() ?>
+		<?php echo $def_c_symbol ?>&nbsp;<?php echo $ts->getFixedBilling() ?>
 	</td>
 	<?php } ?>
 	
 	<?php if ($showCostsCol) { ?>
 	<td style="padding:4px;text-align:right;<?php echo $isAlt? 'background-color:#F2F2F2':'' ?>">
-		<?php echo config_option('currency_code', '$') ?>&nbsp;<?php echo $ts->getColumnValue('fixed_cost') ?>
+		<?php echo $def_c_symbol ?>&nbsp;<?php echo $ts->getColumnValue('fixed_cost') ?>
 	</td>
 	<?php } ?>
 	
@@ -466,13 +472,13 @@
 	
 	<?php if ($showBillingCol) { ?>
 	<td style="width:30px;padding:4px;border-top:2px solid #888;text-align:right;">
-		<?php echo config_option('currency_code', '$') ?>&nbsp;<?php echo $sumBillings[$i] ?>
+		<?php echo $def_c_symbol ?>&nbsp;<?php echo $sumBillings[$i] ?>
 	</td>
 	<?php } ?>
 	
 	<?php if ($showCostsCol) { ?>
 	<td style="width:30px;padding:4px;border-top:2px solid #888;text-align:right;">
-		<?php echo config_option('currency_code', '$') ?>&nbsp;<?php echo $sumCosts[$i] ?>
+		<?php echo $def_c_symbol ?>&nbsp;<?php echo $sumCosts[$i] ?>
 	</td>
 	<?php } ?>
 	
@@ -499,13 +505,13 @@ if (count($timeslotsArray) > 0) {
 
 <?php if ($showBillingCol) { ?>
 <td style="width:30px;padding-left:8px;border-top: 1px solid #AAA;">
-	<div style="text-align: right;padding: 10px 0; font-weight: bold;"><?php echo config_option('currency_code', '$') ?>&nbsp;<?php echo $sumBilling ?></div>
+	<div style="text-align: right;padding: 10px 0; font-weight: bold;"><?php echo $def_c_symbol ?>&nbsp;<?php echo $sumBilling ?></div>
 </td>
 <?php } ?>
 
 <?php if ($showCostsCol) { ?>
 <td style="width:30px;padding-left:8px;border-top: 1px solid #AAA;">
-	<div style="text-align: right;padding: 10px 0; font-weight: bold;"><?php echo config_option('currency_code', '$') ?>&nbsp;<?php echo $sumCost ?></div>
+	<div style="text-align: right;padding: 10px 0; font-weight: bold;"><?php echo $def_c_symbol ?>&nbsp;<?php echo $sumCost ?></div>
 </td>
 <?php } ?>
 

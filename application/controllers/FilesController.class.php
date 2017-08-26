@@ -216,7 +216,7 @@ class FilesController extends ApplicationController {
 			flash_error(lang('no access permissions'));
 			ajx_current("empty");
 			die();
-		} // if
+		}
 		session_commit();
 		download_from_repository($file->getLastRevision()->getRepositoryId(), $file->getTypeString(), $file->getFilename(), !$inline);
 		die();

@@ -170,6 +170,7 @@
 	'success delete charts' => 'Las tablas seleccionadas fueron eliminadas',
 	'success delete contacts' => 'Personas eliminadas satisfactoriamente',
 	'success classify email' => 'Correo clasificado de forma satisfactoria',
+	'success classify email in' => 'Correo clasificado satisfactoriamente en \'{0}\'',
 	'success delete email' => 'Correo eliminado',
 	'success unclassify email' => 'Correo desclasificado satisfactoriamente',
 	'error unclassify email' => 'No fue posible desclasificar el correo',

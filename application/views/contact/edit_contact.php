@@ -270,12 +270,6 @@
 	render_contact_data_tab($genid, $object, $renderContext, $contact_data, $main_cp_count);
 	?>
 	
-	<div class="main-custom-properties-div"><?php
-		if ($main_cp_count) {
-		//	echo render_object_custom_properties($object, false, null, 'visible_by_default');
-		}
-	?></div>
-	
 	
 	<div class="contact_form_container form-tab" id="<?php echo $genid?>additional_data">
 	<?php

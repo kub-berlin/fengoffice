@@ -126,6 +126,7 @@
 	'user ws config category name task panel' => 'Opciones del panel de tareas',
 	'user ws config category name time panel' => 'Opciones del panel de horas',
 	'user ws config category name calendar panel' => 'Opciones del Calendario',
+	'user ws config category name contact panel' => 'Opciones del módulo de Contactos',
 	'user ws config category name mails panel' => 'Opciones del módulo de Correo',
 	'user ws config category name listing preferences' => 'Opciones de listados',
 	'user ws config category name reporting' => 'Opciones de reportes',
@@ -614,6 +615,9 @@
   		
   	'user config option name tasksUseDateFilters' => 'Utilizar filtros de fechas en tareas',
   	'user config option desc tasksUseDateFilters' => 'Si se habilita se podrán filtrar las tareas utilizando un rango de fechas.',
+
+	'user config option name tasksShowAssignedToName' => 'Mostrar nombre del asignado en el listado',
+	'user config option desc tasksShowAssignedToName' => 'Si se habilita se muestra el nombre de la persona asignada a la tarea en lugar de su foto.',
 		
 	'user config option name report_time_colums_display' => 'Formato de columnas de tiempo',
 	'user config option desc report_time_colums_display' => 'Si se selcciona el formato usual se mostrarán las fechas de forma descriptiva (ej.: 2 horas, 15 minutos), de lo contrario se mostrará la cantidad de minutos o segundos.',
@@ -691,4 +695,7 @@
   		'timezone options' => 'Opciones de zonas horarias',
   		'in timezone' => 'En zona horaria',
   		'original time' => 'Hora original',
+		
+		'config option desc show images in document notifications' => 'Si el documento es una imagen será adjuntado en el contenido de las notificaciones.',
+		'user config option name show_inactive_users_in_list' => 'Mostrar usuarios inactivos en el listado de contactos',
 );

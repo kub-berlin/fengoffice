@@ -248,7 +248,10 @@ class ProjectTask extends BaseProjectTask {
 		$tz_offset = Timezones::getTimezoneOffsetToApply($this);
 		
 		$due_date_start = $this->getDueDate();
-		$due_date_start->add('s', $tz_offset);
+
+        if($this->getUseDueTime()) {
+            $due_date_start->add('s', $tz_offset);
+        }
 		$today = DateTimeValueLib::now();
 		$today = $today->add('s', $tz_offset);
 		
@@ -261,7 +264,11 @@ class ProjectTask extends BaseProjectTask {
 		$tz_offset = Timezones::getTimezoneOffsetToApply($this);
 		
 		$due_date_start = $this->getDueDate();
-		$due_date_start->add('s', $tz_offset);
+
+        if($this->getUseDueTime()) {
+            $due_date_start->add('s', $tz_offset);
+        }
+
 		$today = DateTimeValueLib::now();
 		$today = $today->add('s', $tz_offset);
 		
@@ -465,9 +472,7 @@ class ProjectTask extends BaseProjectTask {
 			foreach ($saved_ptasks as $pdep) {
 				$ptask = ProjectTasks::findById($pdep->getPreviousTaskId());
 				if ($ptask instanceof ProjectTask && !$ptask->isCompleted()) {
-					flash_error(lang('previous tasks must be completed before completion of this task'));
-					ajx_current("empty");
-					return;
+					throw new Exception(lang('previous tasks must be completed before completion of this task'));
 				}
 			}
 			//Seeking the subscribers of the completed task not to repeat in the notifications
@@ -514,8 +519,21 @@ class ProjectTask extends BaseProjectTask {
 			}
 		
 			if (!$complete_last_task) {
+
+				$new_st = array_var($new_dates, 'st');
+				$new_due = array_var($new_dates, 'due');
+				
+				$daystoadd = 0;
+				$params = array('task' => $this, 'new_st_date' => $new_st, 'new_due_date' => $new_due);
+				Hook::fire('check_valid_repetition_date_days_add', $params, $daystoadd);
+				
+				if ($daystoadd > 0) {
+					if ($new_st) $new_st->add('d', $daystoadd);
+					if ($new_due) $new_due->add('d', $daystoadd);
+				}
+				
 				// generate new pending task
-				$new_task = $this->cloneTask(array_var($new_dates, 'st'), array_var($new_dates, 'due'));
+				$new_task = $this->cloneTask($new_st, $new_due);
 				
 				// clean this task's repetition options
 				$this->setRepeatEnd(EMPTY_DATETIME);
@@ -572,7 +590,7 @@ class ProjectTask extends BaseProjectTask {
 					$stask->openTask();
 				}
 				foreach ($stask->getSubscribers() as $task_dep){
-					if(!in_array($task_dep->getId(), $contact_notification)) {
+					if($task_dep && !in_array($task_dep->getId(), $contact_notification)) {
 						$log_info .= $task_dep->getId().",";
 					}
 				}
@@ -681,6 +699,8 @@ class ProjectTask extends BaseProjectTask {
 			}
 		}
                 
+		Hook::fire('after_task_cloned', array('original' => $this, 'new_task' => $new_task), $new_task);
+		
 		return $new_task;
 	}
 	
@@ -727,8 +747,12 @@ class ProjectTask extends BaseProjectTask {
 			}
 		}
 
-		$new_st_date = $this->correct_days_task_repetitive($new_st_date);
-		$new_due_date = $this->correct_days_task_repetitive($new_due_date);
+		$correct_the_days = true;
+		Hook::fire('check_working_days_to_correct_repetition', array('task' => $subtask), $correct_the_days);
+		if ($correct_the_days) {
+			$new_st_date = $this->correct_days_task_repetitive($new_st_date);
+			$new_due_date = $this->correct_days_task_repetitive($new_due_date);
+		}
 		
 		return array('st' => $new_st_date, 'due' => $new_due_date);
 	}

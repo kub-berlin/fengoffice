@@ -110,17 +110,8 @@ og.ContactManager = function() {
 					og.clean(r.data.companyName), og.getUrl('contact', 'view_company', {id: r.data.companyId}), og.clean(r.data.companyName));
 			} //end else
 		}
-		mem_path = "";
-		var mpath = null;
-		if (r.data.memPath) {
-			var mpath = Ext.util.JSON.decode(r.data.memPath);
-		}
-		if (mpath){ 
-			mem_path = "<div class='breadcrumb-container' style='display: inline-block;'>";
-			mem_path += og.getEmptyCrumbHtml(mpath, '.breadcrumb-container', og.breadcrumbs_skipped_dimensions);
-			mem_path += "</div>";
-		}
-		return name + mem_path;
+
+		return name;
     }
     
     function renderCompany(value, p, r) {
@@ -476,17 +467,8 @@ og.ContactManager = function() {
 		}];
 	// custom property columns
 	var cps = og.custom_properties_by_type['contact'] ? og.custom_properties_by_type['contact'] : [];
-	for (i=0; i<cps.length; i++) {
-		cm_info.push({
-			id: 'cp_' + cps[i].id,
-			hidden: parseInt(cps[i].show_in_lists) == 0,
-			header: cps[i].name,
-			align: cps[i].cp_type=='numeric' ? 'right' : 'left',
-			dataIndex: 'cp_' + cps[i].id,
-			sortable: true,
-			renderer: og.clean
-		});
-	}
+	this.addCustomPropertyColumns(cps, cm_info);
+	
 	// dimension columns
 	for (did in og.dimensions_info) {
 		if (isNaN(did)) continue;
@@ -875,6 +857,9 @@ Ext.extend(og.ContactManager, Ext.grid.GridPanel, {
 			context: og.contextManager.plainContext() 
 			
 		});
+		
+		this.updateColumnModelHiddenColumns();
+		
 		this.store.removeAll();
 		this.store.load({
 			params: Ext.applyIf(params, {

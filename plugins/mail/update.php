@@ -325,3 +325,11 @@
 			");
 	}
 	
+	function mail_update_23_24() {
+		if (!check_column_exists(TABLE_PREFIX."mail_accounts", "incoming_ssl_verify_peer")) {
+			DB::execute("
+				ALTER TABLE `".TABLE_PREFIX."mail_accounts` ADD `incoming_ssl_verify_peer` tinyint(1) NOT NULL DEFAULT 0 AFTER `incoming_ssl_port`;
+			");
+		}
+	}
+	

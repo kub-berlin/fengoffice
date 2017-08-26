@@ -76,7 +76,7 @@ class MailController extends ApplicationController {
 				'type' => $clean_mail['type'],
 				'subject' => $re_subject,
 				'account_id' => $original_mail->getAccountId(),
-				'body' =>  '<div id="original_mail">'.$clean_mail['clean_body'].'</div>',
+				'body' => $clean_mail['type'] == 'html' ? '<div id="original_mail">'.$clean_mail['clean_body'].'</div>' : $clean_mail['clean_body'],
 				'conversation_id' => $original_mail->getConversationId(),
 				'in_reply_to_id' => $original_mail->getMessageId(),
 				'original_id' => $original_mail->getId(),
@@ -181,7 +181,10 @@ class MailController extends ApplicationController {
 				if (!isset($parsedEmail)) {
 					MailUtilities::parseMail($original_mail->getContent(), $decoded, $parsedEmail, $warns);
 				}
+				$attachments = array();
 				if (isset($parsedEmail['Attachments'])) $attachments = $parsedEmail['Attachments'];
+				$attachments = array_merge($attachments, array_var($parsedEmail, "Related", array()));
+				
 				foreach($attachments as $att) {
 					$fName = utf8_encode_mime_header_value($att["FileName"]);
 					$fName = str_replace(':', ' ', $fName);
@@ -291,6 +294,15 @@ class MailController extends ApplicationController {
 			return;
 		}
 	}
+	
+	
+	function save_draft() {
+		$this->add_mail(true);
+	}
+	
+	function autosave_draft() {
+		$this->add_mail(true, true);
+	}
 
 	/**
 	 * Add single mail
@@ -299,7 +311,8 @@ class MailController extends ApplicationController {
 	 * @param void
 	 * @return null
 	 */
-	function add_mail() {
+	function add_mail($isDraft = false, $autosave = false) {
+		
 		if (logged_user()->isGuest()) {
 			flash_error(lang('no access permissions'));
 			ajx_current("empty");
@@ -314,10 +327,10 @@ class MailController extends ApplicationController {
 		}
 		$this->setTemplate('add_mail');
 		$mail_data = array_var($_POST, 'mail');
-		$sendBtnClick = array_var($mail_data, 'sendBtnClick', '') == 'true' ? true : false;
-		$isDraft = array_var($mail_data, 'isDraft', '') == 'true' ? true : false;
-		$isUpload = array_var($mail_data, 'isUpload', '') == 'true' ? true : false;
-		$autosave = array_var($mail_data,'autosave', '') == 'true';
+		
+		if ($autosave) {
+			$isDraft = true;
+		}
 
 		$id = array_var($mail_data, 'id');
 		$mail = MailContents::findById($id);
@@ -576,6 +589,11 @@ class MailController extends ApplicationController {
 					$str = "#att_ver 2\n";
 					foreach ($attachments as $att) {
 						$rep_id = $utils->saveContent($att['data']);
+						if (strpos($att['name'], '.') === FALSE) {
+							$split_type = explode('/', $att['type']);
+							$ext = $split_type[count($split_type)-1];
+							if ($ext) $att['name'] .= '.'.$ext;
+						}
 						if (str_starts_with($att['name'], "#")) $att['name'] = str_replace_first("#", "@@sharp@@", $att['name']);
 						$str .= $att['name'] . "|" . $att['type'] . "|" . $rep_id . "\n";
 					}
@@ -627,7 +645,7 @@ class MailController extends ApplicationController {
 				$mail->setInReplyToId($in_reply_to_id);
 				
 				$mail->setUid(gen_id());
-				$mail->setState(($isDraft && !$sendBtnClick)? 2 : 200);
+				$mail->setState($isDraft ? 2 : 200);
 				
 				set_user_config_option('last_mail_format', array_var($mail_data, 'format', 'plain'), logged_user()->getId());
 				$body = utf8_safe($body);
@@ -719,7 +737,7 @@ class MailController extends ApplicationController {
 				$mail->setIsRead(logged_user()->getId(), true);
 				
 				if (!$autosave) {
-					if ($isDraft && !$sendBtnClick) {
+					if ($isDraft) {
 						flash_success(lang('success save mail'));
 						ajx_current("empty");
 					} else {
@@ -981,15 +999,12 @@ class MailController extends ApplicationController {
 						if ($sentOK && config_option("sent_mails_sync")) {
 							$mu = new MailUtilities();
 							$appended = $mu->appendMailThroughIMAP($account, $complete_mail);
+							if ($appended) {
+								DB::execute("UPDATE ".TABLE_PREFIX."mail_contents SET sync=1 WHERE object_id=".$mail->getId());
+							}
 							debug_log("mail_id=".$mail->getId()." - appended=$appended", "sent_emails_sync.log");
 						}
-						/*
-						//if user selected the option to keep a copy of sent mails on the server						
-						if ($sentOK && config_option("sent_mails_sync") && $account->getSyncServer() != null && $account->getSyncSsl()!=null && $account->getSyncSslPort()!=null && $account->getSyncFolder()!=null && $account->getSyncAddr()!=null && $account->getSyncPass()!=null){							
-							$check_sync_box = MailUtilities::checkSyncMailbox($account->getSyncServer(), $account->getSyncSsl(), $account->getOutgoingTrasnportType(), $account->getSyncSslPort(), $account->getSyncFolder(), $account->getSyncAddr(), $account->getSyncPass());
-							if ($check_sync_box) MailUtilities::sendToServerThroughIMAP($account->getSyncServer(), $account->getSyncSsl(), $account->getOutgoingTrasnportType(), $account->getSyncSslPort(), $account->getSyncFolder(), $account->getSyncAddr(), $account->getSyncPass(), $complete_mail, $mail->getId());
-						}
-						*/
+						
 					} catch (Exception $e) {
 						Logger::log("Could not save sent mail in server through imap: ".$e->getMessage()."\nmail_id=".$mail->getId());
 					}
@@ -1533,6 +1548,14 @@ class MailController extends ApplicationController {
 		}
 
 		$content = $attachment[$data_field];
+		
+		// if file is binary, then get the content using another mail parser, because mime_parser_class sometimes returns corrupt pdfs 
+		if ($attachment['Type'] == 'binary') {
+			$new_content = MailUtilities::getCorrectlyParsedAttachmentBody($email->getContent(), $attachment[$name_field], "application/octet-stream");
+			if ($new_content) {
+				$content = $new_content;
+			}
+		}
 
 		$filename = utf8_encode_mime_header_value($attachment[$name_field]);
 		$typeString = "application/octet-stream";
@@ -1757,7 +1780,7 @@ class MailController extends ApplicationController {
 							$email->addToMembers($member_objects);
 							$email->addToSharingTable();
 						} else {
-							$ctrl->add_to_members($email, $members, $account_owner);
+							$valid_members = $ctrl->add_to_members($email, $members, $account_owner);
 						}
 					}
 					
@@ -1824,7 +1847,14 @@ class MailController extends ApplicationController {
 					DB::commit();
 				}
 				
-				flash_success(lang('success classify email'));
+				$success_message = lang('success classify email');
+				if (isset($valid_members) && count($valid_members) > 0) {
+					$valid_member_names_array = array();
+					foreach ($valid_members as $m) $valid_member_names_array[] = $m->getName();
+					$success_message = lang('success classify email in', implode(', ', $valid_member_names_array));
+				}
+				
+				flash_success($success_message);
 				if ($create_task) {
 					ajx_replace(true);
 					$this->redirectTo('task', 'add_task', array('from_email' => $email->getId(), 'replace' =>  1));
@@ -1936,6 +1966,15 @@ class MailController extends ApplicationController {
 							$mime_type = $att["content-type"]; //mime type is listed & valid
 						} else {
 							$mime_type = Mime_Types::instance()->get_type($ext); //Attempt to infer mime type
+						}
+						
+						
+						// if file is binary, then get the content using another mail parser, because mime_parser_class sometimes returns corrupt pdfs
+						if ($att['Type'] == 'binary') {
+							$new_content = MailUtilities::getCorrectlyParsedAttachmentBody($email->getContent(), $att['FileName'], "application/octet-stream");
+							if ($new_content) {
+								$att["Data"] = $new_content;
+							}
 						}
 
 						$userid = logged_user() ? logged_user()->getId() : "0";
@@ -2156,6 +2195,8 @@ class MailController extends ApplicationController {
 				
 				$mailAccount_data['sync_ssl'] = array_var($mailAccount_data, 'sync_ssl') == "checked";
 				$mailAccount_data['contact_id'] = $mail_account_user->getId();
+				
+				$mailAccount_data['incoming_ssl_verify_peer'] = array_var($mailAccount_data, 'incoming_ssl_verify_peer') == "checked";
 
 				if (!array_var($mailAccount_data, 'del_mails_from_server', false)) $mailAccount_data['del_from_server'] = 0;
 				if (!array_var($mailAccount_data, 'mark_read_on_server', false)) $mailAccount_data['mark_read_on_server'] = 0;
@@ -2346,6 +2387,7 @@ class MailController extends ApplicationController {
 		          'is_imap' => $mailAccount->getIsImap(),
 		          'incoming_ssl' => $mailAccount->getIncomingSsl(),
 		          'incoming_ssl_port' => $mailAccount->getIncomingSslPort(),
+		          'incoming_ssl_verify_peer' => $mailAccount->getIncomingSslVerifyPeer(),
 		          'smtp_server' => $mailAccount->getSmtpServer(),
 		          'smtp_port' => $mailAccount->getSmtpPort(),
 		          'smtp_username' => $mailAccount->getSmtpUsername(),
@@ -2392,6 +2434,8 @@ class MailController extends ApplicationController {
 					$mailAccount_data['user_id'] = $mail_account_user->getId();					
 				}
 				$mailAccount_data['sync_ssl'] = array_var($mailAccount_data, 'sync_ssl') == "checked";
+				
+				$mailAccount_data['incoming_ssl_verify_peer'] = array_var($mailAccount_data, 'incoming_ssl_verify_peer') == "checked";
 				
 				DB::beginWork();
 				$logged_user_settings = MailAccountContacts::getByAccountAndContact($mailAccount, logged_user());
@@ -2531,25 +2575,25 @@ class MailController extends ApplicationController {
 		$type = array_var($_GET,'type');
 		 
 		$accounts = MailAccounts::getMailAccountsEditByUser(logged_user());
+		
+		$sel_account_ids = explode(',', user_config_option('mails account filter'));
 		 
 		$object = array();
 		if (isset($accounts)){
-			foreach($accounts as $acc)
-			{
+			foreach($accounts as $acc) {
 				$loadAcc = true;
-				if (isset($type))
-				{
-					if ($type == "view")
-					$loadAcc = $acc->canView(logged_user());
-					if ($type == "edit")
-					$loadAcc = $acc->canEdit(logged_user());
+				if (isset($type)) {
+					if ($type == "view") $loadAcc = $acc->canView(logged_user());
+					if ($type == "edit") $loadAcc = $acc->canEdit(logged_user());
 				}
-				if ($loadAcc)
-				$object[] = array(
+				if ($loadAcc) {
+					$object[] = array(
 						"id" => $acc->getId(),
 						"name" => $acc->getName(),
-						"email" => $acc->getEmail()
-				);
+						"email" => $acc->getEmail(),
+						"selected" => in_array($acc->getId(), $sel_account_ids),
+					);
+				}
 			}
 		}
 		ajx_extra_data(array("accounts" => $object));

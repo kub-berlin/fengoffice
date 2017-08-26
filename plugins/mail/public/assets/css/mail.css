@@ -42,3 +42,9 @@ blockquote {
 .x-grid3-cell-inner.x-grid3-col-status_ico {
 	padding: 0;
 }
+
+.filter-selected button.x-btn-text, #mails-panel .x-btn-pressed button.x-btn-text {
+	font-weight: bold;
+	color: #dd4b39;
+}
+

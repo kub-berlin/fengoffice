@@ -100,13 +100,13 @@ class Reports extends BaseReports {
 			case 'home_phone':
 				$type_name = ($field == 'mobile_phone' ? 'mobile' : ($field == 'work_phone' ? 'work' : 'home'));
 				$type_cond = " AND ce.telephone_type_id in (select t.id from ".TABLE_PREFIX."telephone_types t where t.name='$type_name')";
-				return 'o.id IN (select ce.contact_id from '.TABLE_PREFIX.'contact_telephones ce where ce.contact_id=o.id and ce.number '.$cond.' AND '.$type_cond.')';
+            return 'o.id IN (select ce.contact_id from '.TABLE_PREFIX.'contact_telephones ce where ce.contact_id=o.id and ce.number '.$cond.$type_cond.')';
 			case 'personal_webpage':
 			case 'work_webpage':
 			case 'other_webpage':
 				$type_name = ($field == 'personal_webpage' ? 'personal' : ($field == 'work_webpage' ? 'work' : 'other'));
 				$type_cond = " AND ce.web_type_id in (select t.id from ".TABLE_PREFIX."webpage_types t where t.name='$type_name')";
-				return 'o.id IN (select ce.contact_id from '.TABLE_PREFIX.'contact_web_pages ce where ce.contact_id=o.id and ce.url '.$cond.' AND '.$type_cond.')';
+				return 'o.id IN (select ce.contact_id from '.TABLE_PREFIX.'contact_web_pages ce where ce.contact_id=o.id and ce.url '.$cond.$type_cond.')';
 			case 'im_values':
 				return 'o.id IN (select ce.contact_id from '.TABLE_PREFIX.'contact_im_values ce where ce.contact_id=o.id and ce.value '.$cond.')';
 			case 'home_address':
@@ -483,12 +483,17 @@ class Reports extends BaseReports {
 												// if is a date then use format
 												if (ProjectTasks::instance()->getColumnType($field) == DATA_TYPE_DATETIME && $value instanceof DateTimeValue) {
 													$value = format_value_to_print($field, $value->toMySQL(), DATA_TYPE_DATETIME, $report->getReportObjectTypeId());
+												} else {
+													$value = format_value_to_print($field, $value, ProjectTasks::instance()->getColumnType($field), ProjectTasks::instance()->getObjectTypeId());
 												}
 											}
 										}
 										
-										$results['columns']['names'][$field] = lang('field ProjectTasks '.$field);
-										$results['columns']['order'][] = $field;
+										if (!isset($results['columns']['names'][$field])) {
+											$results['columns']['names'][$field] = lang('field ProjectTasks '.$field);
+											$results['columns']['order'][] = $field;
+											$results['columns']['types'][$field] = ProjectTasks::instance()->getColumnType($field);
+										}
 									}
 								}
 							} else {
@@ -530,12 +535,6 @@ class Reports extends BaseReports {
 									$value = $object->getEndTime()->getTimestamp() - $object->getStartTime()->getTimestamp() - $object->getSubtract();
 									$value = floor($value/60); // format_value_to_print requires time in minutes
 									$value = format_value_to_print('time', $value, DATA_TYPE_INTEGER, $report->getReportObjectTypeId());
-									
-								} else if ($object instanceof Timeslot && $field == 'billing') {
-									
-									$currency = Currencies::getCurrency($object->getRateCurrencyId());
-									$symbol = $currency instanceof Currency ? $currency->getSymbol() : '';
-									$value = $symbol .' '. $object->getFixedBilling();
 									
 								} else {
 									$value = self::instance()->getExternalColumnValue($field, $value, $managerInstance);
@@ -754,7 +753,7 @@ class Reports extends BaseReports {
 	}
 
 
-	private static $external_columns = array('user_id', 'contact_id', 'assigned_to_contact_id', 'assigned_by_id', 'completed_by_id', 'approved_by_id', 'milestone_id', 'company_id');
+	private static $external_columns = array('user_id', 'contact_id', 'assigned_to_contact_id', 'assigned_by_id', 'completed_by_id', 'approved_by_id', 'milestone_id', 'company_id','rel_object_id');
 	function getExternalColumnValue($field, $id, $manager = null, $object = null){
 		$value = '';
 		if($field == 'user_id' || $field == 'contact_id' || $field == 'created_by_id' || $field == 'updated_by_id' || $field == 'assigned_to_contact_id' || $field == 'assigned_by_id' || $field == 'completed_by_id'|| $field == 'approved_by_id'){
@@ -767,7 +766,8 @@ class Reports extends BaseReports {
 			$company = Contacts::findById($id);
 			if($company instanceof Contact && $company->getIsCompany()) $value = $company->getObjectName();
 		} else if($field == 'rel_object_id'){
-			$value = $id;
+			$obj = Objects::findObject($id);
+			$value = $obj instanceof ContentDataObject ? $obj->getObjectName() : "";
 		} else if ($manager instanceof ContentDataObjects) {
 			$value = $manager->getExternalColumnValue($field, $id);
 		}

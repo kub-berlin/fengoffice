@@ -49,12 +49,14 @@ og.TrashCan = function() {
 							items[items.length] = [d.filters.types[i].id, d.filters.types[i].name];
 						}
 						var types_filter = Ext.getCmp('ogTrashedTypeFilterCombo');
-						types_filter.reset();
-						types_filter.store.removeAll();
-						types_filter.store.loadData(items);
-						
-						types_filter.setValue(cmp.actual_type_filter);
-						types_filter.collapse();
+						if (types_filter) {
+							types_filter.reset();
+							types_filter.store.removeAll();
+							types_filter.store.loadData(items);
+							
+							types_filter.setValue(cmp.actual_type_filter);
+							types_filter.collapse();
+						}
 					}
 					
 					og.TrashCan.store.lastOptions.params.trashed = true;

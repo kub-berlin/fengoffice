@@ -289,6 +289,8 @@
 	'is_user' => 'Es usuario',
 	'field Objects is_user' => 'Es usuario',
 	'field Contacts is_user' => 'Es usuario',
+	
+	'field Objects text' => 'Descripción',
 
 	'home_phone' => 'Teléfono personal',
 	'work_phone' => 'Teléfono del trabajo',
@@ -316,6 +318,8 @@
 	'field Contacts other_address' => 'Otra dirección',
 	'field Contacts postal_address' => 'Dirección postal',
 		
-		'field ProjectMilestones assigned_to_company_id' => 'Asignado a empresa',
-		'field ProjectMilestones assigned_to_user_id' => 'Asignado a usuario',
+	'field ProjectMilestones assigned_to_company_id' => 'Asignado a empresa',
+	'field ProjectMilestones assigned_to_user_id' => 'Asignado a usuario',
+	
+	'field Timeslots rel_object_id' => 'Tarea',
 );

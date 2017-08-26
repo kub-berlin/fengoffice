@@ -495,38 +495,48 @@ class SearchController extends ApplicationController {
 		if(strlen($search_string) > 0) {
 			$this->search_for = $search_string;
 			$logged_user_pgs = implode(',', logged_user()->getPermissionGroupIds());
-			
+
+			$permissions_sql = "";
+
+			if(!logged_user()->isAdministrator()){
+                $permissions_sql = "
+                    AND (
+					            (o.object_type_id = $revisionObjectTypeId AND
+						            EXISTS (
+							            SELECT group_id FROM ".TABLE_PREFIX."sharing_table WHERE object_id  = ( SELECT file_id FROM ".TABLE_PREFIX."project_file_revisions WHERE object_id = o.id )
+							            AND group_id IN ($logged_user_pgs)
+						            )
+						        )
+						    OR (
+							        (EXISTS
+								        (SELECT object_id
+									    FROM  ".TABLE_PREFIX."sharing_table sh
+									    WHERE o.id = sh.object_id
+									    AND sh.group_id  IN ($logged_user_pgs)
+									    )
+								    )
+						    )
+					    ) 
+					 " . $can_see_all_tasks_cond . "
+                ";
+            }
+
 			$sql = "
 			SELECT DISTINCT so.rel_object_id AS id, so.content AS text_match, so.column_name AS field_match
 			FROM ".TABLE_PREFIX."searchable_objects so
 			WHERE " . (($useLike) ? " so.content LIKE '%$search_string%' " : " MATCH (so.content) AGAINST ('\"$search_string\"' IN BOOLEAN MODE) ") . "
 			AND (EXISTS
-				(SELECT o.id
-				 FROM  ".TABLE_PREFIX."objects o
-							 WHERE	o.id = so.rel_object_id AND (
-							 (o.object_type_id = $revisionObjectTypeId AND
-							 EXISTS (
-							 SELECT group_id FROM ".TABLE_PREFIX."sharing_table WHERE object_id  = ( SELECT file_id FROM ".TABLE_PREFIX."project_file_revisions WHERE object_id = o.id )
-									AND group_id IN ($logged_user_pgs)
-												)
-												)
-												OR (
-												(EXISTS
-												(SELECT object_id
-												FROM  ".TABLE_PREFIX."sharing_table sh
-										WHERE o.id = sh.object_id
-										AND sh.group_id  IN (
-											$logged_user_pgs
-														)
-														)
-														)
-														)
-														) AND o.object_type_id IN ($listableObjectTypeIds) " . $members_sql . $can_see_all_tasks_cond . "
-														)
-														)															
-						GROUP BY(id)	
-						ORDER BY(id) DESC							
-						LIMIT $start, $limit";
+				    (SELECT o.id
+				    FROM  ".TABLE_PREFIX."objects o
+					WHERE	o.id = so.rel_object_id 
+					    ". $permissions_sql ."
+					    AND o.object_type_id IN ($listableObjectTypeIds) 
+					    ". $members_sql ."
+				    )
+			    )															
+			GROUP BY(id)	
+			ORDER BY(id) DESC							
+			LIMIT $start, $limit";
 				
 			$rows = DB::executeAll($sql);
 			if (!is_array($rows)) $rows = array();

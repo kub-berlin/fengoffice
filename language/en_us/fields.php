@@ -284,7 +284,9 @@ return array(
 	'is_user' => 'Is user',
 	'field Objects is_user' => 'Is user',
 	'field Contacts is_user' => 'Is user',
-		
+	
+	'field Objects text' => 'Description',
+	
 	'field ProjectTasks total_worked_time' => 'Total worked time', 
 
 	'home_phone' => 'Home phone',
@@ -311,5 +313,8 @@ return array(
 	'field Contacts work_address' => 'Work address',
 	'field Contacts other_address' => 'Other address',
 	'field Contacts postal_address' => 'Postal address',
+		
+	'field Timeslots rel_object_id' => 'Task',
+	
 );
 

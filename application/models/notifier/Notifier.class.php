@@ -1819,10 +1819,10 @@ class Notifier {
 				foreach ($from as $f_add => $f_name) {
 					$fr = $f_name == '' ? $f_add : "$f_name <$f_add>";
 					$email->setFrom($fr);
-					if (DEBUG_NOTIFICATIONS) file_put_contents(CACHE_DIR."/debug_notifications", "Real from: $fr\n");
+					if (defined('DEBUG_NOTIFICATIONS') && DEBUG_NOTIFICATIONS) file_put_contents(CACHE_DIR."/debug_notifications", "Real from: $fr\n");
 				}
 				
-				if (DEBUG_NOTIFICATIONS) file_put_contents(CACHE_DIR."/debug_notifications", print_r(array('to'=>$to, 'cc'=>$cc, 'bcc'=>$bcc),1)."\n");
+				if (defined('DEBUG_NOTIFICATIONS') && DEBUG_NOTIFICATIONS) file_put_contents(CACHE_DIR."/debug_notifications", print_r(array('to'=>$to, 'cc'=>$cc, 'bcc'=>$bcc),1)."\n");
 				
 				if ($result) {
 					DB::beginWork();
@@ -1845,10 +1845,10 @@ class Notifier {
 				}
 				$count++;
 				
-				if (DEBUG_NOTIFICATIONS) file_put_contents(CACHE_DIR."/debug_notifications", "End sending queued email ".$email->getId()."\n");
+				if (defined('DEBUG_NOTIFICATIONS') && DEBUG_NOTIFICATIONS) file_put_contents(CACHE_DIR."/debug_notifications", "End sending queued email ".$email->getId()."\n");
 				
 			} catch (Exception $e) {
-				if (DEBUG_NOTIFICATIONS) file_put_contents(CACHE_DIR."/debug_notifications", "Error sending queued_email ".$email->getId()."\n".$e->getMessage()."\n");
+				if (defined('DEBUG_NOTIFICATIONS') && DEBUG_NOTIFICATIONS) file_put_contents(CACHE_DIR."/debug_notifications", "Error sending queued_email ".$email->getId()."\n".$e->getMessage()."\n");
 				if ($result) {
 					DB::rollback();
 				}
@@ -1890,6 +1890,8 @@ class Notifier {
 	 * @return Swift
 	 */
 	static function getMailer($parameters = null) {
+		
+		Hook::fire("override_notifier_mailer_parameters", null, $parameters);
 		
 		if (is_array($parameters)) {
 			$mail_transport_config = self::MAIL_TRANSPORT_SMTP;
@@ -2193,7 +2195,7 @@ class Notifier {
 				DB::escape($email->getBody()), 
 				DB::escape($email->getAttachments()), 
 				DB::escape($email->getTimestamp()),
-				DB::escape($email->getObjectId()),
+				$email->getObjectId(),
 			);
 		} else {
 			// if notification is sent inmediately after an action (not by cron)
@@ -2208,7 +2210,7 @@ class Notifier {
 				DB::escape(array_var($parameters, 'body', '')), 
 				DB::escape(array_var($parameters, 'attachments', '')), 
 				DB::escape(array_var($parameters, 'timestamp', '')),
-				DB::escape(array_var($parameters, 'object_id', '')),
+				array_var($parameters, 'object_id', ''),
 			);
 		}
 		// columns to set

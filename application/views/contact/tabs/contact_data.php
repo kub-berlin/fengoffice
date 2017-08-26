@@ -163,7 +163,6 @@ $(document).ready(function() {
 	og.load_company_combo("<?php echo $genid?>profileFormCompany", '<?php echo (isset ($_POST['widget_company'])? $_POST['widget_company']:array_var($contact_data, 'company_id', '0')) ?>');
 
 	
-	og.telephoneCount = 0;
 	og.telephone_types = Ext.util.JSON.decode('<?php echo json_encode($all_telephone_types)?>');
 
 	for (var i=0; i<og.telephone_types.length; i++) {

@@ -264,3 +264,24 @@ function core_dimensions_update_12_13() {
 	//END UPDATE depth for all template tasks
 }
 
+
+function core_dimensions_update_13_14() {
+	
+	if (!Plugins::instance()->isActivePlugin("multiple_currencies")) {
+		$cur_code = config_option("currency_code");
+		$def_currency = Currencies::findOne();
+		if (!$def_currency instanceof Currency) {
+			$def_currency = new Currency();
+			$def_currency->setIsDefault(true);
+			$def_currency->setName($cur_code);
+		}
+		if ($cur_code != $def_currency->getSymbol()) {
+			$def_currency->setShortName($cur_code);
+			$def_currency->setSymbol($cur_code);
+			$def_currency->save();
+		}
+	}
+	
+	DB::execute("UPDATE ".TABLE_PREFIX."report_columns SET field_name='fixed_billing' WHERE field_name='billing';");
+}
+

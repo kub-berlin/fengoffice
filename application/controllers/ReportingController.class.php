@@ -568,6 +568,20 @@ class ReportingController extends ApplicationController {
 										$dtFromWidget = DateTimeValueLib::dateFromFormatAndString(user_config_option('date_format'), $condValue);
 										$newCondition->setValue(date("m/d/Y", $dtFromWidget->getTimestamp()));
 									}
+								}else if($condition['field_type'] == 'date_range_time_range'){
+
+									$from = getDateValue($condition['value']['from']);
+									$to = getDateValue($condition['value']['to']);
+									$from_time = getTimeValue($condition['value']['from_time']);
+									$to_time = getTimeValue($condition['value']['to_time']);
+									
+									$from_str = $from instanceof DateTimeValue ? $from->toMySQL() : '';
+									$to_str = $to instanceof DateTimeValue ? $to->toMySQL() : '';
+									$ft = is_array($from_time) ? $from_time['hours'].':'.$from_time['mins'] : '';
+									$tt = is_array($to_time) ? $to_time['hours'].':'.$to_time['mins'] : '';
+									
+									$newCondition->setValue(json_encode(array('from' => $from_str, 'to' => $to_str, 'from_time' => $ft, 'to_time' => $tt)));
+									
 								}else{
 									$newCondition->setValue($condValue);
 								}
@@ -694,6 +708,21 @@ class ReportingController extends ApplicationController {
 							$dtFromWidget = DateTimeValueLib::dateFromFormatAndString(user_config_option('date_format'), $condition['value']);
 							$newCondition->setValue(date("m/d/Y", $dtFromWidget->getTimestamp()));
 						}
+						
+					} else if($condition['field_type'] == 'date_range_time_range') {
+						
+						$from = getDateValue($condition['value']['from']);
+						$to = getDateValue($condition['value']['to']);
+						$from_time = getTimeValue($condition['value']['from_time']);
+						$to_time = getTimeValue($condition['value']['to_time']);
+						
+						$from_str = $from instanceof DateTimeValue ? $from->toMySQL() : '';
+						$to_str = $to instanceof DateTimeValue ? $to->toMySQL() : '';
+						$ft = is_array($from_time) ? $from_time['hours'].':'.$from_time['mins'] : '';
+						$tt = is_array($to_time) ? $to_time['hours'].':'.$to_time['mins'] : '';
+						
+						$newCondition->setValue(json_encode(array('from' => $from_str, 'to' => $to_str, 'from_time' => $ft, 'to_time' => $tt)));
+						
 					}else{
 						$newCondition->setValue(isset($condition['value']) ? $condition['value'] : '');
 					}
@@ -781,10 +810,10 @@ class ReportingController extends ApplicationController {
 	function view_custom_report($report_id = null, $view_attributes = null, $params = null) {
 		
 		if (!$report_id) {
-			$report_id = array_var($_GET, 'id');
+			$report_id = array_var($_REQUEST, 'id');
 		}
 		
-		if (array_var($_GET, 'replace')) {
+		if (array_var($_REQUEST, 'replace')) {
 			ajx_replace();
 		}
 		$report = Reports::getReport($report_id);
@@ -825,7 +854,7 @@ class ReportingController extends ApplicationController {
 			$externalFields[$extCol] = $this->get_ext_values($extCol, $report->getReportObjectTypeId());
 		}
 		if (!$params) {
-			$params = array_var($_GET, 'params');
+			$params = array_var($_REQUEST, 'params');
 		}
 		if (count($paramConditions) > 0 && !$params) {
 			
@@ -846,10 +875,10 @@ class ReportingController extends ApplicationController {
 				}
 			}
 			
-			$offset = array_var($_GET, 'offset', 0);
-			$limit = array_var($_GET, 'limit', 50);
-			$order_by = array_var($_GET, 'order_by', '');
-			$order_by_asc = array_var($_GET, 'order_by_asc', false);
+			$offset = array_var($_REQUEST, 'offset', 0);
+			$limit = array_var($_REQUEST, 'limit', 50);
+			$order_by = array_var($_REQUEST, 'order_by', '');
+			$order_by_asc = array_var($_REQUEST, 'order_by_asc', false);
 			
 			$results = Reports::executeReport($report_id, $params, $order_by, $order_by_asc, $offset, $limit);
 			
@@ -1459,6 +1488,7 @@ class ReportingController extends ApplicationController {
 	}
 	
 	function get_object_column_list(){
+		$option_groups = null;
 		$allowed_columns = $this->get_allowed_columns(array_var($_GET, 'object_type'));
 		$columns = array_var($_GET, 'columns', array());
 		
@@ -1466,13 +1496,20 @@ class ReportingController extends ApplicationController {
 			$task_ot = ObjectTypes::findByName('task');
 			$task_columns = $this->get_allowed_columns($task_ot->getId());
 			
-			$columns = array_var($_GET, 'columns', array());
+			$ts_group_count = count($allowed_columns);
+			
 			foreach ($task_columns as $t) {
 				if (str_starts_with($t['id'], 'dim_') || str_starts_with($t['id'], 'repeat_')) continue;
 				$allowed_columns[] = $t;
 			}
+			
+			$option_groups = array(
+				array('count' => $ts_group_count, 'name' => lang('timeslot').' '.lang('columns')),
+				array('count' => count($allowed_columns) - $ts_group_count, 'name' => lang('task').' '.lang('columns')),
+			);
 		}
 		
+		tpl_assign('option_groups', $option_groups);
 		tpl_assign('allowed_columns', $allowed_columns);
 		tpl_assign('columns', explode(',', $columns));
 		tpl_assign('order_by', array_var($_GET, 'orderby'));
@@ -1517,11 +1554,6 @@ class ReportingController extends ApplicationController {
 			foreach($milestones as $milestone){
 				$values[] = array('id' => $milestone->getId(), 'name' => $milestone->getObjectName());
 			}
-		/*} else if($field == 'object_subtype'){
-			$object_types = ProjectCoTypes::findAll(array('conditions' => (!is_null($manager) ? "`object_manager`='$manager'" : "")));
-			foreach($object_types as $object_type){
-				$values[] = array('id' => $object_type->getId(), 'name' => $object_type->getName());
-			}*/
 		} else if ($field == 'company_id') {
 			$companies = Contacts::findAll(array('conditions' => 'is_company > 0'));
 			foreach ($companies as $comp) {
@@ -1534,7 +1566,7 @@ class ReportingController extends ApplicationController {
 		return $values;
 	}
 
-	private function get_allowed_columns($object_type) {
+	function get_allowed_columns($object_type) {
 		$fields = array();
 		if(isset($object_type)){
 			$customProperties = CustomProperties::getAllCustomPropertiesByObjectType($object_type);

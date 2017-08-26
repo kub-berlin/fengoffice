@@ -470,9 +470,15 @@ og.objectPropertyChanged = function(obj_id, count, value){
 			
 			var newTD = document.createElement('td');
 			newTD.id = 'datePropTD[' + obj_id + '][' + count + ']';
-			//newTD.style.paddingLeft = '10px';
+			
 			propValueTD.parentNode.appendChild(newTD);
 			if(value != ''){
+				
+				var time_value = '';
+				var splitted_value = value.split("|");
+				value = splitted_value[0];
+				if (splitted_value[1]) time_value = splitted_value[1];
+				
 				var datePropTypeSel = document.getElementById('datePropType[' + obj_id + '][' + count + ']');
 				if(value.indexOf("+") != -1 || value.indexOf("-") != -1){
 					var param = "";
@@ -489,7 +495,7 @@ og.objectPropertyChanged = function(obj_id, count, value){
 					amount = value.substring(posOp + 1, value.length - 1);
 					unit = value.substring(value.length - 1);
 					datePropTypeSel.selectedIndex = 2;
-					og.datePropertyTypeSel(count, obj_id);
+					og.datePropertyTypeSel(count, obj_id, time_value, param);
 					var paramSel = document.getElementById('propValueParam[' + obj_id + '][' + prop.value + ']');
 					for(var i=0; i < paramSel.length; i++){
 						var paramName = '{' + paramSel.options[i].value + '}';
@@ -561,7 +567,12 @@ og.objectPropertyChanged = function(obj_id, count, value){
 	}
 };
 
-og.datePropertyTypeSel = function(count, obj_id){
+og.datePropertyTypeSelOnChange = function(input, obj_id, prop) {
+	var display = $(input).val() == 'task_creation' ? '' : 'none';
+	$('#prop_value_time_container_'+ obj_id +'_'+ prop).css('display', display);
+}
+
+og.datePropertyTypeSel = function(count, obj_id, value_time, sel_param){
 	
 	var datePropTD = document.getElementById('datePropTD[' + obj_id + '][' + count + ']');
 	var datePropTypeSel = document.getElementById('datePropType[' + obj_id + '][' + count + ']');
@@ -580,7 +591,7 @@ og.datePropertyTypeSel = function(count, obj_id){
 		}else if(type == 1){
 			var selectParam = '';
 			
-			selectParam = '<select name="propValueParam[' + obj_id + '][' + prop + ']" id="propValueParam[' + obj_id + '][' + prop + ']">';
+			selectParam = '<select name="propValueParam[' + obj_id + '][' + prop + ']" id="propValueParam[' + obj_id + '][' + prop + ']" onchange="og.datePropertyTypeSelOnChange(this,\''+obj_id+'\',\''+prop+'\');">';
 			for(var j=0; j < og.templateParameters.length; j++){
 				var item = og.templateParameters[j];
 				if(og.templates.datetypes.indexOf(item.type) != -1){
@@ -589,7 +600,7 @@ og.datePropertyTypeSel = function(count, obj_id){
 			}
 			selectParam += '<option value="task_creation">' + lang('date of task creation') + '</option>';
 			selectParam += '</select>';
-			datePropTD.innerHTML = '= &nbsp;<input type="hidden" name="propValues[' + obj_id + '][' + prop + ']">' + 
+			var html = '= &nbsp;<input type="hidden" name="propValues[' + obj_id + '][' + prop + ']">' + 
 				selectParam + '&nbsp;<select name="propValueOperation[' + obj_id + '][' + prop + ']" id="propValueOperation[' + obj_id + '][' + prop + ']">' +
 				'<option>+</option><option>-</option></select>&nbsp;' + 
 				'<input name="propValueAmount[' + obj_id + '][' + prop + ']" id="propValueAmount[' + obj_id + '][' + prop + ']" style="width:30px;" />' +
@@ -597,6 +608,27 @@ og.datePropertyTypeSel = function(count, obj_id){
 				'<option value="i">'+ lang('minutes') + '</option><option value="d" selected="selected">'+ lang('days') + '</option>' +
 				'<option value="w">'+ lang('weeks') + '</option><option value="m">'+ lang('months') + '</option></select>';
 			
+			if (og.config.use_time_in_task_dates) {
+				html += '&nbsp;<span id="prop_value_time_container_'+ obj_id +'_'+ prop +'"></span>';
+			}
+			
+			datePropTD.innerHTML = html;
+			
+			if (og.config.use_time_in_task_dates) {
+				if (!value_time) value_time = '';
+				var dueTime = new Ext.form.TimeField({
+					renderTo:'prop_value_time_container_'+ obj_id +'_'+ prop,
+					id: 'propValueTime[' + obj_id + '][' + prop + ']',
+					name: 'propValueTime[' + obj_id + '][' + prop + ']',
+					width: 80,
+					format: (og.preferences['time_format_use_24'] == 1 ? 'G:i' : 'g:i A'),
+					emptyText: 'hh:mm',
+					value: value_time
+				});
+				$('#prop_value_time_container_'+ obj_id +'_'+ prop +' .x-form-field-wrap').css('display', 'inline-block').css('vertical-align','top');
+				
+				og.datePropertyTypeSelOnChange(document.getElementById('propValueParam[' + obj_id + '][' + prop + ']'), obj_id, prop);
+			}
 		}
 	}
 };

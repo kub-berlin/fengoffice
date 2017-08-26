@@ -117,7 +117,11 @@
   <td>
     <div class='task-row-avatar'>
         {{#if assigned_to}}
-          <img src="{{{assigned_to.img_url}}}" alt="" title='{{assigned_to.name}}'/>
+			{{#if assigned_to_show_name}}
+			  <div class="name">{{assigned_to.name}}</div>
+			{{else}}
+        	  <img src="{{{assigned_to.img_url}}}" alt="" title='{{assigned_to.name}}'/>
+			{{/if}}
         {{else}}
           <div class='empty-img ico-warning32' title='{{lang 'unassigned'}}'></div>
         {{/if}}

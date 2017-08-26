@@ -229,6 +229,7 @@
   	'user ws config category name time panel' => 'Time options',
     'user ws config category name general' => 'General',
     'user ws config category name calendar panel' => 'Calendar options',
+    'user ws config category name contact panel' => 'Contacts options',
     'user ws config category name mails panel' => 'Email options',
 	'user ws config category name listing preferences' => 'Listing options',
 	'user ws config category name reporting' => 'Report options',
@@ -863,6 +864,9 @@
   	'user config option name tasksUseDateFilters' => 'Use task date filters',
   	'user config option desc tasksUseDateFilters' => 'If enabled then you will be able to filter tasks list using a date range.',
   		
+  	'user config option name tasksShowAssignedToName' => 'Show the name of the assigned',
+  	'user config option desc tasksShowAssignedToName' => 'If enabled then the assigned to name will be shown instead of the picture in tasks list.',
+  		
   	'user config option name report_time_colums_display' => 'Time column format',
   	'user config option desc report_time_colums_display' => 'If friendly format is selected then the time columns will be shown in a descriptive mode (e.g.: 2 hours, 15 minutes). If not then they will show the amount of minutes or seconds',
   		
@@ -960,6 +964,8 @@
   		'timezone options' => 'Time zone options',
   		'in timezone' => 'For time zone',
   		'original time' => 'Original time',
+
+  		'user config option name show_inactive_users_in_list' => 'Show inactive users in the contacts list',
   ); // array
 
 

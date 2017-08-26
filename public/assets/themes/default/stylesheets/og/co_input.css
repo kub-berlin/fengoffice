@@ -5,6 +5,10 @@
 	color:#666;
 }
 
+#reporting-panel .coInputHeader {
+	margin-bottom: 15px;
+}
+
 .coInputSeparator {
 /*	background-image: url(../../images/layout/shadow.png);
 	height: 6px;

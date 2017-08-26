@@ -322,7 +322,7 @@ class MoreController extends ApplicationController {
 				if ($enabled > 0) {
 					DB::execute("INSERT INTO ".TABLE_PREFIX."tab_panel_permissions (permission_group_id, tab_panel_id) VALUES (".logged_user()->getPermissionGroupId().",'".$tab_panel->getId()."') ON DUPLICATE KEY UPDATE tab_panel_id=tab_panel_id;");
 				}
-				if ($tab_panel->getPluginId() > 0) {
+				if ($tab_panel->getPluginId() > 0 && $tab_panel->getDefaultController() != 'member') {
 					$plugin = Plugins::findById($tab_panel->getPluginId());
 					if ($plugin instanceof Plugin) {
 						if ($enabled) $plugin->activate();
@@ -486,10 +486,10 @@ class MoreController extends ApplicationController {
 			
 		}
 		set_config_option('enabled_dimensions', implode(',', $enabled_dim_vals));
-		
+		/*
 		if ($update_root_dimensions) {
 			set_user_config_option('root_dimensions', implode(',', $root_dids), logged_user()->getId());
-		}
+		}*/
 		
 		ajx_extra_data(array('ok' => '1'));
 	}

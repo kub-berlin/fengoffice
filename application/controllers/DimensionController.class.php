@@ -388,6 +388,19 @@ class DimensionController extends ApplicationController {
 	
 		$selected_member_ids = json_decode(array_var($_REQUEST, 'selected_ids', "[0]"));
 		$selected_members = Members::findAll(array('conditions' => 'id IN ('.implode(',',$selected_member_ids).')'));
+		// check if this dimension has to be filtered by the selected members
+		$real_sel_members = array();
+		foreach ($selected_members as $sel_mem) {
+			$dma = DimensionMemberAssociations::findOne(array(
+				'conditions' => "dimension_id=".$sel_mem->getDimensionId()." AND object_type_id=".$sel_mem->getObjectTypeId()." AND associated_dimension_id=$dimension_id"
+			));
+			if ($dma instanceof DimensionMemberAssociation) {
+				$assoc_config = $dma->getConfig();
+				if (array_var($assoc_config, 'dont_filter_associated_selector')) continue;
+			}
+			$real_sel_members[] = $sel_mem;
+		}
+		$selected_members = $real_sel_members;
 		
 		$limit_obj = array(
 			'offset' => $offset,

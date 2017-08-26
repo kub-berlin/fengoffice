@@ -51,7 +51,7 @@
 	}
 	// Render Column lists
 	echo label_tag(lang('columns to print'), 'columns');
-	echo doubleListSelect("columns", $list, array('id' => $genid."columns", 'size' => 20));
+	echo doubleListSelect("columns", $list, array('id' => $genid."columns", 'size' => 20), $option_groups);
 	
 	echo '<span class="desc">' . lang('columns to print desc') . '</span>'; 
 ?>

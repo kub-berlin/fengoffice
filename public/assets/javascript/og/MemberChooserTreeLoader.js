@@ -95,7 +95,7 @@ Ext.extend(og.MemberChooserTreeLoader , Ext.tree.TreeLoader, {
 			
 			// mask
 			var old_text = this.ownerTree.getRootNode().text;
-			this.ownerTree.getRootNode().setText(lang('loading'));
+			//this.ownerTree.getRootNode().setText(lang('loading'));
 			this.ownerTree.innerCt.mask();
 		
 			// add nodes

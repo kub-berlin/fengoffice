@@ -84,14 +84,6 @@ og.MessageManager = function() {
 		var classes = readClass + r.id;
 		if (!r.data.isRead) classes += " bold";
 		
-		mem_path = "";
-		var mpath = Ext.util.JSON.decode(r.data.memPath);
-		if (mpath){ 
-			mem_path = "<div class='breadcrumb-container' style='display: inline-block;'>";
-			mem_path += og.getEmptyCrumbHtml(mpath, '.breadcrumb-container', og.breadcrumbs_skipped_dimensions);
-			mem_path += "</div>";
-		}
-		
 		var text = '';
 		if (r.data.text != ''){
 			text = '<span style="color:#888888;white-space:nowrap">&nbsp;-&nbsp;';
@@ -100,7 +92,7 @@ og.MessageManager = function() {
 		
 		name = String.format(
 				'<a style="font-size:120%;" class="{3}" href="{1}" onclick="og.openLink(\'{1}\');return false;" title="{2}">{0}</a>',
-				og.clean(value), og.getUrl('message', 'view', {id: r.data.object_id}), og.clean(r.data.text), classes) + text + mem_path;
+				og.clean(value), og.getUrl('message', 'view', {id: r.data.object_id}), og.clean(r.data.text), classes) + text;
 	
 		
 		
@@ -253,17 +245,8 @@ og.MessageManager = function() {
 	
 	// custom property columns
 	var cps = og.custom_properties_by_type['message'] ? og.custom_properties_by_type['message'] : [];
-	for (i=0; i<cps.length; i++) {
-		cm_info.push({
-			id: 'cp_' + cps[i].id,
-			hidden: parseInt(cps[i].show_in_lists) == 0,
-			header: cps[i].name,
-			align: cps[i].cp_type=='numeric' ? 'right' : 'left',
-			dataIndex: 'cp_' + cps[i].id,
-			sortable: true,
-			renderer: og.clean
-		});
-	}
+	this.addCustomPropertyColumns(cps, cm_info);
+
 	// dimension columns
 	for (did in og.dimensions_info) {
 		if (isNaN(did)) continue;
@@ -465,6 +448,8 @@ Ext.extend(og.MessageManager, Ext.grid.GridPanel, {
 		this.store.baseParams = {
 			context: og.contextManager.plainContext()
 		};
+		
+		this.updateColumnModelHiddenColumns();
 		
 		this.store.removeAll();
 		this.store.load({

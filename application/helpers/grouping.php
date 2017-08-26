@@ -40,7 +40,7 @@
 		$max_level = 0;
 		
 		foreach ($objects as $object) {
-			if (($object instanceof Timeslot || $object instanceof ApplicationReadLog || $object instanceof ApplicationLog) && $object->getColumnValue('rel_object_id') > 0) {
+			if (($object instanceof ApplicationReadLog || $object instanceof ApplicationLog) && $object->getColumnValue('rel_object_id') > 0) {
 				$object_id = $object->getRelObjectId();
 			} else {
 				$object_id = $object->getId();

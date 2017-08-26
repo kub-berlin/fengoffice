@@ -379,6 +379,7 @@ return array(
 	'crpm_people' => 'People',
 	'estimated_worked_time' => 'Estimated and worked time',
 	'pending time' => 'Pending time',
+	'worked time' => 'Worked time',
 	'overdue and upcoming' => 'Late and upcoming tasks',
 	'projects widget title' => 'Projects',
 	'statics' => 'Statistics',
@@ -455,4 +456,9 @@ return array(
 	'set rw permissions for all object types' => 'Set read/write permissions to all object types.',
 	'set r permissions for all object types' => 'Set read-only permissions to all object types.',
 	'set none permissions for all object types' => 'Remove permissions in all object types',
+		
+	'object could not be classfied in due to permissions' => 'Could not classify {0} in \'{1}\' because you don\'t have permissions for {2} there.',
+	'if not specified then current time will be used' => 'If not specified then current time will be used.',
+	
+	'couldnt assign user to task due to permissions' => 'Could not assign {0} to {1} because the user doesn\'t have permissions where the task is classified.', 
 );

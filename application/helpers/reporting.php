@@ -100,6 +100,8 @@ function report_table_csv($results, $report) {
 	$all_csv_rows = array();
 	foreach ($all_data_rows as $r) {
 		$r = str_replace(array("\r\n","\r","\n"), " ", $r);
+		foreach ($r as &$ritem) $ritem = html_entity_decode($ritem);
+		
 		$all_csv_rows[] = '"'. implode('","', $r) .'"';
 	}
 	
@@ -221,14 +223,12 @@ function echo_report_group_html($group_data, $results, $report, $level=0) {
 	$i = 0;
 	foreach ($group_data as $gd) {
 		
-		if ($i == 0) {
-			if (!$report->getColumnValue("hide_group_details")) {
-				echo '<tr><th colspan="'.count($columns['order']).'" class="report-group-heading-'.$level.'">'.$gd['name'].'</th></tr>';
-			} else {
-				// when hiding details dont show the title and show the totals before the subgroups
-				$null=null;
-				Hook::fire('render_additional_report_group_rows', array('results' => $results, 'report' => $report, 'group' => $gd, 'level' => $level), $null);
-			}
+		if (!$report->getColumnValue("hide_group_details")) {
+			echo '<tr><th colspan="'.count($columns['order']).'" class="report-group-heading-'.$level.' indent-'.$level.'">'.$gd['name'].'</th></tr>';
+		} else {
+			// when hiding details dont show the title and show the totals before the subgroups
+			$null=null;
+			Hook::fire('render_additional_report_group_rows', array('results' => $results, 'report' => $report, 'group' => $gd, 'level' => $level), $null);
 		}
 		
 		$i++;
@@ -237,7 +237,7 @@ function echo_report_group_html($group_data, $results, $report, $level=0) {
 			
 			echo_report_group_html($gd['groups'], $results, $report, $level+1);
 			
-			if ($i == count($group_data) && !$report->getColumnValue("hide_group_details")) {
+			if (!$report->getColumnValue("hide_group_details")) {
 				// when hiding details dont show the title and show the totals before the subgroups
 				$null=null;
 				Hook::fire('render_additional_report_group_rows', array('results' => $results, 'report' => $report, 'group' => $gd, 'level' => $level), $null);
@@ -270,7 +270,7 @@ function echo_report_group_html($group_data, $results, $report, $level=0) {
 						$type = array_var($columns['types'], $col);
 						$numeric_type = in_array($type, array(DATA_TYPE_INTEGER, DATA_TYPE_FLOAT, 'numeric'));
 				?>
-					<td style="padding-right:10px;" <?php echo $numeric_type ? 'class="right"' : ''?>>
+					<td style="<?php echo ($col == 'link' ? 'width:16px;padding:0 0 0 2px;border-right:0 none;' : 'padding:0 10px;') ?>" <?php echo $numeric_type ? 'class="right"' : ''?>>
 				<?php 
 						$val_type = ($col == 'link' ? '' : array_var($types, $col));
 						$date_format = is_numeric($col) ? "Y-m-d" : user_config_option('date_format');
@@ -321,12 +321,20 @@ function report_table_html($results, $report, $parametersUrl="", $to_print=false
 		<tr class="custom-report-table-heading">
 		<?php
 		$columns = array_var($results, 'columns');
+		$after_link = false;
 		foreach ($columns['order'] as $col) {
-			echo "<th>";
 			if($col != 'link') {
+				if ($after_link) {
+					echo "<th colspan='2'>";
+					$after_link = false;
+				} else {
+					echo "<th>";
+				}
 			  	echo clean(array_var($columns['names'], $col));
+				echo "</th>";
+			} else {
+				$after_link = true;
 			}
-			echo "</th>";
 		}
 		?>
 		</tr>
@@ -358,14 +366,14 @@ function get_report_grouped_values_as_array($group_data, $results, $report, $lev
 	foreach ($group_data as $gd) {
 
 		$row_vals = array();
-		if ($i == 0) {
-			$first = true;
-			foreach ($columns as $c) {
-				$row_vals[] = $first ? $gd['name'] : "";
-				$first = false;
-			}
-			$all_rows[] = $row_vals;
+		
+		$first = true;
+		foreach ($columns as $c) {
+			$row_vals[] = $first ? $gd['name'] : "";
+			$first = false;
 		}
+		$all_rows[] = $row_vals;
+		
 		$i++;
 
 		if (isset($gd['groups'])) {
@@ -373,12 +381,10 @@ function get_report_grouped_values_as_array($group_data, $results, $report, $lev
 			$group_rows = get_report_grouped_values_as_array($gd['groups'], $results, $report, $level+1);
 			$all_rows = array_merge($all_rows, $group_rows);
 
-			if ($i == count($group_data)) {
-				$row_vals=null;
-				Hook::fire('get_additional_report_group_rows_csv', array('results' => $results, 'report' => $report, 'group' => $gd, 'level' => $level), $row_vals);
-				$all_rows = array_merge($all_rows, $row_vals);
-			}
-
+			$row_vals=null;
+			Hook::fire('get_additional_report_group_rows_csv', array('results' => $results, 'report' => $report, 'group' => $gd, 'level' => $level), $row_vals);
+			$all_rows = array_merge($all_rows, $row_vals);
+		
 		} else if (isset($gd['items'])) {
 
 			$rows = array_var($results, 'rows');
@@ -467,9 +473,6 @@ function build_custom_report_group_name($gbk, $row, $ot) {
 
 function group_custom_report_results($rows, $group_by_criterias, $ot) {
 	
-	$linear_groups = array();
-
-	$grouped_results = array();
 	$gb_keys = array();
 
 	foreach ($group_by_criterias as $gb) {
@@ -483,83 +486,100 @@ function group_custom_report_results($rows, $group_by_criterias, $ot) {
 		
 		if (!$gkey) $gkey = "";
 		$gname = str_replace("_id_", "_name_", $gkey);
-		$gb_keys[] = array('k' => $gkey, 'n' => $gname);
+		$gb_keys[] = array('k' => $gkey, 'n' => $gname, 'is_date' => false);
 	}
-
-	foreach ($rows as $row) {
-
-		$row_g_key = "";
-		$row_g_name = "";
-		$original_gkey = "";
-		foreach ($gb_keys as $gbk) {
-			
-			$gb_name = build_custom_report_group_name($gbk, $row, $ot);
-			
-			$row_g_key .= ($row_g_key == "" ? "" : "_") . array_var($row, $gbk['k']);
-			$row_g_name .= ($row_g_name == "" ? "" : "%|%") . $gb_name;
-			
-			$original_gkey .= ($original_gkey == "" ? "" : ",") . $gbk['k'];
-		}
-
-		if (!isset($linear_groups[$row_g_key])) {
-			$linear_groups[$row_g_key] = array(
-					'id' => $row_g_key,
-					'name' => $row_g_name,
-					'original_gkey' => $original_gkey,
-					'items' => array()
-			);
-		}
-		$linear_groups[$row_g_key]['items'][] = $row;
-	}
-
-	$groups = array();
-
-	foreach ($linear_groups as $k => $data) {
-
-		$exploded = explode('_', $k);
-		$reversed = array_reverse($exploded);
-
-		$last = null;
-		$names = null;
-		$i = 0;
-
-		foreach ($reversed as $rev) {
-				
-			if (!$last) {
-				$x = array($rev => $data);
-				$last = $x;
-				$names = array_reverse(explode('%|%', $data['name']));
-			} else {
-				// group information
-				foreach ($last as $l) {
-					$d = $l;
-					break;
+	
+	/* @var $ot ObjectType */
+	eval('$managerInstance = ' . $ot->getHandlerClass() . "::instance();");
+	if ($managerInstance) {
+		foreach ($gb_keys as &$gbk) {
+			if (str_starts_with($gbk['k'], '_group_id_fp_')) {
+				$col = str_replace('_group_id_fp_', '', $gbk['k']);
+				if (in_array($managerInstance->getColumnType($col), array(DATA_TYPE_DATETIME, DATA_TYPE_DATE))) {
+					$gbk['is_date'] = true;
 				}
-				$exp_tmp = explode(',', $d['original_gkey']);
-				array_splice($exp_tmp, count($exp_tmp)-1);
-				$orig_key = implode(',', $exp_tmp);
-				
-				$exp_tmp = explode('_', $d['id']);
-				array_splice($exp_tmp, count($exp_tmp)-1);
-				$g_id = implode('_', $exp_tmp);
-				
-				$y = array($rev => array('groups' => $last, 'original_gkey' => $orig_key, 'id' => $g_id));
-				$last = $y;
 			}
-			
-			$n = array_shift($names);
-			if ($n == '') $n = lang('unclassified');
-			$last[$rev]['name'] = $n;
-			
-			$i++;
 		}
-
-		if (!isset($groups[$rev])) $groups[$rev] = array();
-		$groups[$rev][] = $last[$rev];
-
 	}
-
-	return $groups;
+	
+	$grouped_temp = array();
+	
+	foreach ($rows as $row) {
+		if (!empty($row)) {
+			
+			if (isset($gb_keys[0])) {
+				$k0 = $row[$gb_keys[0]['k']];
+				$n0 = $row[$gb_keys[0]['n']];
+				if ($gb_keys[0]['is_date']) $n0 = gmdate('Y-m-d', strtotime($k0));
+				
+				if (!isset($grouped_temp[$n0])) {
+					$grouped_temp[$n0] = array(
+						'id' =>  $k0,
+						'name' => $row[$gb_keys[0]['n']],
+						'original_gkey' => $gb_keys[0]['k'],
+					);
+				}
+				
+				if (isset($gb_keys[1])) {
+					$k1 = $row[$gb_keys[1]['k']];
+					$n1 = $row[$gb_keys[1]['n']];
+					if ($gb_keys[1]['is_date']) $n1 = gmdate('Y-m-d', strtotime($k1));
+					
+					if (!isset($grouped_temp[$n0]['groups'][$n1])) {
+						$grouped_temp[$n0]['groups'][$n1] = array(
+							'id' => $k0."_".$k1,
+							'name' => $row[$gb_keys[1]['n']],
+							'original_gkey' => $gb_keys[0]['k'].",".$gb_keys[1]['k'],
+						);
+					}
+					
+					if (isset($gb_keys[2])) {
+						$k2 = $row[$gb_keys[2]['k']];
+						$n2 = $row[$gb_keys[2]['n']];
+						if ($gb_keys[2]['is_date']) $n2 = gmdate('Y-m-d', strtotime($k2));
+						
+						if (!isset($grouped_temp[$n0]['groups'][$n1]['groups'][$n2])) {
+							$grouped_temp[$n0]['groups'][$n1]['groups'][$n2] = array(
+								'id' => $k0."_".$k1."_".$k2,
+								'name' => $row[$gb_keys[2]['n']],
+								'original_gkey' => $gb_keys[0]['k'].",".$gb_keys[1]['k'].",".$gb_keys[2]['k'],
+							);
+						}
+						
+						$grouped_temp[$n0]['groups'][$n1]['groups'][$n2]['items'][] = $row;
+						
+					} else {
+						
+						$grouped_temp[$n0]['groups'][$n1]['items'][] = $row;
+						
+					}
+				} else {
+						
+					$grouped_temp[$n0]['items'][] = $row;
+					
+				}
+			}
+		}
+	}
+	
+	// ensure the correct group order
+	foreach ($grouped_temp as $k0 => &$v0) {
+		if (isset($v0['groups'])) {
+			foreach ($v0['groups'] as $k1 => &$v1) {
+				if (isset($v1['groups'])) ksort($v1['groups']);
+			}
+			ksort($v0['groups']);
+		}
+	}
+	ksort($grouped_temp);
+	
+	// build result
+	$grouped_results = array(array());
+	foreach ($grouped_temp as $k => $v) {
+		$grouped_results[$k] = array($v);
+	}
+	
+	return $grouped_results;
 }
 
 
@@ -578,6 +598,7 @@ function build_report_conditions_html($report_id, $parameters=array()) {
 	$conditionHtml = "";
 	
 	if (count($conditions) > 0) {
+		$date_format_tip = date_format_tip(user_config_option('date_format'));
 		$model = $object_type instanceof ObjectType ? $object_type->getHandlerClass() : "Objects";
 		foreach ($conditions as $condition) {
 			if($condition->getCustomPropertyId() > 0){
@@ -609,7 +630,7 @@ function build_report_conditions_html($report_id, $parameters=array()) {
 					$condition->setValue($cond_value);
 				}
 			}
-			$paramValue = isset($parameters[$paramName]) ? $parameters[$paramName] : '';
+			$paramValue = array_var($parameters, $condition->getId(), '');
 			$value = $condition->getIsParametrizable() ? clean($paramValue) : clean($condition->getValue());
 				
 			eval('$managerInstance = ' . $model . "::instance();");
@@ -617,7 +638,16 @@ function build_report_conditions_html($report_id, $parameters=array()) {
 			if(in_array($condition->getFieldName(), $externalCols)){
 				$value = clean(Reports::instance()->getExternalColumnValue($condition->getFieldName(), $value, $managerInstance));
 			}
-			if ($value != '') {
+			
+			$cond_html = null;
+			Hook::fire('custom_report_cond_html', array('field' => $condition, 'report' => $report, 'report_ot' => $object_type, 'value' => $paramValue), $cond_html);
+			$already_rendered = false;
+			if ($cond_html) {
+				$conditionHtml .= $cond_html;
+				$already_rendered = true;
+			}
+			
+			if (!$already_rendered && $value != '' && $value != $date_format_tip) {
 				$conditionHtml .= '<li>' . $name . ' ' . ($condition->getCondition() != '%' ? $condition->getCondition() : lang('ends with') ) . ' ' . format_value_to_print($condition->getFieldName(), $value, $coltype, '', '"', user_config_option('date_format')) . '</li>';
 			}
 		}
@@ -850,6 +880,8 @@ function build_report_conditions_sql($parameters) {
 						$allConditions .= ' AND jt.`'.$condField->getFieldName().'` '.$oper.' '.DB::escape($pre. $value .$post);
 					}
 				}
+				
+				Hook::fire('report_conditions_extra_fields', array('field' => $condField, 'report' => $report, 'report_ot' => $ot, 'value' => $value), $allConditions);
 			}
 		}
 	}

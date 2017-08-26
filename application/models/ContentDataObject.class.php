@@ -1404,12 +1404,14 @@ abstract class ContentDataObject extends ApplicationDataObject {
 	}
 	
 	
-	function getAllowedMembersToAdd(Contact $user, $enteredMembers){
+	function getAllowedMembersToAdd(Contact $user, $enteredMembers, &$not_valid_members=array()){
 		
 		$validMembers = array();
 		foreach ($enteredMembers as $m) {
 			if ($this->canAddToMember($user, $m, $enteredMembers)) {
 				$validMembers[] = $m;
+			} else {
+				$not_valid_members[] = $m;
 			}
 		}
 		

@@ -97,14 +97,6 @@ og.FileManager = function() {
 		var classes = readClass + r.id;
 		if (!r.data.isRead) classes += " bold";
 		
-		mem_path = "";
-		var mpath = Ext.util.JSON.decode(r.data.memPath);
-		if (mpath){ 
-			mem_path = "<div class='breadcrumb-container' style='display: inline-block;'>";
-			mem_path += og.getEmptyCrumbHtml(mpath, '.breadcrumb-container', og.breadcrumbs_skipped_dimensions);
-			mem_path += "</div>";
-		}
-		
 		var file_name = og.clean(og.removeFileExtension(value));
 		//do not remove . for weblinks
 		if(r.data.ftype == 1){
@@ -113,7 +105,7 @@ og.FileManager = function() {
 		
 		var name = String.format(
 			'<a style="font-size:120%;" class="{3}" href="{2}" onclick="og.openLink(\'{2}\');return false;">{0}</a>',
-			file_name, r.data.name, og.getUrl('files', 'file_details', {id: r.data.object_id}), classes) + mem_path;
+			file_name, r.data.name, og.getUrl('files', 'file_details', {id: r.data.object_id}), classes);
 		
 		return name;
 	}
@@ -222,10 +214,10 @@ og.FileManager = function() {
 		if(r.data.ftype == 0){
 			if(og.config['checkout_notification_dialog'] == 0){
 				actions += String.format('<a class="list-action ico-download" href="{0}" target="_self" title="{1}" ' + actionStyle + '>&nbsp;</a>',
-					og.getUrl('files', 'download_file', {id: r.id}),lang('download'));
+					og.getUrl('files', 'download_file', {id: r.id, mod:Ext.id()}),lang('download'));
 			}else{
 				actions += String.format('<a class="list-action ico-download" href="#" onclick="og.checkDownload(\'{0}\', \'{1}\', \'{2}\', \'{4}\');" title="{3}" ' + actionStyle + '>&nbsp;</a>',
-				og.getUrl('files', 'download_file', {id: r.id}), r.data.checkedOutById, r.data.checkedOutByName, lang('download'), r.id);
+				og.getUrl('files', 'download_file', {id: r.id, mod:Ext.id()}), r.data.checkedOutById, r.data.checkedOutByName, lang('download'), r.id);
 			}			
 		}else{
 			actions += String.format("<a href='{0}' class='list-action ico-open-link' target='_blank'" + actionStyle + ">&nbsp;</a>&nbsp;", r.data.url, 'public/assets/themes/default/images/16x16/openlink.png');
@@ -426,17 +418,8 @@ og.FileManager = function() {
 	];
 	// custom property columns
 	var cps = og.custom_properties_by_type['file'] ? og.custom_properties_by_type['file'] : [];
-	for (i=0; i<cps.length; i++) {
-		cm_info.push({
-			id: 'cp_' + cps[i].id,
-			hidden: parseInt(cps[i].show_in_lists) == 0,
-			header: cps[i].name,
-			align: cps[i].cp_type=='numeric' ? 'right' : 'left',
-			dataIndex: 'cp_' + cps[i].id,
-			sortable: true,
-			renderer: og.clean
-		});
-	}
+	this.addCustomPropertyColumns(cps, cm_info);
+
 	// dimension columns
 	for (did in og.dimensions_info) {
 		if (isNaN(did)) continue;
@@ -746,6 +729,9 @@ Ext.extend(og.FileManager, Ext.grid.GridPanel, {
 		      context: og.contextManager.plainContext()
 
 		});
+		
+		this.updateColumnModelHiddenColumns();
+		
 		this.store.removeAll();
 		this.store.load({
 			params: Ext.applyIf(params, {

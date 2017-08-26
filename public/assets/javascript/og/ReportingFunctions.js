@@ -200,6 +200,13 @@ og.fieldChanged = function(id, condition, value){
 		var textValueField = '<label for="conditions[' + id + '][value]">' + lang('value') + '</label><input type="text" style="width:100px;" id="conditions[' + id + '][value]" name="conditions[' + id + '][value]" value="' + value + '"/>' + type_and_name;
 		var dateValueField = '<label for="containerConditions[' + id + '][value]">' + lang('value') + '</label>' + '<span id="containerConditions[' + id + '][value]"></span>' + type_and_name; 
 		
+		var dateRangeValueField = '<label for="containerConditions[' + id + '][value]">' + lang('value') + '</label>' + 
+			'<span id="containerConditions[' + id + '][value][from]"></span>&nbsp;' + lang('and') +
+			'&nbsp;<span id="containerConditions[' + id + '][value][to]"></span>&nbsp;' + 
+			'&nbsp;<div style="display: inline-block;vertical-align: text-top;">' + lang('between') + '</div>' +
+			'&nbsp;<span id="containerConditions[' + id + '][value][from_time]"></span>&nbsp;' + lang('and') +
+			'&nbsp;<span id="containerConditions[' + id + '][value][to_time]"></span>' + type_and_name;
+		
 		if(fieldType == "text" || fieldType == "memo"){
 			document.getElementById('tdValue' + id).innerHTML = textValueField;
 			conditions += '<option value="like">' + lang('like') + '</option>';
@@ -258,6 +265,60 @@ og.fieldChanged = function(id, condition, value){
 			conditions += '<option value="<>"><></option>';
 			conditions += '</select>';
 			document.getElementById('tdConditions' + id).innerHTML = conditions;
+			
+		} else if(fieldType == "date_range_time_range"){
+			
+			if (value != '') {
+				value = Ext.util.JSON.decode(value);
+			} else {
+				value = {from:'', to:'', from_time:'', to_time:''};
+			}
+			console.log(value);
+			
+			document.getElementById('tdValue' + id).innerHTML = dateRangeValueField;
+			document.getElementById('tdValue' + id).style.width = '500px';
+			
+			conditions += '<option value="between">'+lang('between')+'</option>';
+			conditions += '</select>';
+			document.getElementById('tdConditions' + id).innerHTML = conditions;
+			var date1Cond = new og.DateField({
+				renderTo:'containerConditions[' + id + '][value][from]',
+				name: 'conditions[' + id + '][value][from]',
+				id: 'conditions[' + id + '][value][from]',
+				value: Ext.util.Format.date(value.from, og.preferences['date_format'])
+			});
+			
+			var date2Cond = new og.DateField({
+				renderTo:'containerConditions[' + id + '][value][to]',
+				name: 'conditions[' + id + '][value][to]',
+				id: 'conditions[' + id + '][value][to]',
+				value: Ext.util.Format.date(value.to, og.preferences['date_format'])
+			});
+			
+			
+
+			var time1Cond = new Ext.form.TimeField({
+				renderTo:'containerConditions[' + id + '][value][from_time]',
+				name: 'conditions[' + id + '][value][from_time]',
+				id: 'conditions[' + id + '][value][from_time]',
+				width: 85,
+				emptyText: 'hh:mm',
+				value: value.from_time
+			});
+			var time2Cond = new Ext.form.TimeField({
+				renderTo:'containerConditions[' + id + '][value][to_time]',
+				name: 'conditions[' + id + '][value][to_time]',
+				id: 'conditions[' + id + '][value][to_time]',
+				width: 85,
+				emptyText: 'hh:mm',
+				value: value.to_time
+			});
+			
+			document.getElementById('conditions[' + id + '][value][from]').parentNode.style.display = 'inline-block';
+			document.getElementById('conditions[' + id + '][value][to]').parentNode.style.display = 'inline-block';
+			document.getElementById('conditions[' + id + '][value][from_time]').parentNode.style.display = 'inline-block';
+			document.getElementById('conditions[' + id + '][value][to_time]').parentNode.style.display = 'inline-block';
+			
 		}else if(fieldType == "external"){
 			
 			var objectTypeSel = document.getElementById('objectTypeSel');
@@ -332,12 +393,16 @@ og.validateReport = function(genid){
 			var fieldName = fields[fields.selectedIndex].text;
 			var field_db = fields[fields.selectedIndex].value;
 			if(field_db == 'workspace') continue;
+			
+			var fieldType = fields[fields.selectedIndex].className;
+			if (fieldType == 'date_range_time_range') continue;
+			
 			var value = document.getElementById('conditions[' + i + '][value]').value;
 			if(value == ""){
 				alert(lang('condition value empty', fieldName));
 				return false;
 			}
-			var fieldType = fields[fields.selectedIndex].className;
+			
 			var condition = document.getElementById('conditions[' + i + '][condition]').value;
 			if(fieldType == 'numeric' && condition != '%' && !og.isReportFieldNumeric(value)){
 				alert(lang('condition value not numeric', fieldName));

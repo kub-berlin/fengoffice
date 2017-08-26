@@ -262,6 +262,18 @@ class MailUtilities {
 							(".$account->getId().", ".DB::escape($message_id).", ".DB::escape($imap_folder_name).", ".DB::escape($uid).", ".$exists_object_id.")
 						ON DUPLICATE KEY UPDATE uid=".DB::escape($uid).";
 					");
+					
+					// ensure that the last uid is updated correctly if needed, for future chekmails
+					if (is_numeric($uid)) {
+						$max_uid_saved = $account->getImapMaxUID($imap_folder_name);
+						if (is_numeric($max_uid_saved) && $max_uid_saved < $uid) {
+							DB::execute("
+								UPDATE `".TABLE_PREFIX."mail_account_imap_folder` ma 
+								SET ma.last_uid_in_folder=".DB::escape($uid)." 
+								WHERE ma.account_id = ".$account->getId()." AND ma.folder_name = ".DB::escape($imap_folder_name).";
+							");
+						}
+					}
 				}
 				
 				return;
@@ -1032,12 +1044,14 @@ class MailUtilities {
 	 		self::adjustBody($message, $type, $body);
 	 		$message->setBody($body);
 			
-			//Send the message
 			$complete_mail = self::retrieve_original_mail_code($message);
-			$result = $mailer->send($message);
+			//Send the message
+			$failed_recipients = array();
+			$result = $mailer->send($message, $failed_recipients);
 			
-			if ($swift_logger_level >= 2 || ($swift_logger_level > 0 && !$result)) {
-				file_put_contents(CACHE_DIR."/swift_log.txt", "\n".gmdate("Y-m-d H:i:s")." DEBUG:\n" . $swift_logger->dump() . "----------------------------------------------------------------------------", FILE_APPEND);
+			if ($swift_logger_level >= 2 || ($swift_logger_level > 0 && !$result) || count($failed_recipients)>0) {
+				$fail_recipients_str = count($failed_recipients)>0 ? "FAILED RECIPIENTS: ".print_r($failed_recipients,1)."\n" : "";
+				file_put_contents(CACHE_DIR."/swift_log.txt", "\n".gmdate("Y-m-d H:i:s")." $fail_recipients_str DEBUG:\n" . $swift_logger->dump() . "----------------------------------------------------------------------------", FILE_APPEND);
 				$swift_logger->clear();
 			}
 			
@@ -1045,6 +1059,13 @@ class MailUtilities {
 			
 		} catch (Exception $e) {
 			Logger::log("ERROR SENDING EMAIL: ". $e->getTraceAsString(), Logger::ERROR);
+			// save the swift log
+			if (isset($swift_logger) && $swift_logger && $swift_logger_level > 0) {
+				$fail_recipients_str = count($failed_recipients)>0 ? "FAILED RECIPIENTS: ".print_r($failed_recipients,1)."\n" : "";
+				file_put_contents(CACHE_DIR."/swift_log.txt", "\n".gmdate("Y-m-d H:i:s")." $fail_recipients_str ERROR SENDING EMAIL:\n" . $swift_logger->dump() . "----------------------------------------------------------------------------", FILE_APPEND);
+				$swift_logger->clear();
+			}
+			
 			throw $e;
 		}
 		
@@ -1112,14 +1133,8 @@ class MailUtilities {
 	 *
 	 */
 	static function setReadUnreadImapMails(MailAccount $account, $folder, $uid, $read = true) {
-		if ($account->getIncomingSsl()) {
-			$imap = new Net_IMAP($ret, "ssl://" . $account->getServer(), $account->getIncomingSslPort());
-		} else {
-			$imap = new Net_IMAP($ret, "tcp://" . $account->getServer());
-		}
-		if (PEAR::isError($ret)) {
-			throw new Exception($ret->getMessage());
-		}
+		
+		$imap = $account->imapConnect();
 		
 		//login
 		$login_ret = $imap->login($account->getEmail(), self::ENCRYPT_DECRYPT($account->getPassword()),null,false);
@@ -1155,18 +1170,13 @@ class MailUtilities {
 		//disconnect
 		$imap->disconnect();
 	}
+	
+	
 	private function getNewImapMails(MailAccount $account, $max = 0) {
 		$received = 0;
 		debug_log("  start getNewImapMails ".$account->getId(), "checkmail_log.php");
 
-		if ($account->getIncomingSsl()) {
-			$imap = new Net_IMAP($ret, "ssl://" . $account->getServer(), $account->getIncomingSslPort());
-		} else {
-			$imap = new Net_IMAP($ret, "tcp://" . $account->getServer());
-		}
-		if (PEAR::isError($ret)) {
-			throw new Exception($ret->getMessage());
-		}
+		$imap = $account->imapConnect();
 		
 		$ret = $imap->login($account->getEmail(), self::ENCRYPT_DECRYPT($account->getPassword()),null,false);
 		$mailboxes = MailAccountImapFolders::getMailAccountImapFolders($account->getId());
@@ -1364,15 +1374,9 @@ class MailUtilities {
 	}
 
 	function getImapFolders(MailAccount $account) {
-		if ($account->getIncomingSsl()) {
-			$imap = new Net_IMAP($ret, "ssl://" . $account->getServer(), $account->getIncomingSslPort());
-		} else {
-			$imap = new Net_IMAP($ret, "tcp://" . $account->getServer());
-		}
-		if (PEAR::isError($ret)) {
-			//Logger::log($ret->getMessage());
-			throw new Exception($ret->getMessage());
-		}
+		
+		$imap = $account->imapConnect();
+		
 		$ret = $imap->login($account->getEmail(), self::ENCRYPT_DECRYPT($account->getPassword()));
 		if ($ret !== true || PEAR::isError($ret)) {
 			//Logger::log($ret->getMessage());
@@ -1441,15 +1445,9 @@ class MailUtilities {
 			$max_date = DateTimeValueLib::now();
 			$max_date->add('d', -1 * $account->getDelFromServer());
 			if ($account->getIsImap()) {
-				if ($account->getIncomingSsl()) {
-					$imap = new Net_IMAP($ret, "ssl://" . $account->getServer(), $account->getIncomingSslPort());
-				} else {
-					$imap = new Net_IMAP($ret, "tcp://" . $account->getServer());
-				}
-				if (PEAR::isError($ret)) {
-					Logger::log($ret->getMessage());
-					throw new Exception($ret->getMessage());
-				}
+				
+				$imap = $account->imapConnect();
+				
 				$ret = $imap->login($account->getEmail(), self::ENCRYPT_DECRYPT($account->getPassword()));
 
 				$result = array();
@@ -1459,24 +1457,39 @@ class MailUtilities {
 						foreach ($mailboxes as $box) {
 							if ($box->getCheckFolder()) {
 								$numMessages = $imap->getNumberOfMessages(utf8_decode($box->getFolderName()));
+								$box_count = 0;
 								for ($i = 1; $i <= $numMessages; $i++) {
 									$summary = $imap->getSummary($i);
 									if (is_array($summary)) {
+										
 										$m_date = DateTimeValueLib::makeFromString($summary[0]['INTERNALDATE']);
-										if ($m_date instanceof DateTimeValue && $max_date->getTimestamp() > $m_date->getTimestamp()) {																														
-											if (MailContents::mailRecordExists($account, $summary[0]['UID'], $box->getFolderName(), null)) {
+										if ($m_date instanceof DateTimeValue && $max_date->getTimestamp() > $m_date->getTimestamp()) {
+											
+											if ($summary[0]['MESSAGE_ID'] != '') {
+												$sql = "SELECT mc.object_id FROM `".TABLE_PREFIX."mail_contents` mc 
+														WHERE account_id=".$account->getId()." AND message_id='".$summary[0]['MESSAGE_ID']."'";
+												$row = DB::executeOne($sql);
+												$mail_exists_feng = !is_null($row);
+												
+											} else {
+												$mail_exists_feng = MailContents::mailRecordExists($account, $summary[0]['UID'], $box->getFolderName(), null, $summary[0]['MESSAGE_ID']);
+											}
+											
+											if ($mail_exists_feng) {
 												$imap->deleteMessages($i);
 												$count++;
+												$box_count++;
 											}
-										} else {
-											break;
 										}
-									} 
+									}
 								}
-								$imap->expunge();
+								
 							}
 						}
 					}
+					
+					$imap->expunge();
+					
 				}
 
 			} else {
@@ -1497,8 +1510,8 @@ class MailUtilities {
 						$headers = $pop3->getParsedHeaders($email['msg_id']);
 						$date = DateTimeValueLib::makeFromString(array_var($headers, 'Date'));
 						if ($date instanceof DateTimeValue && $max_date->getTimestamp() > $date->getTimestamp()) {
-							$pop3->deleteMsg($email['msg_id']);
-							$count++;
+							$ok = $pop3->deleteMsg($email['msg_id']);
+							if ($ok) $count++;
 						}
 					}
 				}
@@ -1615,29 +1628,25 @@ class MailUtilities {
 		if ($account instanceof MailAccount && $account->getSyncFolder() && $content != "") {
 			
 			try{
-				if ($account->getIncomingSsl()) {
-					$imap = new Net_IMAP($ret, "ssl://" . $account->getServer(), $account->getIncomingSslPort());
-				} else {
-					$imap = new Net_IMAP($ret, "tcp://" . $account->getServer());
-				}
-				if (PEAR::isError($imap)) {
-					throw new Exception($ret->getMessage());
-				}
+				$imap = $account->imapConnect();
 				
 				$login_ret = $imap->login($account->getEmail(), $this->ENCRYPT_DECRYPT($account->getPassword()),null,false);
 				if (PEAR::isError($login_ret)) {
+					debug_log("IMAP login error: ".$login_ret->getMessage(), "sent_emails_sync.log");
 					throw new Exception($login_ret->getMessage());
 				}
 				
-				$folder = $account->getSyncFolder();
+				$folder = utf8_decode($account->getSyncFolder());
 				
 				$result = $imap->appendMessage($content, $folder);
 				if (PEAR::isError($result)) {
+					debug_log("IMAP append error: ".$result->getMessage(), "sent_emails_sync.log");
 					throw new Exception($result->getMessage());
 				}
 				return true;
 				
 			} catch(Exception $e) {
+				debug_log("appendMailThroughIMAP ERROR: ".$e->getMessage()."\n".$e->getTraceAsString(), "sent_emails_sync.log");
 				Logger::log_r($e->getMessage()."\n".$e->getTraceAsString());
 			}
 		}
@@ -1754,21 +1763,22 @@ class MailUtilities {
 
 		$mail_data['to'] = $to;
 		$mail_data['format'] = $mail->getBodyHtml() != '' ? 'html' : 'plain';
-
+		$mail_data['type'] = $mail_data['format'];
+		
 		MailUtilities::add_mail($mail_data, $mail_data['attachs']);
 	}
 
 	static function construct_mail_data_foward($original_mail) {
 		$mail_contr = new MailController();
 
-		$fwd_subject = str_starts_with(strtolower($original_mail->getSubject()),'fwd:') ? $original_mail->getSubject() : 'Fwd: ' . $original_mail->getSubject();
+		$fwd_subject = (str_starts_with(strtolower($original_mail->getSubject()),'fwd:') ? $original_mail->getSubject() : 'Fwd: ') . $original_mail->getSubject();
 
 		$clean_mail = $mail_contr->cleanMailBodyAndGetMailData($original_mail, true);
-
+		
 		$mail_data = array(
 			'to' => '',
 			'subject' => $fwd_subject,
-			'body' =>  '<div id="original_mail">'.$clean_mail['clean_body'].'</div>',
+			'body' =>  $clean_mail['type'] == 'html' ? '<div id="original_mail">'.$clean_mail['clean_body'].'</div>' : $clean_mail['clean_body'],
 			'type' => $clean_mail['type'],
 			'attachs' => $clean_mail['attachs'],
 			'account_id' => $original_mail->getAccountId(),
@@ -1780,6 +1790,21 @@ class MailUtilities {
 		); // array
 
 		return $mail_data;
+	}
+	
+	
+	
+	static function getCorrectlyParsedAttachmentBody($email_content, $filename, $filetype) {
+		Env::useHelper('Part', 'mail');
+		$content = "";
+		$mail_parsed_obj = new Part($email_content);
+		$parts = $mail_parsed_obj->getParts();
+		foreach ($parts as $part) {/* @var $part Part */
+			if ($part->getMimeType() == $filetype && $part->getFileName() == $filename) {
+				$content = $part->getBody();
+			}
+		}
+		return $content;
 	}
 }
 ?>

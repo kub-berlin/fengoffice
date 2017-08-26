@@ -26,17 +26,8 @@ class  ProjectTaskDependencies extends BaseProjectTaskDependencies {
 		
 		// Execute query and build the resultset
 		$rows = DB::executeAll($sql);
-		$tmp_ids = array_filter(array_flat($rows));
-		
-		// get the dependencies of the dependencies:
-		while (count($tmp_ids) > 0) {
-			$ids = array_merge($ids, $tmp_ids);
-			
-			$sql = str_replace("[taskid]", implode(',', $tmp_ids), $main_sql);
-			$rows = DB::executeAll($sql);
-			$tmp_ids = array_filter(array_flat($rows));
-		}
-		
+        $ids = array_filter(array_flat($rows));
+
 		return $ids;
 	}
 	

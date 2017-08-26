@@ -16,6 +16,8 @@ og.MailManager = function() {
 	this.maxrowidx = 0;
 	this.last_email_date = '0000-00-00 00:00:00';
 	this.last_context_sent = '';
+	
+	if (!og.mail_rules || !og.mail_list_acc_filter_type) og.mail_list_acc_filter_type = 'view';
 
 	this.fields = [
 		'object_id', 'type', 'ot_id', 'accountId', 'accountName', 'hasAttachment', 'subject', 'text', 'date', 'rawdate',
@@ -92,9 +94,7 @@ og.MailManager = function() {
 					
 					var text_filter = $("#mails-manager #text_filter").val();
 
-					if(!text_filter || text_filter.trim() == ''){
-						manager.reloadGridPagingToolbar('mail','list_all','mails-manager');
-					}
+					manager.reloadGridPagingToolbar('mail','list_all','mails-manager');
 					
 					og.eventManager.fireEvent('replace all empty breadcrumb', null);
 					
@@ -130,7 +130,7 @@ og.MailManager = function() {
 		
 		var js = 'var r = og.MailManager.store.getById(\'' + r.id + '\'); r.data.isRead = true;og.openLink(\'{1}\');r.commit();og.eventManager.fireEvent(\'replace all empty breadcrumb\', null);return false;';
 		name = String.format(
-				'{4}<a style="font-size:120%;" class="{3}" href="{1}" onclick="' + js + '" title="{2}">{0}</a>',
+				'{4}<a style="font-size:120%;" class="{3}" href="{1}#" onclick="' + js + '" title="{2}">{0}</a>',
 				subject + conv_str, og.getUrl('mail', strAction, {id: r.data.object_id}), og.clean(r.data.text),classes,strDraft);
 				
 		if (r.data.isSent) {
@@ -162,7 +162,7 @@ og.MailManager = function() {
 		
 		var js = 'var r = og.MailManager.store.getById(\'' + r.id + '\'); r.data.isRead = true;og.openLink(\'{1}\');r.commit();og.eventManager.fireEvent(\'replace all empty breadcrumb\', null);return false;';
 		name = String.format(
-				'<a style="font-size:120%;" class="{3}" href="{1}" onclick="' + js + '" title="{2}">{0}</a>',
+				'<a style="font-size:120%;" class="{3}" href="{1}#" onclick="' + js + '" title="{2}">{0}</a>',
 				sender, og.getUrl('mail', strAction, {id: r.data.object_id}), title, classes);
 		return name;
 	}
@@ -218,7 +218,7 @@ og.MailManager = function() {
 		var js = 'var r = og.MailManager.store.getById(\'' + r.id + '\'); r.data.isRead = true;og.openLink(\'{1}\');r.commit();og.eventManager.fireEvent(\'replace all empty breadcrumb\', null);return false;';
 
 		name = String.format(
-				'<a style="font-size:120%;" class="{3}" href="{1}" onclick="'+ js +'" title="{2}">{0}</a>',
+				'<a style="font-size:120%;" class="{3}" href="{1}#" onclick="'+ js +'" title="{2}">{0}</a>',
 				receiver, og.getUrl('mail', strAction, {id: r.data.object_id}), og.clean(value), classes);
 		return name;
 	}
@@ -440,17 +440,8 @@ og.MailManager = function() {
 		}];
 	// custom property columns
 	var cps = og.custom_properties_by_type['mail'] ? og.custom_properties_by_type['mail'] : [];
-	for (i=0; i<cps.length; i++) {
-		cm_info.push({
-			id: 'cp_' + cps[i].id,
-			hidden: parseInt(cps[i].show_in_lists) == 0,
-			header: cps[i].name,
-			align: cps[i].cp_type=='numeric' ? 'right' : 'left',
-			dataIndex: 'cp_' + cps[i].id,
-			sortable: false,
-			renderer: og.clean
-		});
-	}
+	this.addCustomPropertyColumns(cps, cm_info);
+
 	// dimension columns
 	for (did in og.dimensions_info) {
 		if (isNaN(did)) continue;
@@ -478,7 +469,9 @@ og.MailManager = function() {
 			handler: function() {
 				og.openLink(og.getUrl('object', 'set_user_config_option_value', {config_option_name: 'mails read filter', config_option_value: 'all'}), {preventPanelLoad: true});
 				this.reloadFiltering("all", null, null);
-				Ext.getCmp('mails-manager').getTopToolbar().items.get('tb-item-read-unread').setText(lang('view by state'))
+				var comp = Ext.getCmp('mails-manager').getTopToolbar().items.get('tb-item-read-unread');
+				comp.setText(lang('view by state'));
+				comp.removeClass('filter-selected');
 			},
 			scope: this
 		}),
@@ -487,7 +480,9 @@ og.MailManager = function() {
 			handler: function() {
 				og.openLink(og.getUrl('object', 'set_user_config_option_value', {config_option_name: 'mails read filter', config_option_value: 'read'}), {preventPanelLoad: true});
 				this.reloadFiltering("read", null, null);
-				Ext.getCmp('mails-manager').getTopToolbar().items.get('tb-item-read-unread').setText(lang('read'))
+				var comp = Ext.getCmp('mails-manager').getTopToolbar().items.get('tb-item-read-unread');
+				comp.setText(lang('read'));
+				comp.addClass('filter-selected');
 			},
 			scope: this
 		}),
@@ -496,7 +491,9 @@ og.MailManager = function() {
 			handler: function() {
 				og.openLink(og.getUrl('object', 'set_user_config_option_value', {config_option_name: 'mails read filter', config_option_value: 'unread'}), {preventPanelLoad: true});
 				this.reloadFiltering("unread", null, null);
-				Ext.getCmp('mails-manager').getTopToolbar().items.get('tb-item-read-unread').setText(lang('unread'))
+				var comp = Ext.getCmp('mails-manager').getTopToolbar().items.get('tb-item-read-unread');
+				comp.setText(lang('unread'));
+				comp.addClass('filter-selected');
 			},
 			scope: this
 		})
@@ -508,7 +505,9 @@ og.MailManager = function() {
 			handler: function() {
 				og.openLink(og.getUrl('object', 'set_user_config_option_value', {config_option_name: 'mails classification filter', config_option_value: 'all'}), {preventPanelLoad: true});
 				this.reloadFiltering(null, null, null, 'all');
-				Ext.getCmp('mails-manager').getTopToolbar().items.get('tb-item-classification').setText(lang('view by classification'))
+				var comp = Ext.getCmp('mails-manager').getTopToolbar().items.get('tb-item-classification');
+				comp.setText(lang('view by classification'));
+				comp.removeClass('filter-selected');
 			},
 			scope: this
 		}),
@@ -517,7 +516,9 @@ og.MailManager = function() {
 			handler: function() {
 				og.openLink(og.getUrl('object', 'set_user_config_option_value', {config_option_name: 'mails classification filter', config_option_value: 'classified'}), {preventPanelLoad: true});
 				this.reloadFiltering(null, null, null, "classified");
-				Ext.getCmp('mails-manager').getTopToolbar().items.get('tb-item-classification').setText(lang('classified'))
+				var comp = Ext.getCmp('mails-manager').getTopToolbar().items.get('tb-item-classification');
+				comp.setText(lang('classified'));
+				comp.addClass('filter-selected');
 			},
 			scope: this
 		}),
@@ -526,7 +527,9 @@ og.MailManager = function() {
 			handler: function() {
 				og.openLink(og.getUrl('object', 'set_user_config_option_value', {config_option_name: 'mails classification filter', config_option_value: 'unclassified'}), {preventPanelLoad: true});
 				this.reloadFiltering(null, null, null, "unclassified");
-				Ext.getCmp('mails-manager').getTopToolbar().items.get('tb-item-classification').setText(lang('unclassified'))
+				var comp = Ext.getCmp('mails-manager').getTopToolbar().items.get('tb-item-classification');
+				comp.setText(lang('unclassified'));
+				comp.addClass('filter-selected');
 			},
 			scope: this
 		})
@@ -986,6 +989,7 @@ og.MailManager = function() {
             iconCls: 'ico-mail-mark-read',
 			disabled: false,
 			id: 'tb-item-read-unread',
+			cls: 'x-btn-wrap x-btn x-btn-text-icon ' + (this.readType == 'read' || this.readType == 'unread' ? 'filter-selected' : ''),
 			menu: {items: [
 				filterReadUnread.all,
 				'-',
@@ -994,33 +998,104 @@ og.MailManager = function() {
 			]}
 		}),
 		viewByAccount: new Ext.Action({
-			text: this.accountId == 0 ? lang('view by account') : og.emailFilters.accountName,
+			text: !this.accountId ? lang('view by account') : (this.accountId.split(',').length==1 ? og.emailFilters.accountName : this.accountId.split(',').length + ' ' + lang('accounts')),
             iconCls: 'ico-account',
 			disabled: false,
 			id: 'tb-item-byaccount',
+			cls: 'x-btn-wrap x-btn x-btn-text-icon ' + (this.accountId ? 'filter-selected' : ''),
 			menu: new og.EmailAccountMenu({
 				listeners: {
 					'accountselect': {
 						fn: function(account, name) {
-							og.openLink(og.getUrl('object', 'set_user_config_option_value', {config_option_name: 'mails account filter', config_option_value: account}), {preventPanelLoad: true});
-							this.accountId = account;
-							this.load();
+							
+							var timeout_milis = 10;
+							
 							if (account == 0) {
-								name = lang('view by account');
-								this.checkmail(true); // check all account emails because if filter was in a particular account then there are unchecked accounts.
+								this.accountId = "";
+								var acc = [];
+								// remove all checks
+								var comp = Ext.getCmp('mails-manager').getTopToolbar().items.get('tb-item-byaccount');
+								for (var i=0; i<comp.menu.items.items.length; i++) {
+									var mi = comp.menu.items.items[i];
+									mi.checked = false;
+									Ext.fly(mi.el.dom.parentNode).removeClass("x-menu-item-checked");
+								}
+								comp.menu.hide();
+								
+							} else {
+								account = account.toString();
+								
+								if (og.mail_list_acc_filter_type == 'view') {
+									this.accountId = account;
+									var acc = [];
+									if (account > 0) acc.push(account);
+								} else {
+									var acc = this.accountId.split(',');
+									if (acc.indexOf(account) == -1) acc.push(account);
+									else acc.splice(acc.indexOf(account), 1);
+									acc = acc.filter(function(n){ return n != undefined && n != ''});
+									
+									this.accountId = acc.join(',');
+									timeout_milis = 2000;
+								}
 							}
-							Ext.getCmp('mails-manager').getTopToolbar().items.get('tb-item-byaccount').setText(name);
+							
+							// save user preference
+							og.openLink(og.getUrl('object', 'set_user_config_option_value', {config_option_name: 'mails account filter', config_option_value: this.accountId}), {preventPanelLoad: true, hideLoading: true});
+							
+							// filter button text
+							if (acc.length == 0) {
+								name = lang('view by account');
+							} else {
+								if (og.mail_list_acc_filter_type == 'view' || acc.length == 1) {
+									var sel_acc = null;
+									for (var j=0; j<og.email_accounts_toview.length; j++) {
+										if (acc[0] == og.email_accounts_toview[j].id.toString()) sel_acc = og.email_accounts_toview[j];
+									}
+									if (sel_acc) name = sel_acc.name;
+								} else {
+									name = acc.length + ' ' + lang('accounts');
+								}
+							}
+							var comp = this.getTopToolbar().items.get('tb-item-byaccount');
+							comp.setText(name);
+							
+							// filter button class
+							if (acc.length == 0) comp.removeClass('filter-selected');
+							else comp.addClass('filter-selected');
+							
+							// timeout to reload the panel
+							if (og.mail_acc_select_timeout) {
+								clearTimeout(og.mail_acc_select_timeout);
+							}
+							og.mail_acc_select_timeout = setTimeout(function(){
+								var man = Ext.getCmp('mails-manager');
+								// hide menu when loading
+								var comp = man.getTopToolbar().items.get('tb-item-byaccount');
+								comp.menu.hide();
+								// load panel
+								man.load();
+								
+								var acc = man.accountId.split(',');
+								acc = acc.filter(function(n){ return n != undefined && n != ''});
+								
+								if (acc.length == 0) {
+									man.checkmail(true); // check all account emails because if filter was in a particular account then there are unchecked accounts.
+								}
+								
+							}, timeout_milis);
 						},
 						scope: this
 					}
 				}
-			},[{name: lang('view all'), email:'', id: '', separator:true}],"view")
+			},[{name: lang('view all'), email:'', id: '', separator:true}], og.mail_list_acc_filter_type)
 		}),
 		viewByClassification: new Ext.Action({
 			text: this.classifType == 'classified' ? lang('classified') : (this.classifType == 'unclassified' ? lang('unclassified') : lang('view by classification')),
             iconCls: 'ico-classify',
 			disabled: false,
 			id: 'tb-item-classification',
+			cls: 'x-btn-wrap x-btn x-btn-text-icon ' + (this.classifType == 'classified' || this.classifType == 'unclassified' ? 'filter-selected' : ''),
 			menu: {items: [
 				filterClassification.all,
 				'-',
@@ -1119,7 +1194,7 @@ og.MailManager = function() {
 	var mas = og.eventManager.addListener("mail account select", function(account) {
 		this.accountId = account[0];
 		this.load();
-		Ext.getCmp('mails-manager').getTopToolbar().items.get('tb-item-byaccount').setText(account[1]);
+		Ext.getCmp('mails-manager').getTopToolbar().items.get('tb-item-byaccount').setText("1 "+lang('account'));
 	}, this);
 	
 	this.actionRep = actions;
@@ -1321,6 +1396,8 @@ Ext.extend(og.MailManager, Ext.grid.GridPanel, {
 		var bt = this.getBottomToolbar();
 		if (bt) bt.disable();
 		
+		this.updateColumnModelHiddenColumns();
+		
 		var old_scroll_top = $("#mails-panel .x-grid3-scroller").scrollTop();
 		this.store.load({
 			params: Ext.apply(params, {
@@ -1333,7 +1410,7 @@ Ext.extend(og.MailManager, Ext.grid.GridPanel, {
 				
 				// disable toolbar actions while reloading
 				var bt = Ext.getCmp('mails-manager').getBottomToolbar();
-				if (bt) bt.disable();
+				if (bt) bt.enable();
 			}
 		});
 		this.store.baseParams.action = "";
@@ -1393,8 +1470,9 @@ Ext.extend(og.MailManager, Ext.grid.GridPanel, {
 		}
 		og.openLink(og.getUrl('mail', 'checkmail', params), {
 			callback: function(success, data) {
-				if (data.mails_received > 0) {
-					this.checkIfNewMails(false);
+				if (data && data.mails_received > 0) {
+					//this.checkIfNewMails(false);
+					this.reset();
 				}
 			},
 			scope: this
@@ -1465,7 +1543,7 @@ Ext.extend(og.MailManager, Ext.grid.GridPanel, {
 						}, 50);
 					}
 				}
-				if (show_message) {
+				if (show_message && mails) {
 					og.msg(lang('information'), lang('you have x new emails', mails.length));
 				}
 			}

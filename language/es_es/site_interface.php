@@ -351,6 +351,7 @@
 	'resume work' => 'Continuar reloj',
 	'end work description' => 'Finalizar con la descripción del trabajo',
 	'add timeslot' => 'Agregar tiempo de trabajo',
+	'new timeslot' => 'Nuevo tiempo de trabajo',
 	'edit timeslot' => 'Editar tiempo de trabajo',
 	'start date' => 'Fecha de comienzo',
 	'start time' => 'Hora de comienzo',

@@ -2036,6 +2036,9 @@ class Contact extends BaseContact {
 	function getJobTitle() {
 		$cp = CustomProperties::findOne(array('conditions' => "code='job_title' AND object_type_id=".$this->manager()->getObjectTypeId()));
 		if ($cp instanceof CustomProperty) {
+			if ($cp->getIsDisabled()) {
+				return "";
+			}
 			$cp_val = CustomPropertyValues::getCustomPropertyValue($this->getId(), $cp->getId());
 			if ($cp_val instanceof CustomPropertyValue) {
 				return $cp_val->getValue();

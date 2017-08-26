@@ -347,5 +347,40 @@ class MailAccount extends BaseMailAccount {
 		}
 		return $return ;
 	}
+	
+	
+	/**
+	 * Makes the imap connection and returns a Net_IMAP object
+	 * @return Net_IMAP
+	 */
+	function imapConnect() {
+		
+		require_once 'Net/IMAP.php';
+		
+		$ret = null;
+		if ($this->getIncomingSsl()) {
+			
+			if ($this->getIncomingSslVerifyPeer()) {
+				$options = null;
+			} else {
+				$options = array('ssl' => array());
+				$options['ssl']['verify_peer'] = FALSE;
+				$options['ssl']['verify_peer_name'] = FALSE;
+			}
+			
+			$imap = new Net_IMAP($ret, "ssl://" . $this->getServer(), $this->getIncomingSslPort(), null, $options);
+			
+		} else {
+			$imap = new Net_IMAP($ret, "tcp://" . $this->getServer());
+		}
+		
+		if (PEAR::isError($ret)) {
+			debug_log("IMAP connection error: ".$ret->getMessage(), "sent_emails_sync.log");
+			throw new Exception($ret->getMessage());
+		}
+		
+		return $imap;
+	}
+	
 }
 ?>

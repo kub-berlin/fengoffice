@@ -1813,6 +1813,26 @@ class TaskController extends ApplicationController {
 		}
 		//END tasks tree
 		
+		// when order is by assigned user => join with objects table and order by name
+		if ($order == 'assigned_to_contact_id') {
+			if (is_null($join_params)) {
+				$join_params = array();
+				$join_params['join_type'] = "LEFT ";
+				$join_params['table'] = TABLE_PREFIX."objects";
+				$join_params['jt_field'] = "id";
+				$join_params['e_field'] = "assigned_to_contact_id";
+				
+				$order = "jt.name";
+			} else {
+				$extra = " LEFT JOIN `".TABLE_PREFIX."objects` `c` ON `c`.`id` = `e`.`assigned_to_contact_id` ";
+				
+				if (isset($join_params['on_extra'])) $join_params['on_extra'] .= $extra;
+				else $join_params['on_extra'] = $extra;
+				
+				$order = "c.name";
+			}
+		}
+		
 		$tasks_listing = ProjectTasks::instance()->listing(array(
 				"select_columns" => array("e.*","o.*"),
 				"extra_conditions" => $conditions,
@@ -1997,7 +2017,7 @@ class TaskController extends ApplicationController {
 		
 		$tasks_ids = array_map('intval',json_decode(array_var($_REQUEST, 'tasks_ids', null )));		
 		if (is_array($tasks_ids)){
-			$conditions = " AND `object_id` IN (".implode(',', $tasks_ids).")";
+			$conditions = " AND e.`object_id` IN (".implode(',', $tasks_ids).")";
 			
 			$order_by = 'name';
 			$order_dir = 'ASC';
@@ -2813,6 +2833,9 @@ class TaskController extends ApplicationController {
 					}
 					
 				}
+				
+				$null = null;
+				Hook::fire('after_task_controller_add_task', array('task' => $task), $null);
 				
 			} catch(Exception $e) {
 				DB::rollback();
@@ -3759,8 +3782,12 @@ class TaskController extends ApplicationController {
 			}
 		}
 
-		$new_st_date = $this->correct_days_task_repetitive($new_st_date, $opt_rep_day['saturday'], $opt_rep_day['sunday']);
-		$new_due_date = $this->correct_days_task_repetitive($new_due_date, $opt_rep_day['saturday'], $opt_rep_day['sunday']);
+		$correct_the_days = true;
+		Hook::fire('check_working_days_to_correct_repetition', array('task' => $task), $correct_the_days);
+		if ($correct_the_days) {
+			$new_st_date = $this->correct_days_task_repetitive($new_st_date, $opt_rep_day['saturday'], $opt_rep_day['sunday']);
+			$new_due_date = $this->correct_days_task_repetitive($new_due_date, $opt_rep_day['saturday'], $opt_rep_day['sunday']);
+		}
 		
 		return array('st' => $new_st_date, 'due' => $new_due_date);
 	}
@@ -3781,6 +3808,15 @@ class TaskController extends ApplicationController {
 		$opt_rep_day = array('saturday' => false, 'sunday' => false);
 		
 		$this->getNextRepetitionDates($task, $opt_rep_day, $new_st_date, $new_due_date);
+		
+		$daystoadd = 0;
+		$params = array('task' => $task, 'new_st_date' => $new_st_date, 'new_due_date' => $new_due_date);
+		Hook::fire('check_valid_repetition_date_days_add', $params, $daystoadd);
+		
+		if ($daystoadd > 0) {
+			if ($new_st_date) $new_st_date->add('d', $daystoadd);
+			if ($new_due_date) $new_due_date->add('d', $daystoadd);
+		}
 		
 		// if this is the last task of the repetetition, do not generate a new instance
 		if ($task->getRepeatNum() > 0) {
@@ -4326,9 +4362,20 @@ class TaskController extends ApplicationController {
 				$task->setRepeatNum($task->getRepeatNum() - 1);
 				while($task->getRepeatNum() > 0){
 					$this->getNextRepetitionDates($task, $opt_rep_day, $new_st_date, $new_due_date);
+					
+					$daystoadd = 0;
+					$params = array('task' => $task, 'new_st_date' => $new_st_date, 'new_due_date' => $new_due_date);
+					Hook::fire('check_valid_repetition_date_days_add', $params, $daystoadd);
+					if ($daystoadd > 0) {
+						if ($new_st_date) $new_st_date->add('d', $daystoadd);
+						if ($new_due_date) $new_due_date->add('d', $daystoadd);
+					}
+					
 					$task->setRepeatNum($task->getRepeatNum() - 1);
+					
 					// generate completed task
 					$last_task = $task->cloneTask($new_st_date,$new_due_date,true, false);
+					
 					// set next values for repetetive task
 					if ($task->getStartDate() instanceof DateTimeValue ) $task->setStartDate($new_st_date);
 					if ($task->getDueDate() instanceof DateTimeValue ) $task->setDueDate($new_due_date);
@@ -4354,10 +4401,19 @@ class TaskController extends ApplicationController {
 				$new_st_date = "";
 				$new_due_date = "";
 				
-				while( $task->getRepeatBy() == 'start_date' && $new_st_date <= $task_end ||
-						$task->getRepeatBy() == 'due_date' && $new_due_date <= $task_end) {
+				while( $task->getRepeatBy() == 'start_date' && ($new_st_date=="" || $new_st_date->getTimestamp() <= $task_end->getTimestamp()) ||
+						$task->getRepeatBy() == 'due_date' && ($new_due_date=="" || $new_due_date->getTimestamp() <= $task_end->getTimestamp()) ) {
 					 
 					$this->getNextRepetitionDates($task, $opt_rep_day, $new_st_date, $new_due_date);
+					
+					$daystoadd = 0;
+					$params = array('task' => $task, 'new_st_date' => $new_st_date, 'new_due_date' => $new_due_date);
+					Hook::fire('check_valid_repetition_date_days_add', $params, $daystoadd);
+					if ($daystoadd > 0) {
+						if ($new_st_date) $new_st_date->add('d', $daystoadd);
+						if ($new_due_date) $new_due_date->add('d', $daystoadd);
+					}
+					
 					// generate completed task
 					$last_task = $task->cloneTask($new_st_date,$new_due_date,true, false);
 					// set next values for repetetive task
@@ -4627,6 +4683,8 @@ class TaskController extends ApplicationController {
             }
 
             $task->resetIsRead();
+            
+            Hook::fire('after_task_repetition_edited', array('task' => $task), $task);
 
             DB::commit();
             ApplicationLogs::createLog($task, ApplicationLogs::ACTION_EDIT);

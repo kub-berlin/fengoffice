@@ -429,15 +429,31 @@ class MailContent extends BaseMailContent {
 		
 		$persons_dim = Dimensions::findByCode('feng_persons');
 		$tmp = array();
+		$members_with_permissions = array();
 		foreach ($members as $m) {
-			if (!$persons_dim instanceof Dimension || $m->getDimensionId() != $persons_dim->getId()) $tmp[] = $m;
+			if (!$persons_dim instanceof Dimension || $m->getDimensionId() != $persons_dim->getId()) {
+				$tmp[] = $m;
+				if ($m->getDimension()->getDefinesPermissions()) $members_with_permissions[] = $m;
+			}
 		}
 		$members = $tmp;
 		
 		if ($account instanceof MailAccount) {
 			// if classified
 			if (count($members) > 0) {
-				return $account->getContactId() == logged_user()->getId() || can_write($user, $members, $this->getObjectTypeId());
+				// if logged user is the account owner then return true
+				if ($account->getContactId() == logged_user()->getId()) {
+					return true;
+				} else {
+					if (count($members_with_permissions) > 0) {
+						// if mail is classified in dimensions that defines permissions execute can_write function
+						return can_write($user, $members, $this->getObjectTypeId());
+					} else {
+						// if mail is classified but none of the members are in dimensions that defines permissions, then everyone with account permissions can edit
+						$macs = MailAccountContacts::instance()->count(array('`account_id` = ? AND `contact_id` = ?', $account->getId(), $user->getId()));
+						return $macs > 0;
+					}
+				}
 			} else {
 				$macs = MailAccountContacts::instance()->count(array('`account_id` = ? AND `contact_id` = ? AND `can_edit` = 1', $account->getId(), $user->getId()));
 				return $account->getContactId() == logged_user()->getId() || $macs > 0;

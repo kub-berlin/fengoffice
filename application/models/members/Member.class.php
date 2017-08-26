@@ -670,4 +670,23 @@ class Member extends BaseMember {
 		
 		return $cant > 0;
 	}
+	
+	
+	
+	function getDataForHistory() {
+		$previous_data = array();
+		
+		$previous_data['original_member'] = Members::findById($this->getId());
+		
+		if (Plugins::instance()->isActivePlugin('member_custom_properties')) {
+			$previous_data['custom_properties'] = MemberCustomPropertyValues::instance()->getAllCustomPropertyValues($this->getId());
+		}
+		
+		$prev_assocs = MemberPropertyMembers::getAllAssociatedMemberIds($this->getId());
+		$prev_assocs_rev = MemberPropertyMembers::getAllAssociatedMemberIds($this->getId(), true);
+		foreach ($prev_assocs_rev as $a_id => $mem_ids) $prev_assocs[$a_id] = $mem_ids;
+		$previous_data['associations'] = $prev_assocs;
+		
+		return $previous_data;
+	}
 }

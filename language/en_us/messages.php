@@ -215,6 +215,7 @@
     'success delete contacts' => 'The selected people have been deleted successfully',
   
     'success classify email' => 'Email classified successfully',
+  	'success classify email in' => 'Email classified successfully in \'{0}\'',
     'success delete email' => 'Email has been deleted',
   	'success unclassify email' => 'Email unclassified successfully',
   	'error unclassify email' => 'Failed to unclassify email',

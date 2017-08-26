@@ -80,7 +80,9 @@
 	$modtime = $file->getUpdatedOn()->getTimestamp();
 } else {
 	$modtime = $file->getCreatedOn()->getTimestamp();
-}?>
+}
+$modtime = $modtime . "-" . date('YmdH'); // don't cache more than 1 hour
+?>
 
 <?php if(($ftype = $file->getFileType()) instanceof FileType && $ftype->getIsImage()){?>
 	<div>

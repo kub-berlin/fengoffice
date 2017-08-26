@@ -22,4 +22,6 @@
 	'classify attachments' => 'Classify attachments',
 	'mail status col tooltip' => 'Shows if email has been replied or forwarded',
 	'classify only attachments' => 'Classify only attachments',
+	'incoming ssl verify peer' => 'Verify SSL certificate',
+	'incoming ssl verify peer desc' => 'Specifies if the server requires clients to present a valid certificate to connect. Server instances can allow clients to connect with or without providing a valid certificate.',
 );

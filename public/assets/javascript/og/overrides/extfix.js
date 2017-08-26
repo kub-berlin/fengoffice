@@ -289,6 +289,37 @@ Ext.grid.GridPanel.override({
 			}
 		}
 		return has_associations;
+	},
+	updateColumnModelHiddenColumns: function() {
+		var hidden_columns = this.hiddenColumnIds;
+		if (hidden_columns && hidden_columns.length > 0) {
+			var cm = this.getColumnModel();
+			for (var i=0; i<cm.config.length; i++) {
+				if (hidden_columns.indexOf(cm.config[i].id) !== -1) {
+					cm.config[i].hidden = true;
+				}
+			}
+			cm.fireEvent('configchange');
+		}
+	},
+	addCustomPropertyColumns: function(cps, cm_info) {
+		this.hiddenColumnIds = [];
+		
+		for (i=0; i<cps.length; i++) {
+			var is_hidden = parseInt(cps[i].show_in_lists) == 0;
+			if (is_hidden) {
+				this.hiddenColumnIds.push('cp_' + cps[i].id);
+			}
+			cm_info.push({
+				id: 'cp_' + cps[i].id,
+				hidden: is_hidden,
+				header: cps[i].name,
+				align: cps[i].cp_type=='numeric' ? 'right' : 'left',
+				dataIndex: 'cp_' + cps[i].id,
+				sortable: true,
+				renderer: og.clean
+			});
+		}
 	}
 });
 

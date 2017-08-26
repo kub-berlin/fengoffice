@@ -143,7 +143,7 @@ class MailContents extends BaseMailContents {
 			INNER JOIN ". TABLE_PREFIX ."objects o ON o.id = mc.object_id
 			INNER JOIN ". TABLE_PREFIX ."mail_datas md ON md.id = mc.object_id
 			WHERE `conversation_id` = '$conversation_id' $deleted AND `account_id` = " . $mail->getAccountId()." 
-				AND in_reply_to_id='".$mail->getMessageId()."'";
+				AND in_reply_to_id='".mysql_real_escape_string($mail->getMessageId())."'";
 		$row = DB::executeOne($sql);
 		
 		if ($row) {
@@ -273,22 +273,15 @@ class MailContents extends BaseMailContents {
 		$accountConditions = "";
 		// Check for accounts
 		$accountConditions = '';
-		if (isset($account_id) && $account_id > 0) { //Single account
-			$accountConditions = " AND $mailTablePrefix.account_id = " . DB::escape($account_id);
-		} else {
-			// show mails for all visible accounts and classified mails where logged_user has permissions so we don't filter by account_id
-			/*// show emails from other accounts
-			$macs = MailAccountContacts::instance()->getByContact(logged_user());
-			$acc_ids = array(0);
-			foreach ($macs as $mac) $acc_ids[] = $mac->getAccountId();
-			
-			// permission conditions
-			$pgs = ContactPermissionGroups::getPermissionGroupIdsByContactCSV(logged_user()->getId());
-			if (trim($pgs == '')) $pgs = '0';
-			$perm_sql = "(SELECT count(*) FROM ".TABLE_PREFIX."sharing_table st WHERE st.object_id = $mailTablePrefix.object_id AND st.group_id IN ($pgs)) > 0";
-			
-			// show mails for all visible accounts and classified mails where logged_user has permissions
-			$accountConditions = " AND ($mailTablePrefix.account_id IN (" . implode(",", $acc_ids) . ") OR $perm_sql)";*/
+		if ($account_id) {
+			if (is_numeric($account_id)) {
+				$accountConditions = " AND $mailTablePrefix.account_id = " . DB::escape($account_id);
+			} else {
+				$acc_ids = array_filter(explode(',', $account_id));
+				if (count($acc_ids) > 0) {
+					$accountConditions = " AND $mailTablePrefix.account_id IN (" . implode(',', $acc_ids) .")";
+				}
+			}
 		}
 		
 		// Check for unclassified emails
@@ -338,7 +331,7 @@ class MailContents extends BaseMailContents {
 				$read = "AND ";
 				$subread = "AND mc."; 
 			}
-			$read2 = "id IN (SELECT rel_object_id FROM " . TABLE_PREFIX . "read_objects t WHERE contact_id = " . logged_user()->getId() . " AND id = t.rel_object_id AND t.is_read = '1')";
+			$read2 = "o.id IN (SELECT rel_object_id FROM " . TABLE_PREFIX . "read_objects t WHERE contact_id = " . logged_user()->getId() . " AND o.id = t.rel_object_id AND t.is_read = '1')";
 			$read .= $read2;
 			$subread .= $read2;
 		} else {

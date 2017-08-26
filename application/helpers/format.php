@@ -250,12 +250,18 @@ function date_format_tip($format) {
 					$format = user_config_option('report_time_colums_display');
 					$is_time_column = true;
 					
+					if ($ot->getName() == 'timeslot' && $col == 'subtract') {
+						$value = round($value/60);
+					}
+					
 					switch ($format) {
 						case 'seconds': $formatted = $value * 60; break;
 						case 'minutes': $formatted = $value; break;
 						default: 
 							$formatted = '';
-							if($value > 0) {
+							if (!is_numeric($value)) {
+								$formatted = $value;
+							} else if($value > 0) {
 								$formatted = DateTimeValue::FormatTimeDiff(new DateTimeValue(0), new DateTimeValue($value * 60), 'hm', 60);
 							}
 							break;

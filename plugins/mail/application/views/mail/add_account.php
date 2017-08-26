@@ -155,13 +155,23 @@ if (strlen($loc) > 2) $loc = substr($loc, 0, 2);
 		</div>
 		<div class="mail-account-item dataBlock"> 
 			<label for="<?php echo $genid ?>ssl" class=""><?php echo lang('incoming ssl') ?></label><?php
-			$onchange = "var div = document.getElementById('$genid' + 'sslportdiv');if(this.checked) div.style.display='block';else div.style.display='none';";
+			$onchange = "var div = document.getElementById('$genid' + 'ssl_options');if(this.checked) div.style.display='block';else div.style.display='none';";
 				echo checkbox_field('mailAccount[incoming_ssl]', array_var($mailAccount_data, 'incoming_ssl'), array('id' => $genid.'ssl', 'tabindex'=>'70', 'onclick' => $onchange, 'style'=>'margin: 5px;')) ?>
 		</div>
 
-		<div class="mail-account-item dataBlock" id="<?php echo $genid ?>sslportdiv" <?php if (!array_var($mailAccount_data, 'incoming_ssl')) echo 'style="display:none"'; ?>>
-			<?php echo label_tag(lang('incoming ssl port'), 'mailAccountFormIncomingSslPort') ?>
-			<?php echo text_field('mailAccount[incoming_ssl_port]', array_var($mailAccount_data, 'incoming_ssl_port', 995), array('id' => $genid.'sslport', 'tabindex'=>'120')) ?>
+		<div id="<?php echo $genid?>ssl_options" <?php if (!array_var($mailAccount_data, 'incoming_ssl')) echo 'style="display:none"'; ?>>
+			<div class="mail-account-item dataBlock" id="<?php echo $genid ?>sslportdiv">
+				<?php echo label_tag(lang('incoming ssl port'), 'mailAccountFormIncomingSslPort') ?>
+				<?php echo text_field('mailAccount[incoming_ssl_port]', array_var($mailAccount_data, 'incoming_ssl_port', 995), array('id' => $genid.'sslport', 'tabindex'=>'120')) ?>
+			</div>
+	
+			<div class="mail-account-item dataBlock" id="<?php echo $genid ?>sslverifypeerdiv">
+				<?php echo label_tag(lang('incoming ssl verify peer'), $genid.'sslverifypeer') ?>
+				<?php echo checkbox_field('mailAccount[incoming_ssl_verify_peer]', array_var($mailAccount_data, 'incoming_ssl_verify_peer'), array('id' => $genid.'sslverifypeer', 'tabindex'=>'121', 'style'=>'margin: 5px;')) ?>
+				<div class="desc" style="width:calc(100% - 240px); float:right; margin-top:2px;"><?php echo lang('incoming ssl verify peer desc')?></div>
+				<div class="clear"></div>
+				
+			</div>
 		</div>
 
 		<div class="mail-account-item dataBlock" id="<?php echo $genid ?>folders" style="padding:5px;<?php if (!array_var($mailAccount_data, 'is_imap', false)) echo 'display:none'; ?>">

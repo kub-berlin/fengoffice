@@ -4,7 +4,7 @@
 	$firstId = '';
 ?>
 
-<form style='height:100%;background-color:white' class="internalForm" action="<?php echo get_url('reporting', 'view_custom_report', array('id' => $id)) ?>" method="get">
+<form style='height:100%;background-color:white' class="internalForm" action="<?php echo get_url('reporting', 'view_custom_report', array('id' => $id)) ?>" method="post">
 
 <div class="coInputHeader">
 	<div class="coInputHeaderUpperRow">
@@ -20,7 +20,7 @@
 		<tr>
 			<td style="padding:0 10px 10px 10px;"><span class="bold"><?php echo lang('field') ?></span></td>
 			<td style="text-align:center;padding:0 10px 10px 10px;"><span class="bold"><?php echo lang('condition') ?></span></td>
-			<td style="text-align:center;padding:0 10px 10px 10px;"><span class="bold"><?php echo lang('value') ?></span></td>
+			<td style="padding:0 10px 10px 0px;"><span class="bold"><?php echo lang('value') ?></span></td>
 		</tr>
 		
 		<?php
@@ -53,7 +53,15 @@
 				if ($firstId == '') $firstId = $condId;
 			?>
 				<td style="padding:3px 0 0 10px;"><span class="bold"><?php echo $name ?>&nbsp;</span></td>
-				<td style="text-align:center;padding:3px 0 0 0;"><?php echo ($condition->getCondition() != '%' ? $condition->getCondition() : lang('ends with') ) ?>&nbsp;</td>
+				<td style="text-align:center;padding:3px 0 0 0;"><?php 
+					if ($condition->getCondition() == '%') {
+						echo lang('ends with');
+					} else {
+						$cond_label = Localization::instance()->lang($condition->getCondition());
+						if (!$cond_label) $cond_label = $condition->getCondition();
+						echo $cond_label;
+					}
+				?>&nbsp;</td>
 			<?php if(isset($cp)){ ?>
 				<td align='left'>
 					<?php if($cp->getType() == 'text' || $cp->getType() == 'numeric'){ ?>
@@ -94,9 +102,15 @@
 							} else  if ($col_type == DATA_TYPE_DATE || $col_type == DATA_TYPE_DATETIME) {
 								echo pick_date_widget2("params[".$condition->getId()."]");
 							} else {
+								$already_rendered = false;
+								Hook::fire('custom_report_param_render', array('field' => $condition, 'report' => null, 'report_ot' => $ot), $already_rendered);
+								
+								if (!$already_rendered) {
 				?>
 						<input type="text" id="<?php echo $condId; ?>" name="params[<?php echo $condition->getId() ?>]" />
-				<?php 		}
+				<?php 			
+								}
+							}
 						}
 				?>
 				</td>

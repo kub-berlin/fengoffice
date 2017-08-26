@@ -54,17 +54,21 @@ og.ArchivedObjects = function() {
 							items[items.length] = [d.filters.types[i].id, d.filters.types[i].name];
 						}
 						var types_filter = Ext.getCmp('ogArchivedTypeFilterCombo');
-						types_filter.reset();
-						types_filter.store.removeAll();
-						types_filter.store.loadData(items);
-						
-						types_filter.setValue(cmp.actual_type_filter);
-						types_filter.collapse();
+						if (types_filter) {
+							types_filter.reset();
+							types_filter.store.removeAll();
+							types_filter.store.loadData(items);
+							
+							types_filter.setValue(cmp.actual_type_filter);
+							types_filter.collapse();
+						}
 					}
 					
 					og.ArchivedObjects.store.lastOptions.params.archived = true;
 					og.ArchivedObjects.store.lastOptions.params.count_results = 1;
-					Ext.getCmp('archivedobjects-manager').reloadGridPagingToolbar('object','list_objects','archivedobjects-manager');
+					if (cmp) {
+						cmp.reloadGridPagingToolbar('object','list_objects','archivedobjects-manager');
+					}
 				
 					og.eventManager.fireEvent('replace all empty breadcrumb', null);
 				}

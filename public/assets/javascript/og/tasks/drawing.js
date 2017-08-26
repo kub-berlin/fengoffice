@@ -853,6 +853,7 @@ ogTasks.drawTaskRow = function(task, drawOptions, displayCriteria, group_id, lev
 			priorityColor: priorityColor,
 			tgId: tgId,
 			group_id: group_id,
+			assigned_to_show_name: og.config.tasks_show_assigned_to_name,
 			assigned_to : assignedTo,
 			assigned_by : assignedBy,
 			view_url :  og.getUrl('task', 'view', {id: task.id}),
@@ -1047,73 +1048,8 @@ ogTasks.loadTimeslotUsers = function(genid, task_id) {
 }
 
 ogTasks.AddWorkTime = function(task_id) {
-	//get template
-	var source = $("#task-timespan-template").html(); 
-	//compile the template
-	var template = Handlebars.compile(source);
-	
-	var minutes = new Array();
-	for (i = 0; i < 61; i=i+5) { 
-		minutes.push({minute:i});
-	}
-	
-	//template data
-	var data = {
-			taskId: task_id,
-			minutes: minutes,
-			showDesc: og.config.tasks_show_description_on_time_forms,
-			genid: og.genid
-	}
-	
-	//instantiate the template
-	var html = template(data);
-	
-		
-	var modal_params = {
-			'escClose': true,
-			'minWidth' : 390,
-			'minHeight' : 300,
-			'overlayClose': true,
-			'closeHTML': '<a id="ogTasksPanelAT_close_link" class="modal-close modal-close-img"></a>'
-		};
-		
-	$.modal(html,modal_params);
-	
-	ogTasks.loadTimeslotUsers(og.genid, task_id);
-	
-	// DatePicker Menu  
-	var dateCond = new og.DateField({
-		renderTo:'datepicker'+og.genid,
-		name: 'timeslot[date]',
-		id: 'timeslot[date]',
-		value: Ext.util.Format.date(new Date(), og.preferences['date_format']),
-		tabIndex: 70
-	});
-	 	
-	$( "#task-timespan-modal-form"+og.genid ).submit(function( event ) {
-		var parameters = [];
-		var form_params = $( this ).serializeArray();
-		
-		for (i = 0; i < form_params.length; i++) { 
-			    parameters[form_params[i].name] = form_params[i].value;
-		}
-		parameters.use_current_time = true;
-		og.openLink(
-				og.getUrl('time','add_timeslot'),
-				{ method:'POST' , 
-					post:parameters,
-					callback:function(success, data){
-						if (!success || data.errorCode) {
-						} else {
-							ogTasks.closeModal();							
-							ogTasks.UpdateTask(data.real_obj_id, true);
-						}						
-					}
-				}
-			);		 
-		
-		event.preventDefault();
-	});
+	og.render_modal_form('', {c:'time', a:'add', params: {object_id:task_id, contact_id:og.loggedUser.id, dont_reload:1}});
+	return;
 }
 
 
@@ -1770,8 +1706,10 @@ ogTasks.createDimensionColumnMenuItems = function(did, option_name, ignore_listi
 	var key = 'lp_dim_' + did + '_show_as_column';
 	if (ignore_listing_preferences || og.preferences['listing_preferences'][key]) {
 		
-		var general_item = ogTasks.createDimensionColumnMenuItem(did, og.dimensions_info[did].name, did, option_name);
-		menu_items.push(general_item);
+		if (og.dimensions_info[did]) {
+			var general_item = ogTasks.createDimensionColumnMenuItem(did, og.dimensions_info[did].name, did, option_name);
+			menu_items.push(general_item);
+		}
 		
 		if (ogTasks.list_dimension_column_hooks) {
 			for (var j=0; j<ogTasks.list_dimension_column_hooks.length; j++) {

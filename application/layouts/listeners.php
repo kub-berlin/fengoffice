@@ -600,9 +600,27 @@ og.eventManager.addListener('member parent changed',
 			var old_parent = tree.getNodeById(data.op);
 			if (old_parent && !old_parent.hasChildNodes()) {
 				var mobj = old_parent.attributes;
-				mobj.expandable = false;
 				
 				og.updateDimensionTreeNode(data.d, mobj, {});
+			}
+			
+			// ensure that the old parent doesn't have any more childs before removing the expand tool.
+			if (old_parent && old_parent.getDepth() > 0) {
+				og.openLink(og.getUrl('dimension', 'get_member_childs', { member: data.op, limit: 1, offset: 0 }), {
+					hideLoading:true, 
+					hideErrors:true,
+	    			callback: function(success, data){
+	    				var dimension_tree = Ext.getCmp('dimension-panel-'+data.dimension);
+	    				if (dimension_tree && data.members.length == 0) {
+							var p_node = dimension_tree.getNodeById(data.member_id);
+							if (p_node) {
+								p_node.attributes.expandable = false;
+								p_node.attributes.leaf = true;
+								p_node.reload();
+							}
+	    				}
+	    			}
+	    		});
 			}
 
 			// update current parent
@@ -643,11 +661,16 @@ og.eventManager.addListener('reload custom property definition',
 								}
 								
 								// add new columns for all available custom properties
+								man.hiddenColumnIds = [];
 								for (var j=0; j<og.custom_properties_by_type[type_name].length; j++) {
 									var cp = og.custom_properties_by_type[type_name][j];
+									var is_hidden = parseInt(cp.show_in_lists) == 0;
+									if (is_hidden) {
+										man.hiddenColumnIds.push('cp_' + cp.id);
+									}
 									cm.config.push({
 										id: 'cp_' + cp.id,
-										hidden: parseInt(cp.show_in_lists) == 0,
+										hidden: is_hidden,
 										header: cp.name,
 										align: cp.cp_type=='numeric' ? 'right' : 'left',
 										dataIndex: 'cp_' + cp.id,

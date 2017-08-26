@@ -562,8 +562,9 @@ class ProjectFile extends BaseProjectFile {
 	 */
 	function getDownloadUrl() {
 		return get_url('files', 'download_file', array(
-        'id' => $this->getId())
-		); // get_url
+        	'id' => $this->getId(), // file id
+			'mod' => gen_id(), // don't cache
+		)); // get_url
 	} // getDownloadUrl
 
 	
@@ -685,13 +686,15 @@ class ProjectFile extends BaseProjectFile {
 	 * @return boolean
 	 */
 	function canDownload(Contact $user) {
-		if ($this->getMailId() > 0) {
-			// if this file is an inline image of another document or an email attachment then check the permissions of the container doc or email.
+		// if this file is an inline image of another document or an email attachment then check the permissions of the container doc or email.
+		$ftype = $this->getFileType();
+		if ($this->getMailId() > 0 && $ftype instanceof FileType && $ftype->getIsImage()) {
 			$object = Objects::findObject($this->getMailId());
 			if ($object instanceof ContentDataObject) {
-				return can_read($user, $object->getMembers(), $object->getObjectTypeId());
+				return $object->canView($user);
 			}
 		}
+		// in other case use this doc's classification
 		return can_read($user, $this->getMembers(), $this->getObjectTypeId());
 	} // canDownload
 

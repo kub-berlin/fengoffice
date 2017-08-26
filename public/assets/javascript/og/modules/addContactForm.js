@@ -208,30 +208,37 @@ og.renderTelephoneInput = function(id, name, container_id, sel_type, sel_number,
 
 og.addNewTelephoneInput = function(container_id, pre_id, sel_type, sel_number, sel_name, sel_id) {
 	if (!pre_id) pre_id = 'contact';
-	if (!og.telephoneCount) og.telephoneCount = 0;
-	var id = pre_id+'Phone_' + og.telephoneCount;
-	var name = pre_id+'[phone][' + og.telephoneCount + ']';
-
-	$('#'+container_id).append('<div id="'+ container_id + og.telephoneCount +'" class="phone-input-container"></div>');
+	if (!og.telephoneCount) og.telephoneCount = {};
+	if (!og.telephoneCount[container_id]) og.telephoneCount[container_id] = 0;
+	var tcount = og.telephoneCount[container_id];
 	
-	og.renderTelephoneInput(id, name, container_id + og.telephoneCount, sel_type, sel_number, sel_name, sel_id);
+	var id = pre_id+'Phone_' + tcount;
+	var name = pre_id+'[phone][' + tcount + ']';
 
-	og.telephoneCount++;
+	$('#'+container_id).append('<div id="'+ container_id + tcount +'" class="phone-input-container"></div>');
+	
+	og.renderTelephoneInput(id, name, container_id + tcount, sel_type, sel_number, sel_name, sel_id);
+
+	og.telephoneCount[container_id] = og.telephoneCount[container_id] + 1;
 }
 
 
 og.addNewAddressInput = function(container_id, pre_id, sel_type, sel_data) {
 	if (!pre_id) pre_id = 'contact';
-	if (!og.addressCount) og.addressCount = 0;
-	var id = pre_id + 'Address_' + og.addressCount;
-	var name = pre_id + '[address][' + og.addressCount + ']';
-
-	$('#'+container_id).append('<div id="'+ container_id + og.addressCount +'" class="address-input-container"></div>');
+	if (!og.addressCount) og.addressCount = {};
+	if (!og.addressCount[container_id]) og.addressCount[container_id] = 0;
+	var tcount = og.addressCount[container_id];
 	
-	og.renderAddressInput(id, name, container_id + og.addressCount, sel_type, sel_data);
+	var id = pre_id + 'Address_' + tcount;
+	var name = pre_id + '[address][' + tcount + ']';
+
+	$('#'+container_id).append('<div id="'+ container_id + tcount +'" class="address-input-container"></div>');
+	
+	og.renderAddressInput(id, name, container_id + tcount, sel_type, sel_data);
 
 	$(".address-input-container").css('max-width', ($('#'+container_id).width()-270)+'px');
-	og.addressCount++;
+	
+	og.addressCount[container_id] = og.addressCount[container_id] + 1;
 }
 
 
@@ -270,15 +277,18 @@ og.renderWebpageInput = function(id, name, container_id, sel_type, sel_url, sel_
 
 og.addNewWebpageInput = function(container_id, pre_id, sel_type, sel_url, sel_id) {
 	if (!pre_id) pre_id = 'contact';
-	if (!og.webpageCount) og.webpageCount = 0;
-	var id = pre_id+'Webpage_' + og.webpageCount;
-	var name = pre_id + '[webpage][' + og.webpageCount + ']';
-
-	$('#'+container_id).append('<div id="'+ container_id + og.webpageCount +'" class="webpage-input-container"></div>');
+	if (!og.webpageCount) og.webpageCount = {};
+	if (!og.webpageCount[container_id]) og.webpageCount[container_id] = 0;
+	var tcount = og.webpageCount[container_id];
 	
-	og.renderWebpageInput(id, name, container_id + og.webpageCount, sel_type, sel_url, sel_id);
+	var id = pre_id+'Webpage_' + tcount;
+	var name = pre_id + '[webpage][' + tcount + ']';
 
-	og.webpageCount++;
+	$('#'+container_id).append('<div id="'+ container_id + tcount +'" class="webpage-input-container"></div>');
+	
+	og.renderWebpageInput(id, name, container_id + tcount, sel_type, sel_url, sel_id);
+
+	og.webpageCount[container_id] = og.webpageCount[container_id] + 1;
 }
 
 
@@ -318,13 +328,16 @@ og.renderEmailInput = function(id, name, container_id, sel_type, sel_address, se
 
 og.addNewEmailInput = function(container_id, pre_id, sel_type, sel_address, sel_id) {
 	if (!pre_id) pre_id = 'contact';
-	if (!og.emailCount) og.emailCount = 0;
-	var id = pre_id+'Email_' + og.emailCount;
-	var name = pre_id + '[emails][' + og.emailCount + ']';
-
-	$('#'+container_id).append('<div id="'+ container_id + og.emailCount +'" class="email-input-container"></div>');
+	if (!og.emailCount) og.emailCount = {};
+	if (!og.emailCount[container_id]) og.emailCount[container_id] = 0;
+	var tcount = og.emailCount[container_id];
 	
-	og.renderEmailInput(id, name, container_id + og.emailCount, sel_type, sel_address, sel_id);
+	var id = pre_id+'Email_' + tcount;
+	var name = pre_id + '[emails][' + tcount + ']';
 
-	og.emailCount++;
+	$('#'+container_id).append('<div id="'+ container_id + tcount +'" class="email-input-container"></div>');
+	
+	og.renderEmailInput(id, name, container_id + tcount, sel_type, sel_address, sel_id);
+
+	og.emailCount[container_id] = og.emailCount[container_id] + 1;
 }

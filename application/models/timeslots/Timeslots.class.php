@@ -259,6 +259,18 @@ class Timeslots extends BaseTimeslots {
 		return $totalSeconds;
 	}
 	
+	
+	function getColumnsToAggregateInTotals() {
+		$parent_cols = parent::getColumnsToAggregateInTotals();
+		$cols = array(
+			'worked_time' => array('operation' => 'sum', 'format' => 'time'),
+			'subtract' => array('operation' => 'sum', 'format' => 'time'),
+			'fixed_billing' => array('operation' => 'sum', 'format' => 'money', 'currency_id_col' => 'rate_currency_id', 'group_by' => 'rate_currency_id'),
+		);
+		
+		return array_merge($parent_cols, $cols);
+	}
+	
 } // Timeslots
 
 ?>

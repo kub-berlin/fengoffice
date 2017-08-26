@@ -138,6 +138,80 @@ class TimeController extends ApplicationController {
 		ajx_set_no_toolbar(true);
 	}
 	
+	
+	function add() {
+		
+		$timeslot_data = array_var($_POST, 'timeslot');
+		if (!is_array($timeslot_data)) {
+			
+			$timeslot = new Timeslot();
+			$timeslot->setContactId(array_var($_REQUEST, "contact_id"));
+			$timeslot->setRelObjectId(array_var($_REQUEST, "object_id"));
+			$dont_reload = array_var($_REQUEST, "dont_reload");
+				
+			if (logged_user()->isAdminGroup()) {
+				//Get Users Info
+				$users = array();
+				if (!can_manage_time(logged_user())) {
+					if (can_add(logged_user(), $context, Timeslots::instance()->getObjectTypeId())) $users = array(logged_user());
+				} else {
+						
+					if (logged_user()->isMemberOfOwnerCompany()) {
+						$users = Contacts::getAllUsers();
+					} else {
+						$users = logged_user()->getCompanyId() > 0 ? Contacts::getAllUsers(" AND `company_id` = ". logged_user()->getCompanyId()) : array(logged_user());
+					}
+					// filter users by permissions only if any member is selected.
+					$members = $timeslot->getMembers();
+					if (count($members) > 0) {
+						$tmp_users = array();
+						foreach ($users as $user) {
+							if (can_add($user, $members, Timeslots::instance()->getObjectTypeId())) $tmp_users[] = $user;
+						}
+						$users = $tmp_users;
+					}
+				}
+				tpl_assign('users', $users);
+			}
+			
+			$pre_selected_member_ids = null;
+			$rel_obj = $timeslot->getRelObject();
+			if ($rel_obj instanceof ContentDataObject) {
+				$pre_selected_member_ids = $rel_obj->getMemberIds();
+			}
+			tpl_assign('pre_selected_member_ids', $pre_selected_member_ids);
+			
+			tpl_assign('dont_reload', $dont_reload);
+			
+			tpl_assign('timeslot', $timeslot);
+			$this->setTemplate('edit_timeslot');
+				
+		} else {
+			
+			$ok = $this->add_timeslot(array(
+				'timeslot' => $timeslot_data, 
+				'object_id' => array_var($_REQUEST, "object_id"), 
+				'members' => array_var($_REQUEST, "members"), 
+				'use_current_time' => true,
+			));
+			
+			if ($ok) {
+				$dont_reload = array_var($_REQUEST, "dont_reload");
+				if ($dont_reload) {
+					$t = ProjectTasks::findById(array_var($_REQUEST, "object_id"));
+					if ($t instanceof ProjectTask) {
+						$tdata = $t->getArrayInfo();
+						evt_add('update tasks in list', array('tasks' => array($tdata)));
+					}
+				} else {
+					evt_add("reload current panel");
+				}
+			}
+			
+		}
+	}
+	
+	
 	function add_timeslot($parameters = null, $use_transaction = true){
 		if (is_null($parameters)) {
 			$object_id = array_var($_REQUEST, "object_id",false);
@@ -157,7 +231,13 @@ class TimeController extends ApplicationController {
 				ajx_current("empty");
 				return;
 			}
-			$member_ids = $object->getMemberIds();
+			
+			if (array_var($parameters, 'members')) {
+				$member_ids = json_decode(array_var($parameters, 'members'));
+			} else {
+				$member_ids = $object->getMemberIds();
+			}
+			
 		}else{
 			$member_ids = json_decode(array_var($parameters, 'members',array()));	
 			// clean member_ids
@@ -219,11 +299,19 @@ class TimeController extends ApplicationController {
 			$logged_user_tz_hours_offset = logged_user()->getUserTimezoneValue() / 3600;
 			
 			$startTime = getDateValue(array_var($timeslot_data, 'date'));
+			
+			$startTimeHours = getTimeValue(array_var($timeslot_data, 'start_time'));
+			if ($startTimeHours) {
+				$startTime->setHour($startTimeHours['hours']);
+				$startTime->setMinute($startTimeHours['mins']);
+				$startTime->add('h', -$logged_user_tz_hours_offset);
+			}
+			
 			$endTime = new DateTimeValue($startTime->getTimestamp());
 			$endTime->add('h', $hoursToAdd);
 			
 			//use current time
-			if( array_var($parameters, "use_current_time")) {
+			if (!$startTimeHours && array_var($parameters, "use_current_time")) {
 				$currentStartTime = DateTimeValueLib::now();
 				$currentEndTime = DateTimeValueLib::now();
 				$currentStartTime = $currentStartTime->add('h', -$hoursToAdd);	
@@ -278,6 +366,15 @@ class TimeController extends ApplicationController {
 				if (!is_array($member_ids)) $member_ids = array();
 				$member_ids = array_filter(array_merge($member_ids, $additional_member_ids));
 			}
+			if (isset($timeslot_data['ignore_member_ids']) && is_array($timeslot_data['ignore_member_ids'])) {
+				foreach ($timeslot_data['ignore_member_ids'] as $ign_mid) {
+					foreach ($member_ids as $k => &$mid) {
+						if ($ign_mid == $mid) {
+							unset($member_ids[$k]);
+						}
+					}
+				}
+			}
 			
 			$object_controller = new ObjectController();
 			if (!is_null($member_ids)) {
@@ -291,6 +388,8 @@ class TimeController extends ApplicationController {
 			
 			$show_billing = can_manage_billing(logged_user());
 			ajx_extra_data(array("timeslot" => $timeslot->getArrayInfo($show_billing),"real_obj_id" => $timeslot->getRelObjectId()));
+			
+			return true;
 		} catch(Exception $e) {
 			if ($use_transaction) {
 				DB::rollback();
@@ -373,8 +472,9 @@ class TimeController extends ApplicationController {
 				$hoursToAdd = array_var($timeslot_data, 'hours',0);
 				$minutes = array_var($timeslot_data, 'minutes',0);
 	
-				if (strpos($hoursToAdd,',') && !strpos($hoursToAdd,'.'))
-				$hoursToAdd = str_replace(',','.',$hoursToAdd);
+				if (strpos($hoursToAdd,',') && !strpos($hoursToAdd,'.')) {
+					$hoursToAdd = str_replace(',','.',$hoursToAdd);
+				}
 				if (strpos($hoursToAdd,':') && !strpos($hoursToAdd,'.')) {
 					$pos = strpos($hoursToAdd,':') + 1;
 					$len = strlen($hoursToAdd) - $pos;
@@ -390,7 +490,7 @@ class TimeController extends ApplicationController {
 				if($minutes){
 					$min = str_replace('.','',($minutes/6));
 					$hoursToAdd = $hoursToAdd + ("0.".$min);
-	                        }
+				}
 					
 				if ($hoursToAdd <= 0){
 					flash_error(lang('time has to be greater than 0'));
@@ -400,9 +500,26 @@ class TimeController extends ApplicationController {
 				$logged_user_tz_hours_offset = logged_user()->getUserTimezoneValue() / 3600;
 				
 				$startTime = getDateValue(array_var($timeslot_data, 'date'));
-				$startTime = $startTime->add('h', 8 - $logged_user_tz_hours_offset);
+				if (isset($timeslot_data['start_time'])) {
+					$startTimeHours = getTimeValue($timeslot_data['start_time']);
+					if ($startTimeHours) {
+						$startTime->add('h', $startTimeHours['hours']);
+						$startTime->add('m', $startTimeHours['mins']);
+					} else {
+						$startTime->add('h', 8);
+					}
+				} else {
+					$startTime->add('h', 8);
+				}
+				
 				$endTime = getDateValue(array_var($timeslot_data, 'date'));
-				$endTime = $endTime->add('h', 8 - $logged_user_tz_hours_offset + $hoursToAdd);
+				$endTime = $endTime->add('h', $startTime->getHour() + $hoursToAdd);
+				$endTime = $endTime->add('m', $startTime->getMinute());
+				
+				// save timeslot dates in gmt0
+				$startTime->add('h', -$logged_user_tz_hours_offset);
+				$endTime->add('h', -$logged_user_tz_hours_offset);
+				
 				$timeslot_data['start_time'] = $startTime;
 				$timeslot_data['end_time'] = $endTime;
 				$timeslot_data['name'] = $timeslot_data['description'];

@@ -2269,7 +2269,7 @@ function instantiate_template_task_parameters(TemplateTask $object, ProjectTask 
 				$is_present = false;
 				foreach($parameterValues as $param => $val){
 					if (stripos($value, '{'.$param.'}') !== FALSE) {
-						$value = str_replace('{'.strtolower($param).'}', $val, strtolower($value));
+						$value = str_replace('{'.$param.'}', $val, $value);
 						$is_present = true;
 					}
 				}
@@ -2279,6 +2279,11 @@ function instantiate_template_task_parameters(TemplateTask $object, ProjectTask 
 				}
 			}
 		} else if($manager->getColumnType($propName) == DATA_TYPE_DATE || $manager->getColumnType($propName) == DATA_TYPE_DATETIME) {
+			$exp_value = explode("|", $value);
+			$value = $exp_value[0];
+			$time_value = null;
+			if (isset($exp_value[1])) $time_value = $exp_value[1];
+			
 			$operator = '+';
 			if (strpos($value, '+') === false) {
 				$operator = '-';
@@ -2292,6 +2297,11 @@ function instantiate_template_task_parameters(TemplateTask $object, ProjectTask 
 				// get date from parameter, if parameter is defined by user => use that value, if it is the date of task creation => use DateTimeValueLib::now();
 				if ($dateParam == 'task_creation') {
 					$date = DateTimeValueLib::now();
+					if ($time_value) {
+						$time_value_exp = explode(':', $time_value);
+						$hour_min['hours'] = $time_value_exp[0];
+						$hour_min['mins'] = $time_value_exp[1];
+					}
 				} else {
 					$date_str = $parameterValues[$dateParam];
 					

@@ -547,7 +547,13 @@ class TemplateTask extends BaseTemplateTask {
 		$new_task->setUseDueTime($this->getUseDueTime());
 		$new_task->setTypeContent($this->getTypeContent());
 		$new_task->setFromTemplateObjectId($this->getId());
-		$new_task->setParentId($this->getParentId());
+		
+		if ($this->getParentId() > 0) {
+			$ptask = ProjectTasks::findOne(array("conditions" => "from_template_id = ".$this->getTemplateId()." AND from_template_object_id = ".$this->getParentId()." AND instantiation_id='$instantiation_id'"));
+		}
+		$parent_task_id = $ptask instanceof ProjectTask ? $ptask->getId() : 0;
+		$new_task->setParentId($parent_task_id);
+		
 		$new_task->setOriginalTaskId(0);
 		$new_task->setInstantiationId($instantiation_id);
 		if ($this->getDueDate() instanceof DateTimeValue ) {
@@ -575,6 +581,9 @@ class TemplateTask extends BaseTemplateTask {
 		if($new_due_date != "") {
 			if ($new_task->getDueDate() instanceof DateTimeValue) $new_task->setDueDate($new_due_date);
 		}
+		
+		Hook::fire('template_task_to_task_columns', array('template_task' => $this, 'instantiation_id' => $instantiation_id), $new_task);
+		
 		$new_task->setDontMakeCalculations(true);
 		$new_task->save();
 		
@@ -871,8 +880,12 @@ class TemplateTask extends BaseTemplateTask {
 			}
 		}
 
-		$new_st_date = $this->correct_days_task_repetitive($new_st_date);
-		$new_due_date = $this->correct_days_task_repetitive($new_due_date);
+		$correct_the_days = true;
+		Hook::fire('check_working_days_to_correct_repetition', array('task' => $subtask), $correct_the_days);
+		if ($correct_the_days) {
+			$new_st_date = $this->correct_days_task_repetitive($new_st_date);
+			$new_due_date = $this->correct_days_task_repetitive($new_due_date);
+		}
 		
 		return array('st' => $new_st_date, 'due' => $new_due_date);
 	}

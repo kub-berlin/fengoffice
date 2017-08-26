@@ -30,8 +30,10 @@
 					if ($object->getDueDate()){
 						$tz_offset = Timezones::getTimezoneOffsetToApply($object);
 						$tz = $tz_offset/3600;
-						
-						$object->getDueDate()->advance($tz, true);
+
+                        if($object instanceof ProjectTask && $object->getUseDueTime()) {
+                            $object->getDueDate()->advance($tz, true);
+                        }
 						if ($object->getDueDate()->getTimestamp() < $today->getTimestamp()) {
 							$days_str = lang('days late', $object->getLateInDays());
 							$cls = 'late';

@@ -60,6 +60,7 @@ CREATE TABLE  `<?php echo $table_prefix ?>mail_accounts` (
   `is_imap` int(1) NOT NULL default '0',
   `incoming_ssl` int(1) NOT NULL default '0',
   `incoming_ssl_port` int default '995',
+  `incoming_ssl_verify_peer` tinyint(1) NOT NULL DEFAULT '0',
   `smtp_server` VARCHAR(100) <?php echo $default_collation ?> NOT NULL default '',
   `smtp_use_auth` INTEGER UNSIGNED NOT NULL default 0,
   `smtp_username` VARCHAR(100) <?php echo $default_collation ?>,

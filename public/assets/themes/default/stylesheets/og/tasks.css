@@ -837,3 +837,11 @@ button.add-first-btn.no-tasks-add-task-btn {
 .task-list-row.dragging {
 	background-color: #eeeeff;
 }
+
+.task-row-avatar .name {
+    min-width: 150px;
+    max-width: 200px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+}

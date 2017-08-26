@@ -276,7 +276,8 @@ class ObjectController extends ApplicationController {
 			if ($ent_mem->getDimension()->getIsManageable() && $ent_mem->getDimension()->getDefinesPermissions()) $manageable_members[] = $ent_mem;
 		}
 		
-		if ((!can_add($user, $check_allowed_members ? $object->getAllowedMembersToAdd($user, $manageable_members):$manageable_members, $object->getObjectTypeId()))
+		if ($check_allowed_members) {
+		  if ((!can_add($user, $check_allowed_members ? $object->getAllowedMembersToAdd($user, $manageable_members):$manageable_members, $object->getObjectTypeId()))
 			&& !($object instanceof TemplateTask || $object instanceof TemplateMilestone || ($object instanceof Contact && $object->isUser()))) {
 			
 			$dinfos = DB::executeAll("SELECT id, name, code, options FROM ".TABLE_PREFIX."dimensions WHERE is_manageable = 1");
@@ -289,11 +290,14 @@ class ObjectController extends ApplicationController {
 			throw new Exception(lang('must choose at least one member of', implode(', ', $dimension_names)));
 			ajx_current("empty");
 			return;
+		  }
 		}
 		
 		$removedMemebersIds = $object->removeFromMembers($user, $enteredMembers);
+		
+		$not_valid_members = array();
 		/* @var $object ContentDataObject */
-		$validMembers = $check_allowed_members ? $object->getAllowedMembersToAdd($user,$enteredMembers) : $enteredMembers;
+		$validMembers = $check_allowed_members ? $object->getAllowedMembersToAdd($user, $enteredMembers, $not_valid_members) : $enteredMembers;
 
 		foreach($required_dimensions as $rdim){
 			$exists = false;
@@ -324,6 +328,23 @@ class ObjectController extends ApplicationController {
 		//because in that case when we ask for the members of the object we load them from db
 		if ( !is_null($object->members) ) {
 			$object->members = $validMembers;
+		}
+		
+		// show the user the members where the object could not be classifed
+		if (count($not_valid_members) > 0) {
+			$not_valid_mem_names_array = array();
+			$person_dim = Dimensions::findByCode('feng_persons');
+			foreach ($not_valid_members as $m) {
+				if ($person_dim->getId() != $m->getDimensionId()) $not_valid_mem_names_array[] = $m->getName();
+			}
+			if (count($not_valid_mem_names_array) > 0) {
+				$not_valid_mem_names = implode(', ', $not_valid_mem_names_array);
+				
+				evt_add("popup", array(
+					'title' => lang("information"),
+					'message' => lang('object could not be classfied in due to permissions', lang('the '.$object->getObjectTypeName()), $not_valid_mem_names, strtolower(lang($object->getObjectTypeName()."s"))),
+				));
+			}
 		}
 		
 		return $validMembers;

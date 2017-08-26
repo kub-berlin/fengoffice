@@ -346,7 +346,6 @@ og.autoSaveDraft = function(genid) {
 	var mb = Ext.getDom(genid + 'mailBody');
 	if(mb == null) return;
 	
-	var old_val = og.setHfValue(genid, 'isDraft', true);
 	og.setHfValue(genid, 'autosave', true);
 
 	if (mb.oldMailBody == null) mb.oldMailBody = og.getMailBodyFromUI(genid);
@@ -357,10 +356,15 @@ og.autoSaveDraft = function(genid) {
 		
 	if (mb.thisDraftHasChanges) {
 		mb.thisDraftHasChanges = false;
+		
+		var prev_action = document.frmMail.action;
+		document.frmMail.action = og.getUrl('mail', 'autosave_draft', {ajax:'true'});
+		
 		var form = document.getElementById(genid + 'form');
 		if (form) form.onsubmit();
+		
+		document.frmMail.action = prev_action;
 	}
-	og.setHfValue(genid, 'isDraft', old_val);
 	og.setHfValue(genid, 'autosave', false);
 	og.stopAutosave(genid);
 	mb.autoSaveTOut = setTimeout(function() {

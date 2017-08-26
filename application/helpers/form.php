@@ -760,7 +760,7 @@
     return '#'. $darkerColor;
   } // darkerHtmlColor
 
-  function doubleListSelect($name, $values, $attributes = null) {
+  function doubleListSelect($name, $values, $attributes = null, $option_groups = null) {
   	if (is_array($attributes)) {
 		if (!array_var($attributes, "size")) $attributes['size'] = "15";
 	} else {
@@ -775,6 +775,16 @@
 	$options2 = array();
 	$hfields = "";
 	$order = 1;
+	
+	// first option group
+	$current_opt_group = null;
+	$gr_count = 0;
+	if (is_array($option_groups) && count($option_groups) > 0) {
+		$current_opt_group = $option_groups[0];
+		$options1[] = '<optgroup label="'.$current_opt_group['name'].'">';
+	}
+	
+	$i = 0;
 	foreach ($values as $val) {
 		$sel = array_var($val, 'selected');
 		if (!$sel)
@@ -782,7 +792,21 @@
 		else
 			$options2[] = option_tag(array_var($val, 'text'), array_var($val, 'id'));
 		
-		$hfields .= '<input id="'.$id.'['.array_var($val, 'id').']" name="'.$name.'['.array_var($val, 'id').']" type="hidden" value="'.($sel ? $order++ : '0').'" />'; 
+		$hfields .= '<input id="'.$id.'['.array_var($val, 'id').']" name="'.$name.'['.array_var($val, 'id').']" type="hidden" value="'.($sel ? $order++ : '0').'" />';
+		
+		// option groups
+		if ($current_opt_group && $current_opt_group['count'] == $i) {
+			$gr_count++;
+			$current_opt_group = $option_groups[$gr_count];
+			$i = 0;
+			$options1[] = '</optgroup>';
+			$options1[] = '<optgroup label="'.$current_opt_group['name'].'">';
+		}
+		$i++;
+	}
+	
+	if (is_array($option_groups) && count($option_groups) > 0) {
+		$options1[] = '</optgroup>';
 	}
 	
 	// 1st box

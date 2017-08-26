@@ -137,49 +137,9 @@ og.reorderCustomReport = function(link, report_id, order, order_by_asc) {
 	og.openLink(og.getUrl('reporting', 'view_custom_report', params));
 };
 
-og.openPDFOptions = function(genid) {
-	var html = $("#pdfOptions").html();
-	html = html.replace(/{gen_id}/g, genid);
-	
-	var modal_params = {
-		'escClose': true,
-		'overlayClose': true,
-		'minWidth' : 400,
-		'minHeight' : 200,
-		'closeHTML': '<a id="pdf_options_close_link" class="modal-close modal-close-img"></a>'
-	};
-		
-	$.modal(html, modal_params);
-}
 
 
 document.getElementById('<?php echo $genid?>_plain_context').value = og.contextManager.plainContext();
-
-og.get_report_parameters_of_form = function(genid) {
-	var form_id = 'form' + genid;
-	var form = document.getElementById(form_id);
-
-	var post_id = 'post' + genid;
-	var post_el = document.getElementById(post_id);
-	var post = Ext.util.JSON.decode(post_el.value);
-
-	var params = {};
-	for (x in post) {
-		
-		if(x == 'params'){
-			params["report_params"] = Ext.util.JSON.encode(post[x]);
-		}else if (x != 'c' && x != 'a' && x != 'ajax') {
-			params[x] = post[x];
-
-			var i = document.createElement("input");
-			i.type= "hidden";
-			i.value = post[x];
-			i.name = x;
-			form.appendChild(i);
-		}
-	}
-	return params;
-}
 
 og.disable_export_report_link = function(elem) {
 	$(elem).attr('disabled','disabled');
@@ -215,81 +175,5 @@ og.submit_export_excel_form = function(genid, elem) {
 	return false;
 }
 
-og.submit_csv_form = function(genid, elem) {
-
-	var params = og.get_report_parameters_of_form(genid);
-	params['exportCSV'] = true;
-
-	var report_id = $("#report_id_"+genid).val();
-	og.openLink(og.getUrl('reporting', 'export_custom_report_csv', {id: report_id}), {
-		post: params,
-		callback: function(success, data) {
-			var $form = $("<form></form>");
-			$form.attr("action", og.getUrl('reporting', 'download_file'));
-			$form.attr("method", "post");
-			$form.append('<input type="text" name="file_name" value="'+data.filename+'" />');
-			$form.append('<input type="text" name="file_type" value="application/csv" />');
-			
-			$form.appendTo('body').submit().remove();
-		}
-	});
-
-	og.disable_export_report_link(elem);
-	
-	return false;
-}
-
-og.submit_fixed_report_csv_form = function(genid, elem) {
-	var form_id = 'form' + genid;
-	var form = document.getElementById(form_id);
-	
-	var params = og.get_report_parameters_of_form(genid);
-	params['exportCSV'] = true;
-
-	og.openLink(form.action, {
-		post: params,
-		callback: function(success, data) {
-			var $form = $("<form></form>");
-			$form.attr("action", og.getUrl('reporting', 'download_file'));
-			$form.attr("method", "post");
-			$form.append('<input type="text" name="file_name" value="'+data.filename+'" />');
-			$form.append('<input type="text" name="file_type" value="application/csv" />');
-			
-			$form.appendTo('body').submit().remove();				
-		}
-	});
-
-	og.disable_export_report_link(elem);
-	
-	return false;
-}
-
-og.submit_pdf_form = function(genid) {
-
-	var params = og.get_report_parameters_of_form(genid);
-	params['exportPDF'] = true;
-	params['pdfPageLayout'] = $("#"+genid+"pdfPageLayout").val();
-
-	var report_id = $("#report_id_"+genid).val();
-	og.openLink(og.getUrl('reporting', 'export_custom_report_pdf', {id: report_id}), {
-		post: params,
-		callback: function(success, data) {
-		  if (data.filename) {
-			var $form = $("<form></form>");
-			$form.attr("action", og.getUrl('reporting', 'download_file'));
-			$form.attr("method", "post");
-			$form.append('<input type="text" name="file_name" value="'+data.filename+'" />');
-			$form.append('<input type="text" name="file_type" value="application/pdf" />');
-			if (data.size) {
-				$form.append('<input type="text" name="file_size" value="'+data.size+'" />');
-			}
-			
-			$form.appendTo('body').submit().remove();
-		  }				
-		}
-	});
-	$.modal.close();
-	return false;
-}
 
 </script>

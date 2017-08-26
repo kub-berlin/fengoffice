@@ -452,6 +452,7 @@ return array(
   'resume work' => 'Resume clock',
   'end work description' => 'End work description',
   'add timeslot' => 'Add timeslot',
+  'new timeslot' => 'New timeslot',
   'edit timeslot' => 'Edit timeslot',
   'start date' => 'Start date',
   'start time' => 'Start time',

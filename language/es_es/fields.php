@@ -300,6 +300,9 @@
 	'other_address' => 'Otra dirección',
 	'postal_address' => 'Dirección postal',
 	'postal' => 'Postal',
+	
+	'field Objects text' => 'Descripción',
+	
 
 	'field Contacts home_phone' => 'Teléfono personal',
 	'field Contacts work_phone' => 'Teléfono del trabajo',
@@ -313,4 +316,6 @@
 	'field Contacts other_address' => 'Otra dirección',
 	'field Contacts postal_address' => 'Dirección postal',
     'field ProjectTasks original_task_id' => 'Id de tarea original',
+		
+	'field Timeslots rel_object_id' => 'Tarea',
 );

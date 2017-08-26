@@ -31,8 +31,10 @@
 				$open_timeslot = $timeslot;
 				$counter --;
 			} else {
+				$add_cls = "";
+				Hook::fire("additional_task_timeslot_class", $timeslot, $add_cls);
 ?>
-			<tr class="timeslot <?php echo $counter % 2 ? 'even' : 'odd'; echo $timeslot->isOpen() ? ' openTimeslot' : '' ?>" id="timeslot<?php echo $timeslot->getId() ?>">
+			<tr class="timeslot <?php echo $counter % 2 ? 'even' : 'odd'; echo $timeslot->isOpen() ? ' openTimeslot' : '' ?> <?php echo " $add_cls";?>" id="timeslot<?php echo $timeslot->getId() ?>">
 			<td style="padding-right:10px"><b><?php echo $counter ?>.</b></td>
 			<?php if ($timeslot->getUser() instanceof Contact) { ?>
 				<td style="padding-right:10px"><b><a class="internalLink" href="<?php echo $timeslot->getUser()->getCardUserUrl()?>" title=" <?php echo lang('user card of', clean($timeslot->getUser()->getObjectName())) ?>"><?php echo clean($timeslot->getUser()->getObjectName()) ?></a></b></td>

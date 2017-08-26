@@ -99,16 +99,12 @@
 
 $(document).ready(function() {
 
-	og.telephoneCount = 0;
 	og.telephone_types = Ext.util.JSON.decode('<?php echo json_encode($all_telephone_types)?>');
 
-	og.addressCount = 0;
 	og.address_types = Ext.util.JSON.decode('<?php echo json_encode($all_address_types)?>');
 
-	og.webpageCount = 0;
 	og.webpage_types = Ext.util.JSON.decode('<?php echo json_encode($all_webpage_types)?>');
 
-	og.emailCount = 0;
 	og.email_types = Ext.util.JSON.decode('<?php echo json_encode($all_email_types)?>');
 
 	<?php if (!$object->isNew()) { ?>

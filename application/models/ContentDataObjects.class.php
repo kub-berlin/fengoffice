@@ -670,6 +670,7 @@ abstract class ContentDataObjects extends DataManager {
 			$sql_total = "
 				SELECT count(DISTINCT(o.id)) as total FROM ".TABLE_PREFIX."objects o
 				$SQL_BASE_JOIN
+				$SQL_SEARCHABLE_OBJ_JOIN
 				$SQL_EXTRA_JOINS
 				WHERE
 					$permissions_condition
@@ -1401,6 +1402,8 @@ abstract class ContentDataObjects extends DataManager {
 	
 	
 	function getColumnsToAggregateInTotals() {
-		return array();
+		$columns = array();
+		Hook::fire('more_columns_to_aggregate_in_totals', $this, $columns);
+		return $columns;
 	}
 }

@@ -437,8 +437,13 @@ Ext.Ajax.timeout = <?php echo get_max_execution_time()*1100 // give a 10% margin
 og.musicSound = new Sound();
 og.systemSound = new Sound();
 
-<?php $all_dimension_associations = DimensionMemberAssociations::instance()->getAllAssociationsInfo(); ?>
-og.dimension_member_associations = Ext.util.JSON.decode('<?php echo json_encode($all_dimension_associations)?>');
+<?php 
+	$all_dimension_associations = DimensionMemberAssociations::instance()->getAllAssociationsInfo();
+	$json_options = null;
+	if (defined('JSON_HEX_APOS')) $json_options = JSON_HEX_APOS;
+?>
+og.dimension_member_associations = Ext.util.JSON.decode('<?php echo json_encode($all_dimension_associations, $json_options)?>');
+
 
 <?php if (!defined('DISABLE_JS_POLLING') || !DISABLE_JS_POLLING) { ?>
 var isActiveBrowserTab = true;
