@@ -686,15 +686,6 @@ class ProjectFile extends BaseProjectFile {
 	 * @return boolean
 	 */
 	function canDownload(Contact $user) {
-		// if this file is an inline image of another document or an email attachment then check the permissions of the container doc or email.
-		$ftype = $this->getFileType();
-		if ($this->getMailId() > 0 && $ftype instanceof FileType && $ftype->getIsImage()) {
-			$object = Objects::findObject($this->getMailId());
-			if ($object instanceof ContentDataObject) {
-				return $object->canView($user);
-			}
-		}
-		// in other case use this doc's classification
 		return can_read($user, $this->getMembers(), $this->getObjectTypeId());
 	} // canDownload
 

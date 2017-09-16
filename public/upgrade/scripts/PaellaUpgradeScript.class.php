@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Paella upgrade script will upgrade FengOffice 3.4.4.64 to FengOffice 3.5.0.9
+ * Paella upgrade script will upgrade FengOffice 3.4.4.64 to FengOffice 3.5.1.5
  *
  * @package ScriptUpgrader.scripts
  * @version 1.0
@@ -39,7 +39,7 @@ class PaellaUpgradeScript extends ScriptUpgraderScript {
 	function __construct(Output $output) {
 		parent::__construct($output);
 		$this->setVersionFrom('3.4.4.52');
-		$this->setVersionTo('3.5.0.9');
+		$this->setVersionTo('3.5.1.5');
 	} // __construct
 
 	function getCheckIsWritable() {
@@ -163,7 +163,61 @@ class PaellaUpgradeScript extends ScriptUpgraderScript {
 		}
 
 		
+		if (version_compare($installed_version, '3.5.0.10') < 0) {
+			$upgrade_script .= "
+				INSERT INTO ".$t_prefix."dimension_associations_config (association_id, config_name, value)
+					SELECT id, 'autoclassify_in_property_member', '1'
+					FROM ".$t_prefix."dimension_member_associations WHERE associated_dimension_id NOT IN (SELECT id FROM ".$t_prefix."dimensions WHERE code='feng_persons')
+				ON DUPLICATE KEY UPDATE value=value;
+		
+				INSERT INTO ".$t_prefix."dimension_associations_config (association_id, config_name, value)
+					SELECT id, 'allow_remove_from_property_member', '1'
+					FROM ".$t_prefix."dimension_member_associations WHERE associated_dimension_id NOT IN (SELECT id FROM ".$t_prefix."dimensions WHERE code='feng_persons')
+				ON DUPLICATE KEY UPDATE value=value;
+			";
+		}
+		
+		
+		if (version_compare($installed_version, '3.5.1-beta3') < 0) {
+			if (!$this->checkColumnExists($t_prefix."contacts", "token_disabled", $this->database_connection)) {
+				$upgrade_script .= "
+					ALTER TABLE `".$t_prefix."contacts` ADD `token_disabled` varchar(40) COLLATE 'utf8_unicode_ci' NOT NULL DEFAULT '';
+				";
+				$upgrade_script .= "
+					UPDATE `".$t_prefix."contacts` SET `token_disabled`=`token` WHERE user_type > 0 AND disabled=1;
+					UPDATE `".$t_prefix."contacts` SET `token`='' WHERE user_type > 0 AND disabled=1;
+				";
+			}
+		}
+		
+		if (version_compare($installed_version, '3.5.1-rc') < 0) {
+			if (!$this->checkValueExists($t_prefix."contact_config_options", 'name', 'show_associated_dims_in_breadcrumbs', $this->database_connection)) {
+				$upgrade_script .= "
+					INSERT INTO `".$t_prefix."contact_config_options` (`category_name`, `name`, `default_value`, `config_handler_class`, `is_system`, `option_order`, `dev_comment`) VALUES
+					('listing preferences', 'show_associated_dims_in_breadcrumbs', '0', 'BoolConfigHandler', '0', '20', NULL)
+					ON DUPLICATE KEY UPDATE category_name=category_name;
+				";
+			}
+		}
 
+        if (version_compare($installed_version, '3.5.1.4') < 0) {
+            $upgrade_script .= "
+            INSERT INTO `".$t_prefix."config_options` (`category_name`, `name`, `value`, `config_handler_class`, `is_system`, `option_order`, `dev_comment`)
+				VALUES ('mailing', 'disable_notifications_for_object_type', '', 'MultipleObjectTypeConfigHandler', 0, 0, '')
+                ON DUPLICATE KEY UPDATE `category_name`=`category_name`;
+            ";
+            
+        }
+        
+        if (version_compare($installed_version, '3.5.1.5') < 0) {
+        	if (!$this->checkColumnExists($t_prefix."contact_config_options", 'options', $this->database_connection)) {
+				$upgrade_script .= "
+       				ALTER TABLE `".$t_prefix."contact_config_options` ADD `options` varchar(255) COLLATE 'utf8_unicode_ci';
+				";
+        	}
+        }
+        
+        
 		// Execute all queries
 		if(!$this->executeMultipleQueries($upgrade_script, $total_queries, $executed_queries, $this->database_connection)) {
 			$this->printMessage('Failed to execute DB schema transformations. MySQL said: ' . mysql_error(), true);

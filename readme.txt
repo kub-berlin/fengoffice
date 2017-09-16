@@ -1,5 +1,5 @@
 
-	About Feng Office 3.5.0.9
+	About Feng Office 3.5.1.5
 	================================
 	
 	Feng Office is a Collaboration Platform and Project Management System.
@@ -106,6 +106,142 @@
 	
 	Changelog
 	=========
+
+	Since 3.5.1.4
+	----------------
+	feature: always show payment history in payment view
+	feature: expenses temporal status
+	feature: new config option type: date range
+	feature: new config option type: general list
+	feature: new column balance in advanced expenses lists and reports
+	feature: Menu show for tasks is working as email accounts filter, with timeout for each click 
+	feature: Added custom configuration for user for set the font-size of emails
+	bugfix: imap sync, when removing from folder if we dont have the mail uid => query it to the server and perform the removal
+	bugfix: in objects view, the breadcrumbs shows always one workspace in all associated dimensions
+	bugfix: allowed users to assign in task controller does not return the same when called from the reasign users popup
+	bugfix: js error in timeslot add when drawing user combo and logged user doesn't have "can_manage_time"
+	bugfix: Change value "Serie" to plural for keys "series" and "field Object series"
+	
+	Since 3.5.1.3
+    ----------------
+    feature: improve combobox on report conditions
+    feature: system config option disable notifications for object type
+    feature: paste email list from excel on mails
+    bugfix: prevent widgets links to be opened on a new tab
+    bugfix: add delete log when deleting mails
+    bugfix: enabled spellcheck in description of add task
+
+	Since 3.5.1.2
+	----------------
+	bugfix: Expense totals fixed when ordering by a dimension column.
+	feature: imap sync plugins.
+	
+	
+	Since 3.5.1.1
+	----------------
+	feature: invoicing - config option to make final consumer mandatory
+	fetaure: invoicing - when changing final consumer value change company id/client document label
+	feature: invoicing - when changing invoice currency to a non default one, show exchange rate input
+	bugfix: invoicing,facturalista - exchange rate is not sent to DGI when currency is not UYU
+	bugfix: display list custom properties in objects view fixed
+	bugfix: missing langs in project widget when projects dimension is disabled
+	bugfix: dont include timeslots of deleted tasks in reports
+	bugfix: adv.services: sometimes night hours are generated in the night start instead of the timeslot start
+	performance: tasks list and task view when system has lots of users
+	
+	Since 3.5.1
+	----------------
+	bugfix: cant add tasks with advanced_services and  not using time in date pickers.
+	bugfix: dont filter files by their associated mail if they are classified.
+	bugfix: dont set the font size in ckeditor's contents.css body rule.
+	feature: imap synchronization plugin (alpha).
+	feature: allow to reclassify mail from the list.
+	
+	Since 3.5.1-rc
+	----------------
+	feature: objects import tool
+	feature: allow to type in user combo box in timeslots add/edit
+	feature: plugin advanced_mail_imap_folders - new dimension for imap folders
+	bugfix: permissions, users can't see documents if they can't see the mail related.
+	bugfix: check that class exists before executing "eval()"
+	bugfix: assigned to notifications are sent to resource users
+	
+	
+	Since 3.5.1-beta4
+	----------------
+	feature: search input in tickets module.
+	feature: config option to exclude associated dimensions from general breadcrumbs.
+	bugfix: dont show associated dimension's member history widget.
+	bugfix: unescaped names in time module.
+	bugfix: task asignee notification on templates.
+	bugfix: in object view the custom properties repeats last value if is empty.
+	
+	Since 3.5.1-beta3
+	----------------
+	feature: invoicing module: allow to set client address and city fields as mandatory when adding an invoice.
+	bugfix: some dimensions members are not selected when clicked in breadcrumbs.
+	bugfix: if dimension is hidden the members are not selected when clicked in breadcrumbs.
+	bugfix: the contact associated to the client is not classified in the client's related members.
+	bugfix: breadcrumbs are not showing the members of the dimensions that have its selector disabled and they are autoclassified.
+	bugfix: template tasks subscribers and assign to permissions.
+	bugfix: Double quotes are not correctly escaped in custom properties description.
+	bugfix: member templates: ensure that new member is in context before rendering the task template paramters form.
+	bugfix: timeslot quick add does not show all users with read permissions on timeslots in the user selector.
+	bugfix: when assigning client permissions deleted user permission groups appears in selector.
+	bugfix: when copying expenses the payments are not copied.
+	feature: advanced_services: allow to define works shift days as dat off.
+	feature: advanced_services: config option to define the hour type member for days off.
+	feature: action to generate first repetitive instances for tasks.
+	feature: users of type "resource" (only to be assignees of tasks and timeslots)
+	
+
+	Since 3.5.1-beta2
+	----------------
+	bugfix: attachments inside other attachments cannot be downloaded sometimes.
+	bugfix: user token is not removed when disabling user.
+	bugfix: in listings when adding a custom property as a column and is not visible by default the system does not remember the users' choice.
+	feature: several improvements in grouped custom reports.
+	advanced_reports: conditions for groups (only for contact_id and assigned_to_contact_id)
+	advanced reports: when grouping by person, allow to add emtpy groups and where to put them (beggining or end)
+	advanced_reports: new condition to filter by classified in or not classified in the selected members
+	bugfix: tasks list group by person filters different than assigned to, are not shown when loading the list.
+	feature: allow to disable custom report parameter when running the report
+	bugfix: advanced_reports: timeslot totals are not correct
+	bugfix: error when filtering tasks list by milestone.
+	bugfuix: report group by date columns was not applying timezone.
+	bugfix: when printing/exporting grouped custom reports only the current page is shown.
+	performace: limit mails search critera with a minimum of 3 characters.
+	feature: add calculated columns to custom reports (for now only 'status' in tasks reports)
+	
+	Since 3.5.1-beta
+	----------------
+	feature: start timeslot from without task.
+	feature: allow to specify end date and time when adding a timeslot.
+	feature: task list group by member type.
+	feature: allow to disable custom report parameter when running the report.
+	advanced reports: new group by: dimension intersection.
+	bugfix: group order in tasks workflow definition.
+    bugfix: not all birthdays were shown in calendar's full week view.
+    bugfix: advanced_reports: timeslot totals are not correct
+    bugfix: report group by date columns was not applying timezone.
+    bugfix: tasks list group by person filters different than assigned to, are not shown when loading the list.
+	bugfix: error when filtering tasks list by milestone.
+    performance: mail search.
+	
+	
+	Since 3.5.0.X
+	----------------
+	feature: new timeslot module.
+	feature: new timeslot list in tasks view.
+	feature: allow to specify paused time when adding a timeslot.
+	bugfix: tasks that dont use time are not shown correctly in calendar
+	
+	
+	Since 3.5.0.9
+	----------------
+	feature: make hierarchical all dimensions in crpm_types plugin.
+	feature: member tool to change its dimension.
+	
 	
 	Since 3.5.0.8
 	----------------

@@ -83,6 +83,7 @@ CREATE TABLE  `<?php echo $table_prefix ?>mail_accounts` (
   `sync_ssl_port` int(11) NOT NULL default '993',
   `sync_folder` varchar(100) <?php echo $default_collation ?> NOT NULL,
   `member_id` varchar(100) <?php echo $default_collation ?> NOT NULL,
+  `can_detect_special_folders` tinyint(1) NOT NULL default '0',
   
   PRIMARY KEY  (`id`),
   INDEX `contact_id` (`contact_id`)
@@ -93,6 +94,7 @@ CREATE TABLE  `<?php echo $table_prefix ?>mail_account_imap_folder` (
   `folder_name` varchar(100) <?php echo $default_collation ?> NOT NULL default '',
   `check_folder` tinyint(1) NOT NULL default '0',
   `last_uid_in_folder` varchar(255) <?php echo $default_collation ?> NOT NULL default '',
+  `special_use` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
   PRIMARY KEY  (`account_id`,`folder_name`)
 ) ENGINE=<?php echo $engine ?> <?php echo $default_charset ?>;
 

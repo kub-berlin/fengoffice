@@ -35,17 +35,18 @@ og.TasksBottomToolbar = function(config) {
 			}
 		}
 	}
-	
-	if (ogTasks.additional_groupby_dimensions) {
-		for (i=0; i<ogTasks.additional_groupby_dimensions.length; i++) {
-			var gb = ogTasks.additional_groupby_dimensions[i];
+
+	if (ogTasks.additional_groupby_dimensions_member_types) {
+		for (i=0; i<ogTasks.additional_groupby_dimensions_member_types.length; i++) {
+			var gb = ogTasks.additional_groupby_dimensions_member_types[i];
 			var found = false;
 			for (k=0; k<groupcombo_store_data.length; k++) {
 				gsd = groupcombo_store_data[k];
-				found = gsd[0] == 'dimension_' + gb.id;
+				found = gsd[0] == 'dimmembertypeid_' + gb.dim_id + '_' + gb.mem_type_id;
 				if (found) break;
 			}
-			if (!found) groupcombo_store_data.push(['dimension_' + gb.id, gb.name]);
+
+			if (!found) groupcombo_store_data.push(['dimmembertypeid_' + gb.dim_id + '_' + gb.mem_type_id, gb.mem_type_name]);
 		}
 	}
 	
@@ -224,53 +225,105 @@ og.TasksBottomToolbar = function(config) {
     this.filtercombo.setValue(ogTasks.userPreferences.filter);
 
     
-    
-    var currentUser = '';
-    var usersArray = Ext.util.JSON.decode(document.getElementById(config.usersHfId).value);
-    var companiesArray = Ext.util.JSON.decode(document.getElementById(config.companiesHfId).value);
-    for (var i=0; i<usersArray.length; i++){
-		if (usersArray[i].isCurrent) {
-			currentUser = usersArray[i].id;
-		}
-	}
-	var ucsData = [[currentUser, lang('me')],['0',lang('everyone')],['-1', lang('unassigned')],['0','--']];
-	
-	ucsOtherUsers = [];
-	for (var i=0; i<usersArray.length; i++){
-		var companyName = '';
-		var j;
-		for (var j=0; j<companiesArray.length; j++){
-			if (companiesArray[j] && companiesArray[j].id == usersArray[i].cid) {
-				companyName = companiesArray[j].name;
-				break;
+setTimeout(function() {
+    og.openLink(og.getUrl('task', 'users_for_tasks_list_filter'), {
+    	callback: function(success, data) {
+
+    		var currentUser = '';
+    		var usersArray = data.users;
+    	    var companiesArray = data.companies;
+    	    
+    	    for (var i=0; i<usersArray.length; i++){
+    			if (usersArray[i].isCurrent) {
+    				currentUser = usersArray[i].id;
+    			}
+    		}
+    		var ucsData = [[currentUser, lang('me')],['0',lang('everyone')],['-1', lang('unassigned')],['0','--']];
+    		
+    		ucsOtherUsers = [];
+    		for (var i=0; i<usersArray.length; i++){
+    			var companyName = '';
+    			var j;
+    			for (var j=0; j<companiesArray.length; j++){
+    				if (companiesArray[j] && companiesArray[j].id == usersArray[i].cid) {
+    					companyName = companiesArray[j].name;
+    					break;
+    				}
+    			}
+    			if (usersArray[i] && typeof(usersArray[i]) != 'function') {
+    				var toshow = og.clean(usersArray[i].name) + (usersArray[i].cid ? ' : ' + og.clean(companyName) : "");
+    				ucsOtherUsers[ucsOtherUsers.length] = [usersArray[i].id, toshow];
+    			}
+    			if (usersArray[i].isCurrent) {
+    				currentUser = usersArray[i].id;
+    			}
+    		}
+    		
+    		var compData = [];
+    		if (og.config.can_assign_tasks_to_companies) {
+    			compData = compData.concat([['0','--']]);
+    			for (var i=0; i<companiesArray.length; i++){
+    				if (companiesArray[i].id) compData[compData.length] = [companiesArray[i].id, og.clean(companiesArray[i].name)];
+    			}
+    		}
+    		
+    		var namesCompaniesComboShowIf = ['completed_by','created_by','assigned_to','assigned_by','subscribed_to'];
+    		
+    		ucsData = ucsData.concat(ucsOtherUsers).concat(compData);
+    		
+    		var com = Ext.getCmp('ogTasksFilterNamesCompaniesCombo');
+			if (com) {
+	    		com.reset();
+				com.store.removeAll();
+				com.store.loadData(ucsData);
+				com.setValue(ogTasks.userPreferences.filterValue);
+				com.enable();
 			}
-		}
-		if (usersArray[i] && typeof(usersArray[i]) != 'function') {
-			var toshow = og.clean(usersArray[i].name) + (usersArray[i].cid ? ' : ' + og.clean(companyName) : "");
-			ucsOtherUsers[ucsOtherUsers.length] = [usersArray[i].id, toshow];
-		}
-		if (usersArray[i].isCurrent) {
-			currentUser = usersArray[i].id;
-		}
-	}
-	
-	var compData = [];
-	if (og.config.can_assign_tasks_to_companies) {
-		compData = compData.concat([['0','--']]);
-		for (var i=0; i<companiesArray.length; i++){
-			if (companiesArray[i].id) compData[compData.length] = [companiesArray[i].id, og.clean(companiesArray[i].name)];
-		}
-	}
-	
-	//ucsData = ucsData.concat(ogTasksOrderUsers(ucsOtherUsers)).concat(compData);
-	ucsData = ucsData.concat(ucsOtherUsers).concat(compData);
+    	    
+    	    for (var i=0; i<usersArray.length; i++){
+    			if (usersArray[i].isCurrent)
+    				currentUser = usersArray[i].id;
+    		}
+    		var uData = [[currentUser, lang('me')],['0',lang('everyone')],['0','--']];
+    		uDOtherUsers = [];
+    		for (var i=0; i<usersArray.length; i++){
+    			if (usersArray[i] && !usersArray[i].isCurrent && usersArray[i].id) {
+    				var companyName = '';
+    				var j;
+    				for (var j=0; j<companiesArray.length; j++){
+    					if (companiesArray[j] && companiesArray[j].id == usersArray[i].cid) {
+    						companyName = companiesArray[j].name;
+    						break;
+    					}
+    				}
+
+    				var toshow = og.clean(usersArray[i].name) + (usersArray[i].cid ? ' : ' + og.clean(companyName) : "");
+    				uDOtherUsers[uDOtherUsers.length] = [usersArray[i].id, toshow];
+    			}
+    		}
+    		uData = uData.concat(uDOtherUsers).concat(compData);
+    		
+    		var com2 = Ext.getCmp('ogTasksFilterNamesCombo');
+			if (com2) {
+				com2.reset();
+				com2.store.removeAll();
+				com2.store.loadData(uData);
+				com2.setValue(ogTasks.userPreferences.filterValue);
+				com2.enable();
+			}
+    	}, 
+    	scope: og.TasksBottomToolbar
+    });
+}, 1000);
+    var namesCompaniesComboShowIf = ['completed_by','created_by','assigned_to','assigned_by','subscribed_to'];
+    
     this.filterNamesCompaniesCombo = new Ext.form.ComboBox({
     	id: 'ogTasksFilterNamesCompaniesCombo',
-        store: new Ext.data.SimpleStore({
+        store: new Ext.data.SimpleStore({ // load data in in other request
 	        fields: ['value', 'text'],
-	        data : ucsData
+	        data : []//ucsData
 	    }),
-	    hidden: ogTasks.userPreferences.filter != 'assigned_to',
+	    hidden: namesCompaniesComboShowIf.indexOf(ogTasks.userPreferences.filter) < 0,
         displayField:'text',
         //typeAhead: true,
         mode: 'local',
@@ -304,34 +357,13 @@ og.TasksBottomToolbar = function(config) {
         }
     });
     this.filterNamesCompaniesCombo.setValue(ogTasks.userPreferences.filterValue);
+    this.filterNamesCompaniesCombo.disable();
     
-    for (var i=0; i<usersArray.length; i++){
-		if (usersArray[i].isCurrent)
-			currentUser = usersArray[i].id;
-	}
-	var uData = [[currentUser, lang('me')],['0',lang('everyone')],['0','--']];
-	uDOtherUsers = [];
-	for (var i=0; i<usersArray.length; i++){
-		if (usersArray[i] && !usersArray[i].isCurrent && usersArray[i].id) {
-			var companyName = '';
-			var j;
-			for (var j=0; j<companiesArray.length; j++){
-				if (companiesArray[j] && companiesArray[j].id == usersArray[i].cid) {
-					companyName = companiesArray[j].name;
-					break;
-				}
-			}
-
-			var toshow = og.clean(usersArray[i].name) + (usersArray[i].cid ? ' : ' + og.clean(companyName) : "");
-			uDOtherUsers[uDOtherUsers.length] = [usersArray[i].id, toshow];
-		}
-	}
-	uData = uData.concat(uDOtherUsers).concat(compData);
     this.filterNamesCombo = new Ext.form.ComboBox({
     	id: 'ogTasksFilterNamesCombo',
-        store: new Ext.data.SimpleStore({
+        store: new Ext.data.SimpleStore({ // load data in in other request
 	        fields: ['value', 'text'],
-	        data : uData
+	        data : []//uData
 	    }),
 	    hidden: true,//(ogTasks.userPreferences.filter == 'milestone' || ogTasks.userPreferences.filter == 'priority' || ogTasks.userPreferences.filter == 'assigned_to' || ogTasks.userPreferences.filter == 'subtype' || ogTasks.userPreferences.filter == 'no_filter'),
         displayField:'text',
@@ -352,6 +384,7 @@ og.TasksBottomToolbar = function(config) {
 		}
 	});
     this.filterNamesCombo.setValue(ogTasks.userPreferences.filterValue);
+    this.filterNamesCombo.disable();
     
     this.filterPriorityCombo = new Ext.form.ComboBox({
     	id: 'ogTasksFilterPriorityCombo',

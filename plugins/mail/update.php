@@ -333,3 +333,59 @@
 		}
 	}
 	
+	
+	function mail_update_24_25() {
+		if (!check_column_exists(TABLE_PREFIX."mail_account_imap_folder", "special_use")) {
+			DB::execute("
+				ALTER TABLE `".TABLE_PREFIX."mail_account_imap_folder` 
+					ADD `special_use` varchar(255) COLLATE 'utf8_unicode_ci' NOT NULL DEFAULT '';
+			");
+			
+			DB::execute("
+				ALTER TABLE `".TABLE_PREFIX."mail_accounts`
+					ADD `can_detect_special_folders` tinyint(1) NOT NULL DEFAULT 0;
+			");
+			
+			// update mail account special folders
+			$mu = new MailUtilities();
+			$mail_accounts = MailAccounts::findAll();
+			foreach ($mail_accounts as $account) {/* @var $account MailAccount */
+				if ($account->getIsImap()) {
+					$can_detect_special_folders = false;
+					$folders_data = $mu->get_imap_account_mailboxes($account, $can_detect_special_folders);
+					if ($can_detect_special_folders) {
+						foreach ($folders_data as $fdata) {
+							if ($fdata['special_use']) {
+								DB::execute("UPDATE ".TABLE_PREFIX."mail_account_imap_folder SET
+									special_use='".$fdata['special_use']."'
+									WHERE account_id=".$account->getId()." AND folder_name=".DB::escape($fdata['name']));
+							}
+						}
+						$account->setColumnValue('can_detect_special_folders', $can_detect_special_folders);
+						$account->save();
+					} else {
+						$sent_folder = $account->getSyncFolder();
+						if ($sent_folder) {
+							$f = MailAccountImapFolders::instance()->findOne(
+								array("conditions" => array("account_id=? AND folder_name=?", $account->getId(), $sent_folder))
+							);
+							if ($f instanceof MailAccountImapFolder) {
+								$f->setSpecialUse("\\Sent");
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	function mail_update_25_26() {
+	    DB::execute("
+			INSERT INTO ".TABLE_PREFIX."contact_config_options (`category_name`, `name`, `default_value`, `config_handler_class`, `is_system`, `option_order`, `dev_comment`) VALUES			
+            ('mails panel', 'default_mail_font_size', '24', 'IntegerConfigHandler', '0', '100', NULL)			
+			ON DUPLICATE KEY UPDATE name = name;
+			");
+	}
+	
+	
+	

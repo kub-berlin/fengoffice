@@ -59,6 +59,9 @@ if (array_var($_REQUEST, 'modal')) {
 							}
 
 							$companies  = allowed_users_to_assign($context);
+							?>
+							<option value="<?php echo $usr['id'] ?>"><?php echo lang('none') ?></option>
+							<?php
 							foreach ($companies as $c) {
 								if (config_option('can_assign_tasks_to_companies')) { ?>
 								<option value="<?php echo $c['id']; ?>"> <?php echo $c['name']; ?></option>

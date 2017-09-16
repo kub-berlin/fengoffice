@@ -118,6 +118,8 @@ class AccessController extends ApplicationController {
 			if (!$userIsValidPassword){
 			  	$userIsValidPassword = $user->isValidPassword($password);
 			}
+			
+			Hook::fire('additional_login_validations', array('user' => $user), $userIsValidPassword);
 		
 			if (!$userIsValidPassword) {
 				AdministrationLogs::createLog("invalid login", array_var($_SERVER, 'REMOTE_ADDR'), AdministrationLogs::ADM_LOG_CATEGORY_SECURITY);

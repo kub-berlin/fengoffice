@@ -443,8 +443,11 @@ abstract class ContentDataObjects extends DataManager {
 			$handler_class = $type->getHandlerClass();
 			$table_name = self::getTableName();
 			
+			if (!isset($args['join_ts_with_task'])) $args['join_ts_with_task'] = false;
+			$join_ts_with_task = $args['join_ts_with_task'];
+			
 	    	// Extra Join statements
-	    	if ($this instanceof ContentDataObjects && $this->object_type_name == 'timeslot') {
+	    	if ($this instanceof ContentDataObjects && $this->object_type_name == 'timeslot' && $join_ts_with_task) {
 	    		// if object is a timeslot and is related to a content object => check for members of the related content object.
 	    		$SQL_BASE_JOIN = " INNER JOIN  $table_name e ON IF(e.rel_object_id > 0, e.rel_object_id, e.object_id) = o.id ";
 	    		$SQL_TYPE_CONDITION = "o.object_type_id = IF(e.rel_object_id > 0, (SELECT z.object_type_id FROM ".TABLE_PREFIX."objects z WHERE z.id = e.rel_object_id), $type_id)";
@@ -585,11 +588,14 @@ abstract class ContentDataObjects extends DataManager {
 			// Build Main SQL
 			$logged_user_pgs = implode(',', logged_user()->getPermissionGroupIds());
 			
-			$permissions_condition = $check_permissions_col." IN (
+			$permissions_condition = " true ";
+			if (!logged_user()->isAdministrator() || $this instanceof MailContents) {
+				$permissions_condition = $check_permissions_col." IN (
 					SELECT sh.object_id FROM ".TABLE_PREFIX."sharing_table sh
 					WHERE ".$check_permissions_col." = sh.object_id
 					AND sh.group_id  IN ($logged_user_pgs)
-			)";
+				)";
+			}
 			
 			
 			/*
@@ -631,9 +637,9 @@ abstract class ContentDataObjects extends DataManager {
 					($this instanceof Contacts && $this->object_type_name == 'contact' && can_manage_contacts(logged_user()))) {
 				$permissions_condition = "true";
 			}
-			
-			if ($this instanceof ProjectFiles && logged_user()->isAdministrator() && Plugins::instance()->isActivePlugin('mail')) {
-				$permissions_condition = "IF(e.mail_id > 0,
+			/*
+			if ($this instanceof ProjectFiles && !logged_user()->isAdministrator() && Plugins::instance()->isActivePlugin('mail')) {
+				$permissions_condition .= ($permissions_condition=="" ? "" : " AND ") . "IF(e.mail_id > 0,
 					  o.id IN (
 										SELECT sh.object_id FROM ".TABLE_PREFIX."sharing_table sh
 										WHERE o.id = sh.object_id
@@ -641,7 +647,7 @@ abstract class ContentDataObjects extends DataManager {
 					  ),
 					  true
 					)";
-			}
+			}*/
 			
 			if($template_objects){
 				$permissions_condition = "true";
@@ -867,7 +873,15 @@ abstract class ContentDataObjects extends DataManager {
     	if ($trashed) {
     		$archived_cond = "";
     	} else {
-    		$archived_cond = "AND `o`.`archived_on` " .($archived ? ">" : "="). " " . DB::escape(EMPTY_DATETIME);
+    		if ($archived == 'all') {
+    			$archived_cond = "";
+    		} else {
+    			if (!$archived || $archived == 'unarchived') {
+    				$archived_cond = "AND `o`.`archived_on` = " . DB::escape(EMPTY_DATETIME);
+    			} else {
+    				$archived_cond = "AND `o`.`archived_on` > " . DB::escape(EMPTY_DATETIME);
+    			}
+    		}
     	}
     	if ($trashed && Plugins::instance()->isActivePlugin('mail')) {
     		$mail_accounts = MailAccounts::getMailAccountsByUser(logged_user());
@@ -1406,4 +1420,12 @@ abstract class ContentDataObjects extends DataManager {
 		Hook::fire('more_columns_to_aggregate_in_totals', $this, $columns);
 		return $columns;
 	}
+	
+	
+	function getCalculatedColumns() {
+		$columns = array();
+		Hook::fire('more_object_calculated_columns', $this, $columns);
+		return $columns;
+	}
+	
 }

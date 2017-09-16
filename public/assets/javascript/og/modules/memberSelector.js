@@ -86,7 +86,6 @@ member_selector.autocomplete_select = function(dimension_id, genid, combo, recor
 }
 
 member_selector.add_relation = function(dimension_id, genid, member_id, show_actions, dont_reload_dep_selectors) {
-	
 	if (typeof member_id == "undefined") {
 		var combo = Ext.getCmp(genid + 'add-member-input-dim' + dimension_id);
 		var member = combo.selected_member;
@@ -100,7 +99,8 @@ member_selector.add_relation = function(dimension_id, genid, member_id, show_act
 		var show_actions = member_selector[genid].properties[dimension_id].isMultiple;
 	}
 	
-	var json_sel_ids = $.parseJSON(document.getElementById(genid + member_selector[genid].hiddenFieldName).value);
+	//var json_sel_ids = $.parseJSON(document.getElementById(genid + member_selector[genid].hiddenFieldName).value);
+	var json_sel_ids = Ext.util.JSON.decode(document.getElementById(genid + member_selector[genid].hiddenFieldName).value);
 	var selected_member_ids = json_sel_ids ? json_sel_ids : [];
 	
 	//check if is selected

@@ -302,11 +302,36 @@ Ext.grid.GridPanel.override({
 			cm.fireEvent('configchange');
 		}
 	},
-	addCustomPropertyColumns: function(cps, cm_info) {
+	afterColumnShowHide: function(col_model, col_index, is_hidden) {
+		var col = col_model.config[col_index];
+		if (col.id && col.id.indexOf('cp_') == 0 && this.hiddenColumnIds) {
+			var h_index = this.hiddenColumnIds.indexOf(col.id);
+			if (is_hidden && h_index == -1) {
+				this.hiddenColumnIds.push(col.id);
+			} else if (!is_hidden && h_index >= 0) {
+				this.hiddenColumnIds.splice(h_index, 1);
+			}
+		}
+    },
+	addCustomPropertyColumns: function(cps, cm_info, grid_id) {
 		this.hiddenColumnIds = [];
 		
+		var last_state = Ext.state.Manager.getProvider().state;
+		var last_grid_state = last_state ? last_state[grid_id] : null;
+		
 		for (i=0; i<cps.length; i++) {
-			var is_hidden = parseInt(cps[i].show_in_lists) == 0;
+			// check last option saved in the gui state
+			var state_col = null;
+			if (last_grid_state && last_grid_state.columns) {
+				for (var j=0; j<last_grid_state.columns.length; j++) {
+					if (last_grid_state.columns[j].id == 'cp_' + cps[i].id) {
+						state_col = last_grid_state.columns[j];
+						break;
+					}
+				}
+			}
+			// if no state is present for this column then use the show in lists field of the cp
+			var is_hidden = (state_col == null) ? parseInt(cps[i].show_in_lists) == 0 : state_col.hidden;
 			if (is_hidden) {
 				this.hiddenColumnIds.push('cp_' + cps[i].id);
 			}

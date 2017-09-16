@@ -43,7 +43,7 @@
 <div class="coInputMainBlock">
 	
 	<input type="hidden" name="object_id" value="<?php echo $timeslot->getRelObjectId()?>" />
-	<input type="hidden" name="dont_reload" value="<?php echo $dont_reload?>" />
+	<input type="hidden" name="dont_reload" value="<?php echo isset($dont_reload) ? $dont_reload : '0'?>" />
 	
 	<div id="<?php echo $genid?>tabs" class="edit-form-tabs">
 	
@@ -70,22 +70,34 @@
 		
 		<div id="<?php echo $genid ?>add_timeslot_details" class="editor-container form-tab">
 		
-			<?php if (logged_user()->isAdminGroup()) { ?>
-			<div class="dataBlock" style="<?php echo (can_manage_time(logged_user())) ? '':'display: none;'?>">
+			<?php if (can_manage_time(logged_user())) { ?>
+			<div class="dataBlock">
 				<?php echo label_tag(lang('user')) ?>
-				<?php
-					$options = array(option_tag(lang('none'), 0));
-					foreach ($users as $user) {
-						$options[] = option_tag($user->getObjectName(), $user->getId(), $timeslot->getContactId() == $user->getId() ? array("selected" => "selected") : null);
-					}
-					echo select_box("timeslot[contact_id]", $options); 
-				?>
+				<div id="<?php echo $genid?>timeslot_contact_combo_container" style="float:left;"></div>
+				<input type="hidden" id="<?php echo $genid?>timeslot_contact_id" name="timeslot[contact_id]" value="<?php echo $object->getContactId() ?>" />
+				<div class="clear"></div>
 			</div>
 			<?php } ?>
 			
+			<div class="dataBlock" id="<?php echo $genid?>worked_time_container">
+				<?php echo label_tag(lang('worked time')) ?>
+				<?php echo text_field('timeslot[hours]', floor($timeslot->getMinutes() / 60), array('type' => 'number', 'class' => 'short')) ?>
+				<span style="margin:0 10px 0 0;"><?php echo lang('hours')?></span>
+				
+				<select name="timeslot[minutes]">
+				<?php
+					for($i = 0; $i < 60; $i++) {
+						$sel = ($timeslot->getMinutes() % 60) == $i ? 'selected="selected"' : '';
+						echo "<option value=\"" . $i . "\" $sel>" . $i . "</option>\n";
+					}
+				?>
+				</select>
+				<span style="margin:0 10px 0 0;"><?php echo lang('minutes')?></span>
+			</div>
+			
 			<div class="dataBlock" >
 				<?php 
-					echo label_tag(lang('date'));
+					echo label_tag(lang('start date'));
 					
 					$tz_offset = Timezones::getTimezoneOffsetToApply($timeslot);
 					$date = $timeslot->isNew() ? DateTimeValueLib::now() : new DateTimeValue($timeslot->getStartTime()->getTimestamp() + $tz_offset);
@@ -94,23 +106,43 @@
 						echo pick_date_widget2('timeslot[date]', $date, $genid, null, false);
 					?></td><td><?php 
 						echo pick_time_widget2('timeslot[start_time]', $timeslot->isNew() ? null : $date, $genid);
+					?></td></tr></table>
+					
+			</div>
+			
+			<div class="dataBlock" style="display:none;" id="<?php echo $genid?>end_date_container">
+				<?php 
+					echo label_tag(lang('end date'));
+					
+					$tz_offset = Timezones::getTimezoneOffsetToApply($timeslot);
+					$end_date = $timeslot->isNew() || !$timeslot->getEndTime() instanceof DateTimeValue ? null : new DateTimeValue($timeslot->getEndTime()->getTimestamp() + $tz_offset);
+					
+					?><table><tr><td><?php 
+						echo pick_date_widget2('timeslot[end_date]', $end_date, $genid, null, false);
 					?></td><td><?php 
-						echo '&nbsp;<span class="desc">'.lang('if not specified then current time will be used').'</span>';
+						echo pick_time_widget2('timeslot[end_time]', $timeslot->isNew() ? null : $end_date, $genid);
 					?></td></tr></table>
 					
 			</div>
 			
 			<div class="dataBlock" >
-				<?php echo label_tag(lang('time')) ?>
-				<?php echo text_field('timeslot[hours]', floor($timeslot->getMinutes() / 60), array('type' => 'number', 'class' => 'short')) ?>
+				<?php 
+					echo label_tag(lang('specify end date'));
+					$attr = array('onchange' => 'og.toggle_specify_end_time(this, \''.$genid.'\')');
+					echo yes_no_widget('timeslot[specify_end_time]', 'specify_end_time', false, lang('yes'), lang('no'), null, $attr);
+				?>
+			</div>
+			
+			<div class="dataBlock" >
+				<?php echo label_tag(lang('paused time')) ?>
+				<?php echo text_field('timeslot[subtract_hours]', floor($timeslot->getSubtract() / 3600), array('type' => 'number', 'class' => 'short')) ?>
 				<span style="margin:0 10px 0 0;"><?php echo lang('hours')?></span>
 				
-				<select name="timeslot[minutes]">
+				<select name="timeslot[subtract_minutes]">
 				<?php
-					$minuteOptions = array(0,5,10,15,20,25,30,35,40,45,50,55);
-					for($i = 0; $i < 12; $i++) {
-						$sel = ($timeslot->getMinutes() % 60) == $minuteOptions[$i] ? 'selected="selected"' : '';
-						echo "<option value=\"" . $minuteOptions[$i] . "\" $sel>" . $minuteOptions[$i] . "</option>\n";
+					for($i = 0; $i < 60; $i++) {
+						$sel = (floor(($timeslot->getSubtract()/60)) % 60) == $i ? 'selected="selected"' : '';
+						echo "<option value=\"" . $i . "\" $sel>" . $i . "</option>\n";
 					}
 				?>
 				</select>
@@ -190,7 +222,46 @@
 </div>
 </form>
 <script>
+
+og.toggle_specify_end_time = function(input, genid) {
+	$("#"+genid+"end_date_container").slideToggle(100);
+	$("#"+genid+"worked_time_container").slideToggle(100);
+}
+
+var users_store = [];
+<?php foreach ($users as $u) { ?>
+	users_store.push(['<?php echo $u->getId() ?>', '<?php echo clean(escape_character($u->getObjectName())) ?>']);
+<?php } ?>
+
 $(function() {
 	$("#<?php echo $genid?>tabs").tabs();
+
+<?php if (can_manage_time(logged_user())) { ?>
+
+	var tsContactCombo = new Ext.form.ComboBox({
+		renderTo:'<?php echo $genid ?>timeslot_contact_combo_container',
+		name: 'ts_contact_id_combo',
+		id: '<?php echo $genid ?>timeslot_contact_id_combo',
+		value: '<?php echo $object->getContactId() ?>',
+		store: users_store,
+		displayField:'text',
+        mode: 'local',
+        cls: 'assigned-to-combo',
+        triggerAction: 'all',
+        selectOnFocus:true,
+        width: 244,
+        listWidth: 244,
+        listClass: 'assigned-to-combo-list',
+        valueField: 'value',
+        emptyText: (lang('select user') + '...'),
+        valueNotFoundText: ''
+	});
+	tsContactCombo.on('select', function(combo, selected, idx) {
+		combo = Ext.getCmp('<?php echo $genid ?>timeslot_contact_id_combo');
+		assignedto = document.getElementById('<?php echo $genid ?>timeslot_contact_id');
+		if (assignedto) assignedto.value = combo.getValue();
+		assigned_user = combo.getValue();
+	});
+<?php } ?>
 });
 </script>

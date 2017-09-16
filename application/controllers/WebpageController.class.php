@@ -269,7 +269,7 @@ class WebpageController extends ApplicationController {
 			$succ = 0; $err = 0;
 			foreach ($ids as $id) {
 				$web_page = ProjectWebpages::findById($id);
-				if (isset($web_page) && $web_page->canDelete(logged_user())) {
+				if ($web_page instanceof ProjectWebpage && $web_page->canDelete(logged_user())) {
 					try{
 						DB::beginWork();
 						$web_page->trash();
@@ -294,7 +294,8 @@ class WebpageController extends ApplicationController {
 			$ids = explode(',', array_var($_GET, 'ids'));
 			$succ = 0; $err = 0;
 				foreach ($ids as $id) {
-				$webpage = ProjectWebpages::findById($id);
+					$webpage = ProjectWebpages::findById($id);
+					if (!$webpage instanceof ProjectWebpage) continue;
 					try {
 						$webpage->setIsRead(logged_user()->getId(),true);
 						$succ++;
@@ -310,7 +311,8 @@ class WebpageController extends ApplicationController {
 			$ids = explode(',', array_var($_GET, 'ids'));
 			$succ = 0; $err = 0;
 				foreach ($ids as $id) {
-				$webpage = ProjectWebpages::findById($id);
+					$webpage = ProjectWebpages::findById($id);
+					if (!$webpage instanceof ProjectWebpage) continue;
 					try {
 						$webpage->setIsRead(logged_user()->getId(),false);
 						$succ++;
@@ -327,7 +329,7 @@ class WebpageController extends ApplicationController {
 			$succ = 0; $err = 0;
 			foreach ($ids as $id) {
 				$web_page = ProjectWebpages::findById($id);
-				if (isset($web_page) && $web_page->canEdit(logged_user())) {
+				if ($web_page instanceof ProjectWebpage && $web_page->canEdit(logged_user())) {
 					try{
 						DB::beginWork();
 						$web_page->archive();

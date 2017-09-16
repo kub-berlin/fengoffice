@@ -1176,4 +1176,20 @@ class DimensionController extends ApplicationController {
 		
 		ajx_extra_data(array('dimension_id' => $dimension_id, 'member_ids' => $sel_member_ids));
 	}
+	
+	
+	
+	function render_member_selector() {
+		
+		$dim_id = array_var($_REQUEST, 'dim_id');
+		
+		foreach ($_REQUEST as $k => $v) {
+			tpl_assign($k, $v);
+		}
+		
+		if (is_numeric($dim_id)) {
+			$dim = Dimensions::findById($dim_id);
+			tpl_assign('dim', $dim);
+		}
+	}
 }

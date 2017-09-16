@@ -14,6 +14,18 @@ og.eventManager.addListener('update email list', function (data) {
 	}
 });
 
+og.eventManager.addListener('clean_mail_auth_error_message', function (data) {
+	$("#"+data.genid+"auth_error").hide();
+});
+
+og.eventManager.addListener('show_mail_auth_error_message', function (data) {
+	$("#"+data.genid+"auth_error_msg").html(data.message);
+	$("#"+data.genid+"auth_error").show();
+});
+
+og.eventManager.addListener('go_to_gmail_unlock_captcha', function (data) {
+	og.goToGmailUnlockCaptcha(data.genid);
+});
 
 og.eventManager.addListener('mark mail as read', function(data){
 	var man = Ext.getCmp("mails-manager");

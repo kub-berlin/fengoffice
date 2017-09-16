@@ -76,6 +76,8 @@ class MoreController extends ApplicationController {
 			$filter_conditions = " AND c.disabled=1";
 		}
 		
+		Hook::fire('user_and_groups_additional_filters_query', array('params' => $_GET), $filter_conditions);
+		
 		$columns_sql = "c.object_id, c.first_name, c.surname, c.last_activity, p.name as role, c.disabled,
 					comp.first_name as comp_fname, comp.surname as comp_surname, c.picture_file_small";
 		

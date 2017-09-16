@@ -871,6 +871,7 @@ addLangs({
     'member fields': 'Member fields',
     'must be numeric': '{0} must be numeric',
     'new member': 'New member',
+	'select a date': 'select a date...',
     'view more': 'View more',
     'type' : 'Type',
   	'estimated' : 'Estimated',

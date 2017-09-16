@@ -136,6 +136,7 @@ og.getMemberTextsFromOgDimensions = function(mem_id, include_parents, func_callb
 			var member_info = {};
 			member_info ={
 					"id":member.id,
+					"dim":member.dimension_id,
 					"ot":member.object_type_id,
 					"c":member.color,
 					"text":member.name

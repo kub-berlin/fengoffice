@@ -571,6 +571,9 @@ class AccountController extends ApplicationController {
 		try {
 			DB::beginWork();
 			$user->setDisabled(false);
+			if (trim($user->getTokenDisabled()) != "" && trim($user->getToken()) == "") {
+				$user->setToken($user->getTokenDisabled());
+			}
 			$user->unarchive();
 			$ret = null ; 
 			Hook::fire("user_restored", $user, $ret );			

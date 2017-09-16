@@ -95,7 +95,7 @@ $(function() {
 				'id' => $cp->getId(),
 				'name' => $cp_name,
 				'type' => $cp->getType(),
-				'description' => escape_character($cp->getDescription()),
+				'description' => str_replace('"', '\\"', escape_character($cp->getDescription())),
 				'values' => escape_character($cp->getValues()),
 				'default_value' => escape_character($cp->getDefaultValue()),
 				'is_special' => $cp->getColumnValue('is_special') ? '1' : '',

@@ -1368,6 +1368,7 @@ og.loadScripts = function(urls, config) {
 					success[urls[i]] = true;
 					count++;
 				} catch (e) {
+					//console.log(scripts[i]);
 					//console.log(e);
 					og.err(e.message);
 				}
@@ -1425,38 +1426,41 @@ og.loadEmailAccounts = function(type) {
 };
 //	SUBSCRIBERS LIST FUNCTIONS
 
-og.rollOver = function(div)
-{
-	div.className += " rolling-over";
+og.rollOver = function(div) {
+	$(div).addClass("rolling-over");
 };
-og.rollOut = function(div,isCompany)
-{
-	
-	
+og.rollOut = function(div,isCompany) {
 	if (isCompany){
 		isChecked=Ext.fly(div).hasClass("checked");
 		div.className = "container-div company-name";
 		if (isChecked){
-			div.className += " checked";
+			$(div).addClass("checked");
+		} else {
+			$(div).removeClass("checked");
 		}
 	}else{
 		isChecked=Ext.fly(div).hasClass("checked-user");
 		if (isChecked){
-			div.className = "container-div checked-user";
+			$(div).addClass("checked-user");
+			$(div).removeClass("user-name");
 		}else{
-			div.className = "container-div user-name";
+			$(div).removeClass("checked-user");
+			$(div).addClass("user-name");
 		}
 	}
+	$(div).removeClass("rolling-over");
 };
 og.checkUser = function (div){
 	var hiddy = document.getElementById(div.id.substring(3));
 	if (hiddy) {
 		if (hiddy.value == '1') {
 			hiddy.value = '0';
-			div.className = "container-div user-name";
+			$(div).removeClass("checked-user");
+			$(div).addClass("user-name");
 		} else {
 			hiddy.value = '1';
-			div.className = "container-div checked-user";
+			$(div).addClass("checked-user");
+			$(div).removeClass("user-name");
 		}
 	}
 };
@@ -2660,11 +2664,18 @@ og.clearDimensionSelection = function() {
  * Dimension column renderer for ext grid listings
  */
 og.renderDimCol = function(value, p, r) {
+	if (r.id == 'quick_add_row') return value;
 	var dim_id = p.id.replace(/dim_/, '');
-	var text = og.dimColEmptyBreadcrumb(dim_id, r.data.memPath);
+	
+	var exclude_parents_path = false;
+	if (og.dimensions_that_exclude_parents_in_breadcrumbs && og.dimensions_that_exclude_parents_in_breadcrumbs[dim_id]) {
+		exclude_parents_path = og.dimensions_that_exclude_parents_in_breadcrumbs[dim_id];
+	}
+	
+	var text = og.dimColEmptyBreadcrumb(dim_id, r.data.memPath, exclude_parents_path);
 	return text;
 }
-og.dimColEmptyBreadcrumb = function(dim_id, memPath) {
+og.dimColEmptyBreadcrumb = function(dim_id, memPath, exclude_parents_path) {
 	var text = '';
 	var mpath = null;
 	if (memPath) {
@@ -2677,10 +2688,29 @@ og.dimColEmptyBreadcrumb = function(dim_id, memPath) {
 			mpath_aux[dim_id][t] = mpath[dim_id][t];
 		}
 		text = "<div class='breadcrumb-container' style='width: 100%;'>";
-		text += og.getEmptyCrumbHtml(mpath_aux, '.breadcrumb-container');
+		text += og.getEmptyCrumbHtml(mpath_aux, '.breadcrumb-container', null, null, exclude_parents_path, true);
 		text += "</div>";
 	}
 	return text;
+}
+
+
+og.renderAmountColumn = function(value, p, r) {
+	if (typeof(value) == 'undefined') {
+		return '';
+	}
+	
+	var str_val = value;
+	if (typeof(value) == 'object') {
+		str_val = "<div class='amounts-container'>";
+		for (curr_id in value) {
+			var amount = value[curr_id];
+			if (typeof(amount) == 'function') continue;
+			str_val += "<div class='amount-container'>" + amount + "</div>";
+		}
+		str_val += "</div>";
+	}
+	return str_val;
 }
 
 og.expandMenuPanel = function(options) {
@@ -4032,6 +4062,7 @@ og.getDateToolbarFilterComponent = function(config) {
 	var action_btn = new Ext.Action({
 		id: uid + config.name,
 		text: config.value ? config.value : lang('select a date'),
+		value: config.value ? config.value : '',
         tooltip: config.tooltip ? config.tooltip : config.text,
         menu: new og.drawDateMenuPicker({
         	id: config.name,
@@ -4059,6 +4090,7 @@ og.getDateToolbarFilterComponent = function(config) {
 	        }
         })
 	});
+	if (config.value) Ext.getCmp(uid + config.name + '_remove').show();
 	
 	return action_btn;
 }
@@ -4103,6 +4135,7 @@ og.buildToolbarFilterAction = function(filter_name, filter_data, grid_id) {
 		
 	} else if (filter_data.type == 'date') {
 		var btn_config = {name: filter_name, grid_id:grid_id};
+		btn_config = Ext.apply(btn_config, filter_data);
 		var btn = og.getDateToolbarFilterComponent(btn_config);
 		if (btn) {
 			if (filter_data.label) items.push(filter_data.label);
@@ -4350,3 +4383,351 @@ og.submit_fixed_report_csv_form = function(genid, elem) {
 	
 	return false;
 }
+
+
+
+/******* object grid quick add row functions *******/
+
+
+og.add_object_grid_quick_add_row = function(grid, config) {
+	
+	if (typeof(config.quick_add_row_fn) == 'function') {
+		config.quick_add_row_fn.call(null, grid, config)
+	}		
+}
+
+og.on_quick_add_row_input_click = function(input) {
+	$(input).focus();
+}
+
+og.quick_add_row_combo_input = function(config) {
+	var uid = Ext.id();
+	var combo_config = {
+		renderTo: config.renderTo,
+    	id: config.id,
+    	name: config.name,
+    	store: new Ext.data.SimpleStore({
+	        fields: ['value', 'text'],
+	        data : config.options
+	    }),
+	    displayField: 'text',
+        mode: 'local',
+        triggerAction: 'all',
+        selectOnFocus: true,
+        width: config.width ? config.width : 160,
+        valueField: 'value',
+        valueNotFoundText: '',
+        tabIndex: config.tabIndex
+	};
+	if (config.listeners) {
+		combo_config.listeners = config.listeners;
+	}
+	var combo = new Ext.form.ComboBox(combo_config);
+	
+	if (typeof(config.initial_val) != 'undefined') {
+		combo.setValue(config.initial_val);
+	}
+	
+	return combo;
+}
+
+og.quick_add_row_date_input = function(config) {
+	var picker = new og.DateField(Ext.apply(config, {
+		width: 100,
+		emptyText: og.preferences.date_format_tip
+	}));
+	return picker;
+}
+
+og.quick_add_row_time_input = function(config) {
+	var picker = new Ext.form.TimeField(Ext.apply(config, {
+		width: 80,
+		format: og.config.time_format_use_24 ? 'G:i' : 'g:i A',
+		emptyText: 'hh:mm'
+	}));
+	return picker;
+}
+
+og.quick_add_row_worked_time_input = function(config) {
+	var html = '<table><tr><td>';
+	var onkeydown = config.onkeydown ? 'onkeydown="'+config.onkeydown+'"' : '';
+	html += '<input type="number" name="timeslot[hours]" tabindex="'+config.tabindex+'" id="'+config.id+'" '+onkeydown+' style="width:40px;" value="0"/> hs.';
+	html += '</td><td>';
+	html += '<select name="timeslot[minutes]" tabindex="'+(config.tabindex + 1)+'"/>';
+	for (var i=0; i<60; i++) {
+		html += '<option value="'+ i +'">'+ i +'</option>';
+	}
+	html += '</select> mins.';
+	html += '</td></tr></table>';
+	
+	return html;
+}
+
+og.quick_add_row_column_tabindex = function(grid, column) {
+	var tabindex = 0;
+	for (var i=0; i<grid.colModel.config.length; i++) {
+		var col_conf = grid.colModel.config[i];
+		if (col_conf.id == column) {
+			tabindex = 100 + (i * 2);
+			break;
+		}
+	}
+	return tabindex;
+}
+
+
+og.quick_add_row_member_selector = function(dim_id, genid, hf_name, sel_mem_ids, is_multiple, select_current_context) {
+	if (dim_id > 0) {
+		if (!hf_name) hf_name = 'members_' + dim_id;
+		if (!sel_mem_ids) sel_mem_ids = '';
+		if (!is_multiple) is_multiple = 0;
+		if (typeof(select_current_context) == 'undefined') select_current_context = true;
+		
+		og.openLink(og.getUrl('dimension', 'render_member_selector', {
+			context: og.contextManager.plainContext(),
+			dim_id: dim_id,
+			is_multiple: is_multiple,
+			hide_label: true,
+			hf_name: hf_name,
+			selected_member_ids: sel_mem_ids,
+			select_current_context: select_current_context
+		}), {
+			preventPanelLoad: true,
+			hideLoading: true,
+			callback: function(success, data) {
+				if (success) {
+					var container_id = genid + 'members_' + dim_id;
+					$("#" + container_id).html(data.current.data);
+				}
+			}
+		});
+	}
+}
+
+/****************************************************/
+
+
+/************** timeslots module quick add row ***************/
+
+
+og.add_timeslot_module_quick_add_params = function(grid) {
+	var params = {'dont_reload': true, 'members': '[]'};
+	var add_row = grid.getView().getRow(0);
+	var member_ids = [];
+	
+	$(add_row).find('input, select').each(function() {
+		if ($(this).attr('name').indexOf('members_') == 0) {
+			var mem_ids = Ext.util.JSON.decode($(this).val());
+			member_ids = member_ids.concat(mem_ids);
+		} else {
+			params[$(this).attr('name')] = $(this).val();
+		}
+	});
+
+	if (member_ids.length > 0) {
+		params['members'] = Ext.util.JSON.encode(member_ids);
+	}
+
+	var user_id = Ext.getCmp(grid.genid + 'add_ts_contact_id').getValue();
+	params['timeslot[contact_id]'] = user_id;
+
+	return params;
+}
+
+og.add_timeslot_module_quick_add_submit = function(grid_id, first_input_column) {
+	var grid = Ext.getCmp(grid_id);
+	// get timeslot params
+	var form_params = og.add_timeslot_module_quick_add_params(grid);
+	
+	// submit timeslot
+	og.openLink(og.getUrl('time','add'),{
+		post: form_params,
+		preventPanelLoad: true,
+		callback: function(success, data) {
+			if (success && data.timeslot) {
+				data.timeslot.type = 'timeslot';
+				var record = new Ext.data.Record(data.timeslot, data.timeslot.id);
+
+				// add new timeslot to the top of the grid
+				grid.store.insert(1, record);
+
+				og.eventManager.fireEvent('replace all empty breadcrumb', null);
+
+				// focus in the first input
+				if (first_input_column) {
+					setTimeout(function() {
+						$("#"+grid.genid+"add_ts_" + first_input_column).focus();
+					}, 200);
+				}
+			}
+		}
+	});
+}
+
+og.add_timeslot_module_quick_add_enter = function(event, genid) {
+	if (event.keyCode == 13) {
+        $("#"+ genid +"ts_quick_add_btn").click();
+	}
+}
+
+og.add_timeslot_module_quick_add_row = function(grid, config) {
+	
+	var onclick = 'og.on_quick_add_row_input_click(this);';
+
+	var first_input_column = null;
+	for (var i=0; i<grid.colModel.config.length; i++) {
+		var col_conf = grid.colModel.config[i];
+		if (col_conf.id == 'description' || col_conf.id == 'start_time' || col_conf.id == 'worked_time') {
+			first_input_column = col_conf.id;
+			break;
+		}
+	}
+		
+	var record_config = {};
+	record_config.type = 'add';
+	record_config.description = '<input type="text" id="'+config.genid+'add_ts_description" name="timeslot[description]" value="" style="width:95%;"';
+	record_config.description += 'onclick="'+onclick+'" tabindex="'+og.quick_add_row_column_tabindex(grid, 'description')+'" onkeydown="og.add_timeslot_module_quick_add_enter(event, \''+config.genid+'\')"/>';
+	record_config.name = '<span id="'+config.genid+'usercombo">';
+	record_config.start_time = '<table><tr><td><span id="'+config.genid+'start_date"></td><td><span id="'+config.genid+'start_time"></td></tr></table>';
+
+	record_config.worked_time = og.quick_add_row_worked_time_input({
+		id: config.genid + 'add_ts_worked_time',
+		tabindex: og.quick_add_row_column_tabindex(grid, 'worked_time'),
+		onkeydown: 'og.add_timeslot_module_quick_add_enter(event, \''+config.genid+'\')'
+	});
+
+	// submit button
+	var quick_add_submit_fn = 'og.add_timeslot_module_quick_add_submit(\''+grid.id+'\', \''+first_input_column+'\'); return false;';
+	var quick_add_btn_class = 'x-btn-text ico-new add-first-btn blue';
+	var ac_tindex = og.quick_add_row_column_tabindex(grid, 'actions');
+	var quick_add_btn_blur = 'document.getElementById(\''+config.genid+'add_ts_'+first_input_column+'\').focus();';
+	record_config.actions = '<button id="'+config.genid+'ts_quick_add_btn" class="'+quick_add_btn_class+'" onblur="'+quick_add_btn_blur+'" onclick="'+quick_add_submit_fn+'" tabindex="'+ac_tindex+'">'+lang('add')+'</button>';
+
+	// dimension selector containers
+	for (var i=0; i<grid.colModel.config.length; i++) {
+		var col_conf = grid.colModel.config[i];
+		if (col_conf.id.indexOf('dim_') == 0) {
+			var dim_id = col_conf.id.substring(4);
+			record_config[col_conf.id] = '<span id="'+ config.genid + 'members_' + dim_id +'"></span>';
+		}
+	}
+
+	// insert row
+	var record = new Ext.data.Record(record_config, 'quick_add_row');
+	grid.store.insert(0, record);
+
+	// remove checkbox and add background
+	var add_row = grid.getView().getRow(0);
+	$(add_row).find('.x-grid3-row-checker').removeClass('x-grid3-row-checker');
+	$(add_row).addClass('quick-add-row');
+
+	// render member selectors
+	for (var i=0; i<grid.colModel.config.length; i++) {
+		var col_conf = grid.colModel.config[i];
+		if (col_conf.id.indexOf('dim_') == 0) {
+			var dim_id = col_conf.id.substring(4);
+			og.quick_add_row_member_selector(dim_id, config.genid);
+		}
+	}
+
+	// user selector
+	var user_combo = og.quick_add_row_combo_input({
+		id: config.genid + 'add_ts_contact_id',
+		name: "timeslot[contact_id]", 
+		options: config.quick_add_row_user_options, 
+		initial_val: og.loggedUser.id, 
+		renderTo: config.genid + "usercombo",
+		tabIndex: og.quick_add_row_column_tabindex(grid, 'name')
+	});
+
+	var start_time_tindex = og.quick_add_row_column_tabindex(grid, 'start_time');
+	// start date selector
+	var st_date_picker = og.quick_add_row_date_input({
+		id: config.genid + 'add_ts_start_time',
+		name: "timeslot[date]", 
+		renderTo: config.genid + "start_date",
+		tabIndex: start_time_tindex,
+		value: new Date()
+	});
+	st_date_picker.on('keydown', function(picker, event) {
+		og.add_timeslot_module_quick_add_enter(event, config.genid);
+	});
+	
+	// start time selector
+	var st_time_picker = og.quick_add_row_time_input({
+		id: config.genid + 'add_ts_start_time_min',
+		genid: config.genid,
+		name: "timeslot[start_time]", 
+		renderTo: config.genid + "start_time",
+		tabIndex: start_time_tindex + 1
+	});
+
+	$("#"+ config.genid +"add_ts_start_time_min").keydown(function(event){
+		var gid = $(this).attr('id').replace("add_ts_start_time_min", "");
+		og.add_timeslot_module_quick_add_enter(event, gid);
+	});
+	$("#"+ config.genid +"add_ts_start_time").keydown(function(event){
+		var gid = $(this).attr('id').replace("add_ts_start_time", "");
+		og.add_timeslot_module_quick_add_enter(event, gid);
+	});
+	$("#"+ config.genid +"add_ts_contact_id").keydown(function(event){
+		var gid = $(this).attr('id').replace("add_ts_contact_id", "");
+		og.add_timeslot_module_quick_add_enter(event, gid);
+	});
+	
+	// focus in the first input
+	if (first_input_column) {
+		setTimeout(function() {
+			$("#"+config.genid+"add_ts_" + first_input_column).focus();
+		}, 200);
+	}
+}
+/****************************************************/
+
+
+og.prompt_delete_object = function(id) {
+	if (confirm(lang('confirm delete object'))) {
+		og.openLink(og.getUrl('object', 'trash', {object_id:id}));
+	}
+}
+
+og.render_default_grid_actions = function(value, p, r) {
+	var actions = '';
+	if (r.id == 'quick_add_row' || r.data.id == '__total_row__') return value;
+	
+	var actionStyle= ' style="font-size:105%;padding-top:2px;padding-bottom:3px;padding-left:16px;background-repeat:no-repeat;" ';
+	
+	if (r.store && r.store.baseParams && r.store.baseParams.url_controller) {
+		var controller = r.store.baseParams.url_controller;
+		var action_edit = 'edit';
+		var action_delete = 'delete';
+		var obj_id = r.data.object_id ? r.data.object_id : r.data.id;
+
+		actions += String.format(
+			'<a class="list-action ico-edit" href="#" onclick="og.render_modal_form(\'\', {c:\''+controller+'\', a:\''+action_edit+'\', params:{id:'+obj_id+'}});" title="{0}" '+
+			actionStyle + '>&nbsp;</a>', lang('edit')
+		);
+		
+		actions += String.format(
+			'<a class="list-action ico-delete" href="#" onclick="og.prompt_delete_object('+obj_id+');" title="{0}" '+
+			actionStyle + '>&nbsp;</a>', lang('delete')
+		);
+	}
+		
+	return '<div>' + actions + '</div>';
+}
+
+
+
+/**
+ * For date range config optoins, to show/hide the date pickers depending on the range type selected
+ */
+og.on_date_range_config_option_change = function(select, option_name) {
+	if ($(select).val() == 'range') {
+		$("."+option_name+".date-range-container").show();
+	} else {
+		$("."+option_name+".date-range-container").hide();
+	}
+}
+
+

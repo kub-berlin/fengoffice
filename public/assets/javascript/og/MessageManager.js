@@ -245,7 +245,7 @@ og.MessageManager = function() {
 	
 	// custom property columns
 	var cps = og.custom_properties_by_type['message'] ? og.custom_properties_by_type['message'] : [];
-	this.addCustomPropertyColumns(cps, cm_info);
+	this.addCustomPropertyColumns(cps, cm_info, 'message-manager');
 
 	// dimension columns
 	for (did in og.dimensions_info) {
@@ -265,6 +265,7 @@ og.MessageManager = function() {
 	// create column model
 	var cm = new Ext.grid.ColumnModel(cm_info);
 	cm.defaultSortable = false;
+    cm.on('hiddenchange', this.afterColumnShowHide, this);
 
 	moreActions = {};
 

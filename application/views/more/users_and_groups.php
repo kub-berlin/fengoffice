@@ -122,11 +122,34 @@ user_group_tbar_items.push(new_btn);
 
 // filters
 <?php $current_status_filter = array_var($_SESSION, 'users_list_current_status_filter', 'enabled'); ?>
-var status_options = [['all', lang('All')], ['enabled', '<?php echo lang('active')?>'], ['disabled', '<?php echo lang('inactive')?>']];
+var status_options = [['all', lang('everyone')], ['enabled', '<?php echo lang('active')?>'], ['disabled', '<?php echo lang('inactive')?>']];
 var filters = {
 	status_filter: {type:'list', label:"&nbsp;"+lang('show')+":", options: status_options, initial_val:'<?php echo $current_status_filter ?>', width:100}
 };
 
+<?php
+	$plugin_filters = array();
+	Hook::fire('user_and_groups_additional_filters', array(), $plugin_filters);
+	if (count($plugin_filters) > 0) {
+		foreach ($plugin_filters as $f) {?>
+			var filter_conf = {
+				type: '<?php echo array_var($f, 'type')?>',
+				label: '<?php echo array_var($f, 'label')?>',
+				initial_val: '<?php echo array_var($f, 'initial_val')?>',
+				value: '<?php echo array_var($f, 'value')?>',
+				width: <?php echo array_var($f, 'width', 150)?>
+			}
+		<?php
+			if (array_var($f, 'type')=='list' && array_var($f, 'options')) { ?>
+				filter_conf.options = Ext.util.JSON.decode('<?php echo array_var($f, 'options')?>');
+		<?php 
+			}
+			?>
+			filters['<?php echo $f['filter']?>'] = filter_conf;
+		<?php
+		}
+	}
+?>
 
 var grid_id = '<?php echo $genid?>_users_groups_grid';
 
@@ -139,13 +162,14 @@ var user_groups_grid = new og.ObjectGrid({
 	nameRenderer: og.gridObjectNameRenderer,
 	store_params: {
 		url_controller: 'more',
-		url_action: 'users_list',
+		url_action: 'users_list'
 	},
 	filters: filters,
 	//checkbox_sel_model: true,
 	skip_dimension_columns: true,
 	columns: user_group_columns,
 	no_icon_col: true,
+	add_default_actions_column: false,
 	//max_height: 800,
 	tbar_items: user_group_tbar_items
 });

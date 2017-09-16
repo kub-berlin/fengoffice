@@ -117,6 +117,11 @@ class ProjectTasks extends BaseProjectTasks {
 		$to_date = new DateTimeValue ( $date_end->getTimestamp ());
 		$to_date = $to_date->endOfDay ();
 		
+		$orig_from_date = new DateTimeValue($from_date->getTimestamp());
+		$orig_from_date_sql = $orig_from_date->toMySQL();
+		$orig_to_date = new DateTimeValue($to_date->getTimestamp());
+		$orig_to_date_sql = $orig_to_date->toMySQL();
+		
 		//set dates to gmt 0 for sql
 		$from_date->advance(-logged_user()->getUserTimezoneValue());
 		$to_date->advance(-logged_user()->getUserTimezoneValue());	
@@ -130,7 +135,13 @@ class ProjectTasks extends BaseProjectTasks {
 		$archived_cond = " AND `archived_on` ".($archived ? '<>' : '=')." 0";
 		
 		$conditions = DB::prepareString(' AND `is_template` = false AND `completed_on` '. ($task_filter == 'complete' ? '<>' : '=') .' ? AND 
-			(IF(due_date>0,(`due_date` >= ? AND `due_date` < ?),false) OR IF(start_date>0,(`start_date` >= ? AND `start_date` < ?),false) OR ' . $rep_condition . ') ' . $archived_cond . $assignedFilter, array(EMPTY_DATETIME,$from_date, $to_date, $from_date, $to_date));
+			(IF (due_date>0, 
+				IF (use_due_time, (`due_date` >= ? AND `due_date` < ?), (`due_date` >= \''.$orig_from_date_sql.'\' AND `due_date` < \''.$orig_to_date_sql.'\')), false) 
+			OR IF (start_date>0, 
+				IF (use_start_time, (`start_date` >= ? AND `start_date` < ?), (`start_date` >= \''.$orig_from_date_sql.'\' AND `start_date` < \''.$orig_to_date_sql.'\')), false)
+			OR ' . $rep_condition . ') ' . $archived_cond . $assignedFilter, 
+			array(EMPTY_DATETIME,$from_date, $to_date, $from_date, $to_date)
+		);
 		
 		$other_perm_conditions = SystemPermissions::userHasSystemPermission(logged_user(), 'can_see_assigned_to_other_tasks');
 		if(!$other_perm_conditions){

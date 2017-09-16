@@ -916,7 +916,10 @@ class ReportingController extends ApplicationController {
 	function print_custom_report() {
 		ajx_current("empty");
 		set_time_limit(0);
-		ini_set("memory_limit", "512M");
+		$old_memory_limit = ini_get('memory_limit');
+		if (php_config_value_to_bytes($old_memory_limit) < 512 *1024*1024) {
+			ini_set("memory_limit", "512M");
+		}
 		
 		$report_id = array_var($_GET, 'id');
 
@@ -934,6 +937,7 @@ class ReportingController extends ApplicationController {
 		if ($params_str) $params = json_decode(str_replace("'", '"',$params_str), true);
 		
 		$_GET['limit'] = 0;
+		$_REQUEST['limit'] = 0;
 		$results = $this->view_custom_report($report_id, null, $params);
 		
 		ob_start();
@@ -949,7 +953,10 @@ class ReportingController extends ApplicationController {
 	function export_custom_report_csv() {
 		ajx_current("empty");
 		set_time_limit(0);
-		ini_set("memory_limit", "512M");
+		$old_memory_limit = ini_get('memory_limit');
+		if (php_config_value_to_bytes($old_memory_limit) < 512 *1024*1024) {
+			ini_set("memory_limit", "512M");
+		}
 		
 		$report_id = array_var($_GET, 'id');
 		
@@ -967,6 +974,7 @@ class ReportingController extends ApplicationController {
 		else $params = array();
 		
 		$_GET['limit'] = 0;
+		$_REQUEST['limit'] = 0;
 		$results = $this->view_custom_report($report_id, null, $params);
 		
 		$csv = report_table_csv($results, $report);
@@ -980,7 +988,10 @@ class ReportingController extends ApplicationController {
 	function export_custom_report_pdf() {
 		ajx_current("empty");
 		set_time_limit(0);
-		ini_set("memory_limit", "512M");
+		$old_memory_limit = ini_get('memory_limit');
+		if (php_config_value_to_bytes($old_memory_limit) < 512 *1024*1024) {
+			ini_set("memory_limit", "512M");
+		}
 		
 		$report_id = array_var($_GET, 'id');
 		
@@ -998,6 +1009,7 @@ class ReportingController extends ApplicationController {
 		if ($params_str) $params = json_decode(str_replace("'", '"',$params_str), true);
 		
 		$_GET['limit'] = 0;
+		$_REQUEST['limit'] = 0;
 		$results = $this->view_custom_report($report_id, null, $params);
 		
 		// include all css
@@ -1541,11 +1553,13 @@ class ReportingController extends ApplicationController {
 		ajx_extra_data(array('values' => $values));
 	}
 
-	private function get_ext_values($field, $manager = null){
-		$values = array(array('id' => '', 'name' => '-- ' . lang('select') . ' --'));
+	private function get_ext_values($field, $ot_id = null){
+		$values = array(array('id' => '', 'name' => lang('none')));
 		if($field == 'contact_id' || $field == 'created_by_id' || $field == 'updated_by_id' || $field == 'assigned_to_contact_id' || $field == 'completed_by_id'
 			|| $field == 'approved_by_id'){
 			$users = Contacts::getAllUsers();
+			Hook::fire('filter_report_external_user_col_values', array('field' => $field, 'ot_id' => $ot_id), $users);
+			
 			foreach($users as $user){
 				$values[] = array('id' => $user->getId(), 'name' => $user->getObjectName());
 			}
@@ -1561,7 +1575,7 @@ class ReportingController extends ApplicationController {
 			}
 		}
 		
-		Hook::fire('custom_reports_get_possible_external_column_values', array('field' => $field, 'ot_id' => $manager), $values);
+		Hook::fire('custom_reports_get_possible_external_column_values', array('field' => $field, 'ot_id' => $ot_id), $values);
 		
 		return $values;
 	}
@@ -1583,9 +1597,11 @@ class ReportingController extends ApplicationController {
 				eval('$managerInstance = ' . $ot->getHandlerClass() . "::instance();");
 				$objectColumns = $managerInstance->getColumns();
 				$externalFields = $managerInstance->getExternalColumns();
+				$calculatedColumns = $managerInstance->getCalculatedColumns();
 			} else {
 				$objectColumns = array();
 				$externalFields = array();
+				$calculatedColumns = array();
 			}
 			
 			$objectFields = array();
@@ -1597,6 +1613,10 @@ class ReportingController extends ApplicationController {
 						$objectFields[$column] = $managerInstance->getColumnType($column);
 					}
 				}
+			}
+			
+			foreach ($calculatedColumns as $calc_col_name) {
+				$objectFields[$calc_col_name] = 'calculated';
 			}
 			
 			if ($ot->getType() == 'dimension_group') {
@@ -1679,7 +1699,11 @@ class ReportingController extends ApplicationController {
 	function get_report_column_types($report_id) {
 		$col_types = array();
 		$report = Reports::getReport($report_id);
+		if (!$report instanceof Report) return $col_types;
+		
 		$ot = ObjectTypes::findById($report->getReportObjectTypeId());
+		if (!$ot instanceof ObjectType) return $col_types;
+		
 		$model = trim($ot->getHandlerClass());
 		if ($model && class_exists($model)) {
 			$manager = new $model();

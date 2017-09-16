@@ -294,6 +294,10 @@ class Reports extends BaseReports {
 				$allConditions .= " AND assigned_to_contact_id = ".logged_user()->getId();
 			}
 			
+			if ($ot->getName() == 'timeslot') {
+				$allConditions .= " AND (e.rel_object_id=0 OR (SELECT aux.trashed_by_id FROM ".TABLE_PREFIX."objects aux WHERE aux.id=e.rel_object_id)=0) ";
+			}
+			
 			Hook::fire('custom_report_extra_conditions', array('report' => $report), $allConditions);
 			
 			$report_options = array(
@@ -383,7 +387,9 @@ class Reports extends BaseReports {
 						$results['columns']['types'][$field] = DATA_TYPE_STRING;
 						
 					} else {
-						if ($managerInstance->columnExists($field) || Objects::instance()->columnExists($field)) {
+						$is_calculated_column = $managerInstance && in_array($field, $managerInstance->getCalculatedColumns());
+						
+						if ($managerInstance->columnExists($field) || Objects::instance()->columnExists($field) || $is_calculated_column) {
 							$column_name = Localization::instance()->lang('field '.$ot->getHandlerClass().' '.$field);
 							if (is_null($column_name)) $column_name = lang('field Objects '.$field);
 							
@@ -408,7 +414,11 @@ class Reports extends BaseReports {
 								}
 							}
 						}
-						$results['columns']['types'][$field] = $managerInstance->getColumnType($field);
+						if ($is_calculated_column) {
+							$results['columns']['types'][$field] = 'calculated';
+						} else {
+							$results['columns']['types'][$field] = $managerInstance->getColumnType($field);
+						}
 						
 						Hook::fire('custom_reports_fixed_additional_columns_def', array('object_type' => $ot, 'field' => $field), $results);
 					}
@@ -471,7 +481,7 @@ class Reports extends BaseReports {
 								} else {
 									$value = $object->getColumnValue($field);
 									// if it is a task column
-									if (in_array($field, ProjectTasks::instance()->getColumns())) {
+									if ($field == 'name' || in_array($field, ProjectTasks::instance()->getColumns())) {
 										$task = ProjectTasks::findById($object->getRelObjectId());
 										// if task exists
 										if ($task instanceof ProjectTask) {
@@ -540,6 +550,10 @@ class Reports extends BaseReports {
 									$value = self::instance()->getExternalColumnValue($field, $value, $managerInstance);
 								}
 								
+							} else if (in_array($field, $managerInstance->getCalculatedColumns())) {
+								
+								$value = self::getCalculatedColumnValue($report, $object, $field);
+							
 							} else if ($field != 'link'){
 								//$value = html_to_text(html_entity_decode($value));
 								if ($object->getColumnType($field) == DATA_TYPE_STRING) {
@@ -648,7 +662,6 @@ class Reports extends BaseReports {
 				}
 				$row_values['id'] = $object->getId();
 				
-				Hook::fire("report_row", $object, $row_values);
 				
 				if ($use_obj_id_as_row_key) {
 					$report_rows[$object->getId()] = $row_values;
@@ -665,7 +678,6 @@ class Reports extends BaseReports {
 					$results['columns']['names'] = array('');
 					$results['columns']['order'] = array('link');
 				}
-				Hook::fire("report_header", $ot, $results['columns']);
 			}
 			
 			$results['rows'] = $report_rows;
@@ -773,6 +785,14 @@ class Reports extends BaseReports {
 		}
 		
 		Hook::fire('custom_reports_get_external_column_value', array('field' => $field, 'external_id' => $id, 'manager' => $manager, 'object' => $object), $value);
+		
+		return $value;
+	}
+	
+	
+	static function getCalculatedColumnValue($report, $object, $column) {
+		$value = "";
+		Hook::fire("get_calculated_column_value", array('report' => $report, 'object' => $object, 'column' => $column), $value);
 		
 		return $value;
 	}

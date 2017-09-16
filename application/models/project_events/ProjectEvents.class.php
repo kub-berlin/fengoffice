@@ -62,7 +62,7 @@ class ProjectEvents extends BaseProjectEvents {
 	 * @param String $tags
 	 * @return unknown
 	 */
-	static function getDayProjectEvents(DateTimeValue $date, $context = null, $user = -1, $inv_state = '-1', $archived = false){
+	static function getDayProjectEvents(DateTimeValue $date, $context = null, $user = -1, $inv_state = '-1', $archived = false, $order = array()){
 		$day = $date->getDay();
 		$month = $date->getMonth();
 		$year = $date->getYear();
@@ -172,8 +172,8 @@ class ProjectEvents extends BaseProjectEvents {
 			)";
 		
 			$result_events = self::instance()->listing(array(
-				"order" => 'start',
-				"order_dir"=> 'ASC',
+				"order" => array_var($order, 'order', 'start'),
+				"order_dir"=> array_var($order, 'order_dir', 'ASC'),
 				"extra_conditions" => $conditions,
 			))->objects;
 

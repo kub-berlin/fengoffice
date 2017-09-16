@@ -12,7 +12,7 @@
 			<?php 
 			$row_cls = "";
 			foreach ($messages as $k => $message): /* @var $message ProjectMessage */
-				$crumbOptions = json_encode($message->getMembersToDisplayPath());
+				$crumbOptions = json_encode($message->getMembersIdsToDisplayPath());
 				if($crumbOptions == ""){
 					$crumbOptions = "{}";
 				}

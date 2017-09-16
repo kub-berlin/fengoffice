@@ -62,4 +62,5 @@
     'field ProjectTasks assigned_by_id' => 'Asignado por',
     'field ProjectTasks type_content' => 'Tipo de contenido',
   	'report date' => 'Fecha del reporte',
+  	'ignore this condition' => 'Ignorar esta condición',
 ); ?>

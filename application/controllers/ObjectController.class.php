@@ -466,22 +466,22 @@ class ObjectController extends ApplicationController {
 								}
 							}
 							// Address custom property
-							$val = array_var($value, 'type') .'|'. array_var($value, 'street') .'|'. array_var($value, 'city') .'|'. array_var($value, 'state') .'|'. array_var($value, 'country') .'|'. array_var($value, 'zip_code');
+							$address_val = array_var($value, 'type') .'|'. array_var($value, 'street') .'|'. array_var($value, 'city') .'|'. array_var($value, 'state') .'|'. array_var($value, 'country') .'|'. array_var($value, 'zip_code');
 							CustomPropertyValues::deleteCustomPropertyValues($object->getId(), $id);
 							$custom_property_value = new CustomPropertyValue();
 							$custom_property_value->setObjectId($object->getId());
 							$custom_property_value->setCustomPropertyId($id);
-							$custom_property_value->setValue($val);
+							$custom_property_value->setValue($address_val);
 							$custom_property_value->save();
 							
 						} else if ($custom_property->getType() == 'list') {
 							CustomPropertyValues::deleteCustomPropertyValues($object->getId(), $id);
-							foreach($value as $key => $val){
-								if($val){
+							foreach($value as $list_key => $list_val){
+								if($list_val){
 									$custom_property_value = new CustomPropertyValue();
 									$custom_property_value->setObjectId($object->getId());
 									$custom_property_value->setCustomPropertyId($id);
-									$custom_property_value->setValue($key);
+									$custom_property_value->setValue($list_key);
 									$custom_property_value->save();
 								}
 							}
@@ -490,7 +490,7 @@ class ObjectController extends ApplicationController {
 							//Save multiple values
 							CustomPropertyValues::deleteCustomPropertyValues($object->getId(), $id);
 							foreach($value as &$val){
-								if (is_array($val)) {
+								if (is_array($val) && $custom_property->getType() == 'table') {
 									// CP type == table
 									$str_val = '';
 									foreach ($val as $col_val) {
@@ -1077,7 +1077,6 @@ class ObjectController extends ApplicationController {
 				if (trim($id)!=''){
 					$obj = Objects::findObject($id);
 					if (!$obj instanceof ApplicationDataObject) {
-						$err ++;
 						continue;
 					}
 					if ($obj->canEdit(logged_user())) {
@@ -1392,8 +1391,8 @@ class ObjectController extends ApplicationController {
 				$object = Objects::findObject($id);
 				if ($object instanceof ContentDataObject && $object->canDelete(logged_user())) {
 					$object->trash();
-					Hook::fire('after_object_trash', $object, $null );/*
-					ApplicationLogs::createLog($object, ApplicationLogs::ACTION_TRASH);*/
+					Hook::fire('after_object_trash', $object, $null );
+					ApplicationLogs::createLog($object, ApplicationLogs::ACTION_TRASH, null, true);
 					$count++;
 					if ($object instanceof Contact) $count_persons++;
 				} else {
@@ -1746,7 +1745,11 @@ class ObjectController extends ApplicationController {
 
 		$linkedObject = null;
 		if (array_var($_GET, 'action') == 'delete') {
-			$ids = explode(',', array_var($_GET, 'objects'));
+			$ids = array();
+			$exploded = explode(',', array_var($_GET, 'objects'));
+			foreach ($exploded as $exp) {
+				if (is_numeric($exp)) $ids[] = $exp;
+			}
 		
 			$result = ContentDataObjects::listing(array(
 					"extra_conditions" => " AND o.id IN (".implode(",",$ids).") ",
@@ -1768,7 +1771,11 @@ class ObjectController extends ApplicationController {
 				flash_success(lang('success delete objects', $succ));
 			}
 		} else if (array_var($_GET, 'action') == 'delete_permanently') {
-			$ids = explode(',', array_var($_GET, 'objects'));
+			$ids = array();
+			$exploded = explode(',', array_var($_GET, 'objects'));
+			foreach ($exploded as $exp) {
+				if (is_numeric($exp)) $ids[] = $exp;
+			}
 		
 			$objects = Objects::instance()->findAll(array("conditions" => "id IN (".implode(",",$ids).")"));
 		
@@ -1836,7 +1843,7 @@ class ObjectController extends ApplicationController {
 				$type = $split[0];
 				if (Plugins::instance()->isActivePlugin('mail') && $type == 'MailContents') {
 					$email = MailContents::findById($split[1]);
-					if (isset($email) && !$email->isDeleted() && $email->canEdit(logged_user())){
+					if ($email instanceof MailContent && !$email->isDeleted() && $email->canEdit(logged_user())){
 						if (MailController::do_unclassify($email)) $succ++;
 						else $err++;
 					} else $err++;
@@ -1854,10 +1861,11 @@ class ObjectController extends ApplicationController {
 			$success = 0; $error = 0;
 			foreach ($ids as $id) {
 				$obj = Objects::findObject($id);
+				if (!$obj instanceof ContentDataObject) continue;
 				if (method_exists($obj, 'setDontMakeCalculations')) $obj->setDontMakeCalculations(true);
 				if ($obj->canDelete(logged_user())) {
 					try {
-						$obj->untrash($errorMessage);
+						$obj->untrash();
 		
 						if($obj->getObjectTypeId() == 11){
 							$event = ProjectEvents::findById($obj->getId());

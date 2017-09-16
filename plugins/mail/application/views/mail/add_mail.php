@@ -303,6 +303,9 @@ sig.actualHtmlSignature = '';
 <?php
 	$loc = user_config_option('localization');
 	if (strlen($loc) > 2) $loc = substr($loc, 0, 2);
+	
+	$font_size = user_config_option('default_mail_font_size');
+
 ?>
 <script>
 var genid = '<?php echo $genid ?>';
@@ -361,6 +364,8 @@ var editor = CKEDITOR.replace(genid+'ckeditor', {
 			mb.oldMailBody = og.getMailBodyFromUI(genid);
 			ev.editor.resetDirty();
 			if (focus_editor) ev.editor.focus();
+            ev.editor.document.getBody().setStyles({'font-size':+ <?php echo $font_size ?>+'px'});
+			
 		},
 		change: function(ev) {
 			var p = og.getParentContentPanel(Ext.get(genid+'ckeditor'));

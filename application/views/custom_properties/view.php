@@ -26,6 +26,7 @@ if (!($visibility == 'all' || $visibility == 'visible_by_default')) {
 	foreach($cps as $customProp){ 
 		$cpv = CustomPropertyValues::getCustomPropertyValue($__properties_object->getId(), $customProp->getId());
 		if($cpv instanceof CustomPropertyValue && ($customProp->getIsRequired() || $cpv->getValue() != '')){
+			$htmlValue = "";
 			$alt = !$alt; ?>
 			<tr class="<?php echo $alt ? 'altRow' : ''?>">
 				<td class="name" title="<?php 
@@ -60,11 +61,26 @@ if (!($visibility == 'all' || $visibility == 'visible_by_default')) {
 						}
 						
 					} else if ($customProp->getType() == 'list'){
-						if ($customProp->getIsSpecial()) {
-							$lang_value = Localization::instance()->lang($value);
-							$htmlValue = is_null($lang_value) ? $value : $lang_value;
+						if ($customProp->getIsMultipleValues()) {
+							$mult_vals = CustomPropertyValues::getCustomPropertyValues($__properties_object->getId(), $customProp->getId());
+							$arr_values = array();
+							foreach ($mult_vals as $custom_prop_val) {
+								$cp_value = $custom_prop_val->getValue();
+								if ($customProp->getIsSpecial()) {
+									$lang_value = Localization::instance()->lang($cp_value);
+									$arr_values[] = is_null($lang_value) ? $cp_value : $lang_value;
+								} else {
+									$arr_values[] = $cp_value;
+								}
+							}
+							$htmlValue = implode(', ', $arr_values);
 						} else {
-							$htmlValue = $value;
+							if ($customProp->getIsSpecial()) {
+								$lang_value = Localization::instance()->lang($value);
+								$htmlValue = is_null($lang_value) ? $value : $lang_value;
+							} else {
+								$htmlValue = $value;
+							}
 						}
 						
 					} else if ($customProp->getType() == 'boolean'){

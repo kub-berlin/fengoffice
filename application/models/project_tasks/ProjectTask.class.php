@@ -970,10 +970,11 @@ class ProjectTask extends BaseProjectTask {
 	 */
 	function getOpenSubTasks() {
 		if(is_null($this->open_tasks)) {
-			$this->open_tasks = ProjectTasks::findAll(array(
-          'conditions' => '`parent_id` = ' . DB::escape($this->getId()) . ' AND `completed_on` = ' . DB::escape(EMPTY_DATETIME) . ' AND `trashed_on` = ' . DB::escape(EMPTY_DATETIME),
-          'order' => '`order`, `created_on`'
-          )); // findAll
+			$subtasks = ProjectTasks::findAll(array(
+	          'conditions' => '`parent_id` = ' . DB::escape($this->getId()) . ' AND `completed_on` = ' . DB::escape(EMPTY_DATETIME) . ' AND `trashed_on` = ' . DB::escape(EMPTY_DATETIME),
+	          'order' => '`order`, `created_on`'
+	        )); // findAll
+        	$this->open_tasks = is_null($subtasks) ? array() : $subtasks;
 		} // if
 
 		return $this->open_tasks;
@@ -988,10 +989,11 @@ class ProjectTask extends BaseProjectTask {
 	 */
 	function getCompletedSubTasks() {
 		if(is_null($this->completed_tasks)) {
-			$this->completed_tasks = ProjectTasks::findAll(array(
-          'conditions' => '`parent_id` = ' . DB::escape($this->getId()) . ' AND `completed_on` > ' . DB::escape(EMPTY_DATETIME),
-          'order' => '`completed_on` DESC'
-          )); // findAll
+			$subtasks = ProjectTasks::findAll(array(
+	          'conditions' => '`parent_id` = ' . DB::escape($this->getId()) . ' AND `completed_on` > ' . DB::escape(EMPTY_DATETIME),
+	          'order' => '`completed_on` DESC'
+	        )); // findAll
+	        $this->completed_tasks = is_null($subtasks) ? array() : $subtasks;
 		} // if
 
 		return $this->completed_tasks;

@@ -421,7 +421,7 @@ og.config.multi_assignment = '<?php echo config_option('multi_assignment') && Pl
 					}
 				},
 				fillEmptyBlocks: false,
-				removePlugins: 'scayt,liststyle,magicline',
+				removePlugins: 'scayt,liststyle,magicline,contextmenu,tabletools',
 				entities_additional : '#39,#336,#337,#368,#369'
 			});
 

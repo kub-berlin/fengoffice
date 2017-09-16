@@ -31,6 +31,7 @@
 			$users_with_permissions_in_root = get_users_with_permissions_in_root();
 			$contacts = $users_with_permissions_in_root;
 		}
+		Hook::fire('filter_users_widget', array('context' => $context), $contacts);
 	}
 	
 	Hook::fire('contact_check_can_view_in_array', null, $contacts);

@@ -47,7 +47,8 @@
     'sync_ssl' => DATA_TYPE_BOOLEAN, 
     'sync_ssl_port' => DATA_TYPE_INTEGER, 
     'sync_folder' => DATA_TYPE_STRING,
-    'member_id' => DATA_TYPE_STRING
+    'member_id' => DATA_TYPE_STRING,
+    'can_detect_special_folders' => DATA_TYPE_BOOLEAN,
 );
   
     /**

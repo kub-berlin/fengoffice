@@ -27,6 +27,9 @@ if (!$mailAccount->isNew()){
 	$mail_acc_id = $mailAccount->getId();	
 }
 
+$categories = array();
+Hook::fire('mail_account_edit_categories', $mailAccount, $categories);
+
 $loc = user_config_option('localization');
 if (strlen($loc) > 2) $loc = substr($loc, 0, 2);
 ?>
@@ -36,6 +39,7 @@ if (strlen($loc) > 2) $loc = substr($loc, 0, 2);
 	id="<?php echo $genid ?>submit-edit-form" method="post">
 	
 <input type="hidden" name="submitted" value="true" />
+<input type="hidden" name="mail_account_id" id="<?php echo $genid ?>mail_account_id" value="<?php echo $mailAccount->isNew() ? '0' : $mailAccount->getId()?>" />
 
 <div class="adminAddMailAccount">
 <div class="coInputHeader">
@@ -104,6 +108,12 @@ if (strlen($loc) > 2) $loc = substr($loc, 0, 2);
 			<?php } ?>
 		<?php } ?>
 		
+		<?php foreach ($categories as $category) {
+				if (array_var($category, 'hidden')) continue; 
+		?>
+			<li><a href="#<?php echo $genid . $category['id'] ?>"><?php echo $category['name'] ?></a></li>
+		<?php } ?>
+		
 		</ul>
 
 	
@@ -116,7 +126,8 @@ if (strlen($loc) > 2) $loc = substr($loc, 0, 2);
 			<label for="<?php echo $genid ?>email">
 				<?php echo lang('mail account id')?><span class="label_required">*</span>
 			</label>
-			<?php echo text_field('mailAccount[email]', array_var($mailAccount_data, 'email'), array('id' => $genid.'email', 'class' => 'medium', 'tabindex'=>'30')) ?>
+			<?php echo text_field('mailAccount[email]', array_var($mailAccount_data, 'email'), 
+					array('id' => $genid.'email', 'class' => 'medium', 'tabindex'=>'30', 'readonly' => 'readonly')) ?>
 			<span class="desc"><?php echo lang('mail account id description') ?></span>
 		</div>
 
@@ -124,8 +135,14 @@ if (strlen($loc) > 2) $loc = substr($loc, 0, 2);
 			<label for="<?php echo $genid?>password">
 				<?php echo lang('password')?><span class="label_required">*</span>
 			</label>
-			<?php echo password_field('mailAccount[password]', array_var($mailAccount_data, 'password'), array('id' => $genid.'password', 'class' => 'medium', 'tabindex'=>'40')) ?>
+			<?php echo password_field('mailAccount[password]', array_var($mailAccount_data, 'password'), 
+					array('id' => $genid.'password', 'class' => 'medium', 'tabindex'=>'40', 'readonly' => 'readonly')) ?>
 			<span class="desc"><?php echo lang('mail account password description') ?></span>
+		</div>
+		
+		<div class="mail-account-item dataBlock" id="<?php echo $genid?>auth_error" style="display:none;">
+			<label></label>
+			<div id="<?php echo $genid?>auth_error_msg" class="mail-error-msg"></div>
 		</div>
 
 		<div class="mail-account-item dataBlock">
@@ -149,7 +166,7 @@ if (strlen($loc) > 2) $loc = substr($loc, 0, 2);
 					$attributes['selected'] = "selected";
 				}
 				$options[] = option_tag(lang('pop3'), '0', $attributes);
-				$onchange = "var ssl = document.getElementById('$genid' + 'sslport');var folders = document.getElementById('$genid' + 'folders');var readOnServer = document.getElementById('$genid' + 'readOnServer');var get_read_state_from_server = document.getElementById('$genid' + 'get_read_state_from_server');if (this.value == 1) { folders.style.display = 'block'; readOnServer.style.display = 'block'; get_read_state_from_server.style.display = 'block'; ssl.value = '993'; } else { folders.style.display = 'none'; readOnServer.style.display = 'none'; get_read_state_from_server.style.display = 'none'; ssl.value = '995'; }";
+				$onchange = "var ssl = document.getElementById('$genid' + 'sslport');var folders = document.getElementById('$genid' + 'folders');var imap_options = document.getElementById('$genid' + 'imap_options'); if (this.value == 1) { folders.style.display = 'block'; imap_options.style.display = 'block'; ssl.value = '993'; } else { folders.style.display = 'none'; imap_options.style.display = 'none'; ssl.value = '995'; }";
 				echo '<div style="float:left;">'. select_box('mailAccount[is_imap]', $options, array("onchange" => $onchange, 'tabindex' => '60', 'id' => $genid . 'method')) . '</div>';
 			?>
 		</div>
@@ -173,11 +190,19 @@ if (strlen($loc) > 2) $loc = substr($loc, 0, 2);
 				
 			</div>
 		</div>
+		
+		<div class="mail-account-item dataBlock">
+			<div style="width:200px;display:inline-block;">
+				<a href="#" onclick="og.checkMailAccountConnection('<?php echo $genid?>');" style="text-decoration:underline;"><?php echo lang("check connection data")?></a>
+			</div>
+			<span class="desc"><?php echo lang('check connection data link description') ?></span>
+		</div>
 
-		<div class="mail-account-item dataBlock" id="<?php echo $genid ?>folders" style="padding:5px;<?php if (!array_var($mailAccount_data, 'is_imap', false)) echo 'display:none'; ?>">
+		<div class="mail-account-item dataBlock" id="<?php echo $genid ?>folders" style="padding:5px 0;<?php if (!array_var($mailAccount_data, 'is_imap', false)) echo 'display:none'; ?>">
 
 			<div id="<?php echo $genid ?>imap_folders"><?php
 				tpl_assign('imap_folders', isset($imap_folders) ? $imap_folders : array());
+				tpl_assign('can_detect_special_folders', isset($can_detect_special_folders) && $can_detect_special_folders);
 				tpl_assign('genid', $genid);
 				tpl_display(get_template_path("fetch_imap_folders", "mail")) ?>
 			</div>
@@ -197,25 +222,31 @@ if (strlen($loc) > 2) $loc = substr($loc, 0, 2);
 			<span class="desc"><?php echo lang('mail account delete mails from server description') ?></span>
 		</div>
 		
-		<div id="<?php echo $genid ?>readOnServer" style="<?php if (!array_var($mailAccount_data, 'is_imap', false)) echo 'display:none'; ?>" class="mail-account-item dataBlock">
+		<div id="<?php echo $genid?>imap_options" style="<?php if (!array_var($mailAccount_data, 'is_imap', false)) echo 'display:none'; ?>">
+		
+		<div id="<?php echo $genid ?>readOnServer" class="mail-account-item dataBlock">
 			<label for="mailAccountMarkReadOnServer">
 				<?php echo lang('mark as read mails from server')?>
-			</label>
+			</label>&nbsp;
 			<?php $mark_read_on_server = array_var($mailAccount_data, 'mark_read_on_server', 0) ?>
 			<?php echo yes_no_widget('mailAccount[mark_read_on_server]', 'mailAccountMarkReadOnServer', $mark_read_on_server > 0, lang('yes'), lang('no'), 130) ?>
 			
 		</div>
 
-		<div id="<?php echo $genid ?>get_read_state_from_server" style="<?php if (!array_var($mailAccount_data, 'is_imap', false)) echo 'display:none'; ?>" class="mail-account-item dataBlock">
+		<div id="<?php echo $genid ?>get_read_state_from_server" class="mail-account-item dataBlock">
 			<label for="mailAccountGetReadStateFromServer">
 				<?php echo lang('get read state from server')?>
-			</label>
+			</label>&nbsp;
 			<?php $get_read_state_from_server = array_var($mailAccount_data, 'get_read_state_from_server', 1) ?>
 			<?php echo yes_no_widget('mailAccount[get_read_state_from_server]', 'mailAccountGetReadStateFromServer', $get_read_state_from_server > 0, lang('yes'), lang('no'), 130) ?>
 
 		</div>
 		
-		<div class="mail-account-item dataBlock">
+		<?php $null=null; Hook::fire('more_mail_account_imap_options', array('account' => $mailAccount, 'genid' => $genid), $null)?>
+		<div class="clear"></div>
+		</div>
+		
+		<div class="mail-account-item dataBlock" style="margin-top:20px;">
 			<label>
 				<?php echo lang ('classify mails on workspace') ?>
 			</label>
@@ -524,6 +555,15 @@ if (strlen($loc) > 2) $loc = substr($loc, 0, 2);
 			</div> <?php
 		} ?>
 	</div>
+		
+		
+		<?php foreach ($categories as $category) { ?>
+		<div id="<?php echo $genid . $category['id'] ?>" class="form-tab">
+			<?php echo $category['content'] ?>
+		</div>
+		<?php } ?>
+		
+		
 <?php } ?>
 	
 <?php echo submit_button($mailAccount->isNew() ? lang('add mail account') : lang('save changes'), 's', array('tabindex'=>'1240')) ?>
@@ -532,7 +572,48 @@ if (strlen($loc) > 2) $loc = substr($loc, 0, 2);
 </div>
 </form>
 
+<style>
+.mail-error-msg {
+    border-radius: 2px;
+    background-color: #FFDADA;
+    color: #330000;
+    padding: 10px;
+    display: inline-block;
+    min-width: 400px;
+    width: calc(100% - 300px);
+}
+.mail-error-msg a {
+	text-decoration: underline;
+}
+</style>
+
 <script>
+	og.goToGmailUnlockCaptcha = function(genid) {
+		
+		var msg = lang('gmail authentication failed need unlockcaptcha');
+		var link = '<a href="https://www.google.com/accounts/DisplayUnlockCaptcha" id="'+genid+'unlockcaptcha" target="_blank">'+ lang('unlock captcha') +'</a>';
+
+		var msg1 = lang('if auth problem persists');
+		var link1 = '<a href="https://support.google.com/accounts/answer/6010255" target="_blank">'+ lang('allowing less secure apps to access your account') +'</a>'
+
+		var msg2 = lang('more information can be found in');
+		var link2 = '<a href="https://support.google.com/mail/accounts/answer/78754" id="'+genid+'unlockcaptcha_info" target="_blank">'+ lang('solve gmail login issues') +'</a>';
+
+		var msg3 = lang('after completing the process please try using the fetch imap folders link to check the connection');
+		
+		var html = '<div>' + msg + '</div>';
+		html += '<div>' + link + '</div>';
+		html += '<div>' + msg1 + '</div>';
+		html += '<div>' + link1 + '</div>';
+		html += '<div style="margin-top:10px;">' + msg2 + '</div>';
+		html += '<div>' + link2 + '</div>';
+		html += '<div style="margin-top:10px;">' + msg3 + '</div>';
+		
+		$("#"+genid+"auth_error_msg").html(html);
+		$("#"+genid+"auth_error").show();
+
+	}
+
 	og.autofillsyncinfo = function (genid, sync){		
 		if (sync){					
 			var method = document.getElementById(genid+'method');			
@@ -589,6 +670,7 @@ if (strlen($loc) > 2) $loc = substr($loc, 0, 2);
 					connectionType[1].selected = 'selected';
 					connectionType[0].selected = '';
 					connectionType[2].selected = '';
+					$("#sync_classify_remove_from_inbox_in_serverNo").attr("checked","checked");
 					break;
 				case 'gmail':
 				case 'googlemail':
@@ -621,6 +703,8 @@ if (strlen($loc) > 2) $loc = substr($loc, 0, 2);
 					connectionType[0].selected = '';
 					connectionType[2].selected = '';
 					domainName = 'gmail';
+					$("#"+genid+"imap_options").show();
+					$("#sync_classify_remove_from_inbox_in_serverYes").attr("checked","checked");
 					break;				
 				case 'yahoo':
 				case 'ymail':
@@ -646,6 +730,7 @@ if (strlen($loc) > 2) $loc = substr($loc, 0, 2);
 					connectionType[0].selected = '';
 					connectionType[2].selected = '';
 					domainName = 'yahoo';
+					$("#sync_classify_remove_from_inbox_in_serverNo").attr("checked","checked");
 					break;
 				default:
 					return;
@@ -663,8 +748,49 @@ if (strlen($loc) > 2) $loc = substr($loc, 0, 2);
 		Ext.get('<?php echo $genid ?>sender_name').focus();
 	<?php } ?>
 
+
+	og.checkMailAccountConnection = function(genid, silent) {
+		var account_id = document.getElementById(genid + 'mail_account_id').value;
+		var server = document.getElementById(genid + 'server').value;
+		var email = document.getElementById(genid + 'email').value;
+		var password = document.getElementById(genid + 'password').value;
+		var ssl = document.getElementById(genid + 'ssl').checked ? document.getElementById(genid + 'ssl').value : '';
+		var sslport = document.getElementById(genid + 'sslport').value;
+		var is_imap = document.getElementById(genid + 'method').value;
+		
+		og.openLink(og.getUrl('mail', 'check_mail_account_connection', {
+			account_id: account_id,
+			server: server,
+			email: email,
+			pass: password,
+			ssl: ssl,
+			port: sslport,
+			is_imap: is_imap,
+			genid: genid,
+			hide_success_msg: silent ? '1' : '0'
+		}), {
+			preventPanelLoad: true
+		});
+	};
+
 	$(function() {
 		$("#<?php echo $genid?>tabs").tabs();
+		setTimeout(function() {
+			// remove attribute readonly (setted to prevent autofill)
+			$("#<?php echo $genid?>email").removeAttr("readonly");
+			$("#<?php echo $genid?>password").removeAttr("readonly");
+		}, 200);
+		
+		<?php
+		if (!$mailAccount->isNew()) { ?>
+			og.checkMailAccountConnection('<?php echo $genid?>', true);
+
+			$('#<?php echo $genid?>password').change(function() {
+				og.checkMailAccountConnection('<?php echo $genid?>');
+			});
+		<?php
+		}
+		?>
 	});
 </script>
 

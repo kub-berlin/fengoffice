@@ -348,7 +348,7 @@ class ContactMemberCaches extends BaseContactMemberCaches {
 			$dimensions = Dimensions::findAll();
 			$dimensions_ids = array();
 			foreach ($dimensions as $dimension) {
-				if ($dimension->getDefinesPermissions()) {
+				if ($dimension->getDefinesPermissions() && $dimension->getCode() != 'feng_persons') {
 					$dimensions_ids[] = $dimension->getId();
 				}
 			}

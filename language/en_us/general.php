@@ -417,6 +417,9 @@ return array(
 	'next month' => 'Next month',
 	'next three months(after next month)' => 'Next three months (after next month)',
 	'this year' => 'This year',
+	'last year' => 'Last year',
+	'this quarter' => 'This quarter',
+	'last quarter' => 'Last quarter',
 	'after this year' => 'After this year',
 	
 	'without a member' => 'Without',
@@ -460,5 +463,6 @@ return array(
 	'object could not be classfied in due to permissions' => 'Could not classify {0} in \'{1}\' because you don\'t have permissions for {2} there.',
 	'if not specified then current time will be used' => 'If not specified then current time will be used.',
 	
-	'couldnt assign user to task due to permissions' => 'Could not assign {0} to {1} because the user doesn\'t have permissions where the task is classified.', 
+	'couldnt assign user to task due to permissions' => 'Could not assign {0} to {1} because the user doesn\'t have permissions where the task is classified.',
+	'specify end date' => 'Specify end date',
 );

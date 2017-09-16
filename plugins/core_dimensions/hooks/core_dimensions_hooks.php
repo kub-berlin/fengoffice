@@ -13,7 +13,8 @@ function core_dimensions_after_edit_profile($user, &$ignored) {
 }
 
 
-function core_dimensions_after_dragdrop_classify($objects, &$member) {
+function core_dimensions_after_dragdrop_classify($parameters, &$member) {
+	$objects = array_var($parameters, 'objects');
 	$count = 0;
 	foreach ($objects as $obj) {
 		$count++;

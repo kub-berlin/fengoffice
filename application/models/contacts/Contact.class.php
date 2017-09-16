@@ -200,6 +200,8 @@ class Contact extends BaseContact {
 		if (parent::getUserType() != 0 && !$this->getDisabled()) {
 			if (!$deleteInactive || $this->hasReferences() ) {
 				$this->setDisabled(true);
+				$this->setTokenDisabled($this->getToken());
+				$this->setToken("");
 				$this->save();
 			} else {
 				$this->do_delete();

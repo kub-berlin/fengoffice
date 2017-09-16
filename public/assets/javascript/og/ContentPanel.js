@@ -340,6 +340,7 @@ Ext.extend(og.ContentPanel, Ext.Panel, {
 				}
 				//content.panel.load();
 			}
+			
 			if (isReset) {
 				if (content.panel) content.panel.reset();
 			} else {
@@ -410,6 +411,7 @@ Ext.extend(og.ContentPanel, Ext.Panel, {
 		this.loaded = false;
 		if (this.active) {
 			this.load(this.defaultContent, true, true, true);
+			og.eventManager.fireEvent("content panel reset", this.id);
 		}
 		this.history = [];
 	}

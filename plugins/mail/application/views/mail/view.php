@@ -139,13 +139,17 @@ if (isset($email)){
 					$fName = str_starts_with($att["FileName"], "=?") ? iconv_mime_decode($att["FileName"], 0, "UTF-8") : utf8_safe($att["FileName"]);
 					if (trim($fName) == "" && strlen($att["FileName"]) > 0) $fName = utf8_encode($att["FileName"]);
 					$description .= '<tr><td style="padding-right: 10px">';
+					
 					$ext = get_file_extension($fName);
 					$fileType = FileTypes::getByExtension($ext);
-					if ($fileType instanceof FileType)
-						$icon = $fileType->getIcon();
-					else
-						$icon = "unknown.png";
-					$download_url = get_url('mail', 'download_attachment', array('email_id' => $email->getId(), 'attachment_id' => $c));
+					$icon = $fileType instanceof FileType ? $fileType->getIcon() : "unknown.png";
+					
+					$att_id = $c;
+					$inside_attachment = trim(array_var($att, 'inside_attachment', ""));
+					if ($inside_attachment != "") {
+						$att_id = $inside_attachment;
+					}
+					$download_url = get_url('mail', 'download_attachment', array('email_id' => $email->getId(), 'attachment_id' => $att_id));
 					include_once ROOT . "/library/browser/Browser.php";
 					if (Browser::instance()->getBrowser() == Browser::BROWSER_IE) {
 						$download_url = "javascript:location.href = '$download_url';";

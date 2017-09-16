@@ -176,6 +176,15 @@ button.add-first-btn.blue:hover {
 	background-color: #5d92dc;
 }
 
+.x-toolbar.x-small-editor button.add-first-btn {
+	height: 26px;
+	padding-right: 4px;
+    padding-left: 22px;
+	background-position-x: 2px;
+	min-width: 50px;
+}
+
+
 /*Buttons common*/
 .btn {
 	width: auto;

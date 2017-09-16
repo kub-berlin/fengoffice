@@ -121,6 +121,8 @@ function report_table_html_plain($results, $report, $parametersUrl="", $to_print
 	$pagination = array_var($results, 'pagination');
 	
 	$ot = ObjectTypes::findById($report->getReportObjectTypeId());
+	$external_columns = $report->getReportExternalColumns();
+	
 	?>
 	<table class="report">
 		<tr>
@@ -178,7 +180,7 @@ function report_table_html_plain($results, $report, $parametersUrl="", $to_print
 				
 				$value = array_var($row, $col);
 				$type = array_var($columns['types'], $col);
-				$numeric_type = in_array($type, array(DATA_TYPE_INTEGER, DATA_TYPE_FLOAT, 'numeric'));
+				$numeric_type = !in_array($col, $external_columns) && in_array($type, array(DATA_TYPE_INTEGER, DATA_TYPE_FLOAT, 'numeric'));
 		?>
 			<td style="padding-right:10px;" <?php echo $numeric_type ? 'class="right"' : ''?>>
 		<?php 
@@ -248,12 +250,12 @@ function echo_report_group_html($group_data, $results, $report, $level=0) {
 			$rows = array_var($results, 'rows');
 			$pagination = array_var($results, 'pagination');
 			
-			$ot = ObjectTypes::findById($report->getReportObjectTypeId());
-			
 			?>
 			<tbody class="report-data">
 			<?php
 			if (!$report->getColumnValue("hide_group_details")) {
+				
+				$external_columns = $report->getReportExternalColumns();
 				
 				$isAlt = true;
 				foreach($gd['items'] as $item_data) {
@@ -268,7 +270,7 @@ function echo_report_group_html($group_data, $results, $report, $level=0) {
 						
 						$value = array_var($row, $col);
 						$type = array_var($columns['types'], $col);
-						$numeric_type = in_array($type, array(DATA_TYPE_INTEGER, DATA_TYPE_FLOAT, 'numeric'));
+						$numeric_type = !in_array($col, $external_columns) && in_array($type, array(DATA_TYPE_INTEGER, DATA_TYPE_FLOAT, 'numeric'));
 				?>
 					<td style="<?php echo ($col == 'link' ? 'width:16px;padding:0 0 0 2px;border-right:0 none;' : 'padding:0 10px;') ?>" <?php echo $numeric_type ? 'class="right"' : ''?>>
 				<?php 
@@ -471,6 +473,24 @@ function build_custom_report_group_name($gbk, $row, $ot) {
 }
 
 
+
+function get_cp_contact_name($gb_keys, $index, $row, &$cp_contact_cache) {
+	$cp_id = $gb_keys[$index]['cp_contact'];
+	$cp_contact_id = $row[$gb_keys[$index]['k']];
+	
+	if (!isset($cp_contact_cache[$cp_id])) $cp_contact_cache[$cp_id] = array();
+	
+	if (!isset($cp_contact_cache[$cp_id][$cp_contact_id])) {
+		$cp_contact = Contacts::findById($cp_contact_id);
+		if ($cp_contact instanceof Contact) {
+			$cp_contact_cache[$cp_id][$cp_contact_id] = $cp_contact->getObjectName();
+		}
+	}
+	
+	return array_var($cp_contact_cache[$cp_id], $cp_contact_id);
+}
+
+
 function group_custom_report_results($rows, $group_by_criterias, $ot) {
 	
 	$gb_keys = array();
@@ -482,6 +502,7 @@ function group_custom_report_results($rows, $group_by_criterias, $ot) {
 			case 'parent_member': $gkey = '_group_id_pm_'.$gb['id']; break;
 			case 'classification': $gkey = '_group_id_dim_'.$gb['id']; break;
 			case 'fixed_property': $gkey = '_group_id_fp_'.$gb['id']; break;
+			case 'intersection': $gkey = '_group_id_inter_'.$gb['id']; break;
 		}
 		
 		if (!$gkey) $gkey = "";
@@ -498,9 +519,17 @@ function group_custom_report_results($rows, $group_by_criterias, $ot) {
 				if (in_array($managerInstance->getColumnType($col), array(DATA_TYPE_DATETIME, DATA_TYPE_DATE))) {
 					$gbk['is_date'] = true;
 				}
+			} else if (str_starts_with($gbk['k'], '_group_id_cp_')) {
+				$cp_id = str_replace('_group_id_cp_', '', $gbk['k']);
+				$cp = CustomProperties::findById($cp_id);
+				if ($cp instanceof CustomProperty && ($cp->getType()=='contact' || $cp->getType()=='user')) {
+					$gbk['cp_contact'] = $cp_id;
+				}
 			}
 		}
 	}
+	
+	$cp_contact_cache = array();
 	
 	$grouped_temp = array();
 	
@@ -509,39 +538,60 @@ function group_custom_report_results($rows, $group_by_criterias, $ot) {
 			
 			if (isset($gb_keys[0])) {
 				$k0 = $row[$gb_keys[0]['k']];
-				$n0 = $row[$gb_keys[0]['n']];
+				$n0 = isset($row[$gb_keys[0]['k']."_toorder"]) ? $row[$gb_keys[0]['k']."_toorder"] : $row[$gb_keys[0]['n']];
+				
 				if ($gb_keys[0]['is_date']) $n0 = gmdate('Y-m-d', strtotime($k0));
+				else if (array_var($gb_keys[0], 'cp_contact')) {
+					$n0 = get_cp_contact_name($gb_keys, 0, $row, $cp_contact_cache);
+					$row[$gb_keys[0]['n']] = $n0;
+				}
+				
+				if ($n0 == '') $n0 = 'zzzzz_unclassified'; // unclassified group must be at the end of the list
 				
 				if (!isset($grouped_temp[$n0])) {
 					$grouped_temp[$n0] = array(
 						'id' =>  $k0,
-						'name' => $row[$gb_keys[0]['n']],
+						'name' => $row[$gb_keys[0]['n']] ? $row[$gb_keys[0]['n']] : lang('unclassified'),
 						'original_gkey' => $gb_keys[0]['k'],
 					);
 				}
 				
 				if (isset($gb_keys[1])) {
 					$k1 = $row[$gb_keys[1]['k']];
-					$n1 = $row[$gb_keys[1]['n']];
+					$n1 = isset($row[$gb_keys[1]['k']."_toorder"]) ? $row[$gb_keys[1]['k']."_toorder"] : $row[$gb_keys[1]['n']];
+					
 					if ($gb_keys[1]['is_date']) $n1 = gmdate('Y-m-d', strtotime($k1));
+					else if (array_var($gb_keys[1], 'cp_contact')) {
+						$n1 = get_cp_contact_name($gb_keys, 1, $row, $cp_contact_cache);
+						$row[$gb_keys[1]['n']] = $n1;
+					}
+					
+					if ($n1 == '') $n1 = 'zzzzz_unclassified'; // unclassified group must be at the end of the list
 					
 					if (!isset($grouped_temp[$n0]['groups'][$n1])) {
 						$grouped_temp[$n0]['groups'][$n1] = array(
 							'id' => $k0."_".$k1,
-							'name' => $row[$gb_keys[1]['n']],
+							'name' => $row[$gb_keys[1]['n']] ? $row[$gb_keys[1]['n']] : lang('unclassified'),
 							'original_gkey' => $gb_keys[0]['k'].",".$gb_keys[1]['k'],
 						);
 					}
 					
 					if (isset($gb_keys[2])) {
 						$k2 = $row[$gb_keys[2]['k']];
-						$n2 = $row[$gb_keys[2]['n']];
+						$n2 = isset($row[$gb_keys[2]['k']."_toorder"]) ? $row[$gb_keys[2]['k']."_toorder"] : $row[$gb_keys[2]['n']];
+						
 						if ($gb_keys[2]['is_date']) $n2 = gmdate('Y-m-d', strtotime($k2));
+						else if (array_var($gb_keys[2], 'cp_contact')) {
+							$n2 = get_cp_contact_name($gb_keys, 2, $row, $cp_contact_cache);
+							$row[$gb_keys[2]['n']] = $n2;
+						}
+						
+						if ($n2 == '') $n2 = 'zzzzz_unclassified'; // unclassified group must be at the end of the list
 						
 						if (!isset($grouped_temp[$n0]['groups'][$n1]['groups'][$n2])) {
 							$grouped_temp[$n0]['groups'][$n1]['groups'][$n2] = array(
 								'id' => $k0."_".$k1."_".$k2,
-								'name' => $row[$gb_keys[2]['n']],
+								'name' => $row[$gb_keys[2]['n']] ? $row[$gb_keys[2]['n']] : lang('unclassified'),
 								'original_gkey' => $gb_keys[0]['k'].",".$gb_keys[1]['k'].",".$gb_keys[2]['k'],
 							);
 						}
@@ -583,18 +633,25 @@ function group_custom_report_results($rows, $group_by_criterias, $ot) {
 }
 
 
-
-function build_report_conditions_html($report_id, $parameters=array()) {
-
+function build_report_conditions_html($report_id, $parameters=array(), $conditions=null) {
 	$report = Reports::findById($report_id);
 	if (!$report instanceof Report) return "";
 	
+	if (is_null($conditions)) {
+		$conditions = ReportConditions::getAllReportConditions($report->getId());
+	}
+	
+	return build_report_conditions_html_main($report, $parameters=array(), $conditions);
+}
+
+
+function build_report_conditions_html_main($report, $parameters=array(), $conditions=array()) {
+
 	$object_type = ObjectTypes::findById($report->getReportObjectTypeId());
 	
 	$rc = new ReportingController();
 	$types = $rc->get_report_column_types($report_id);
 	
-	$conditions = ReportConditions::getAllReportConditions($report->getId());
 	$conditionHtml = "";
 	
 	if (count($conditions) > 0) {
@@ -730,6 +787,8 @@ function parse_custom_report_group_by($group_by, $group_by_options = array()) {
 					break;
 				case 'fp': $group_by_criterias[] = array('type' => 'fixed_property', 'id' => $id, 'options' => $options);
 					break;
+				case 'intersection': $group_by_criterias[] = array('type' => 'intersection', 'id' => '0', 'options' => $options);
+					break;
 				default:
 					break;
 			}
@@ -750,6 +809,12 @@ function build_report_conditions_sql($parameters) {
 	
 	$params = array_var($parameters, 'params');
 	
+	$disabled_p = array_var($_REQUEST, 'disabled_params');
+	$disabled_params = array();
+	if (is_array($disabled_p)) {
+		foreach ($disabled_p as $k => $v) if ($v) $disabled_params[] = $k;
+	}
+	
 	$ot = ObjectTypes::instance()->findById($report->getReportObjectTypeId());
 	
 	$model = $ot->getHandlerClass();
@@ -760,8 +825,8 @@ function build_report_conditions_sql($parameters) {
 	
 	$allConditions = "";
 	
-	$conditionsFields = ReportConditions::getAllReportConditionsForFields($report->getId());
-	$conditionsCp = ReportConditions::getAllReportConditionsForCustomProperties($report->getId());
+	$conditionsFields = array_var($parameters, 'conditionsFields', ReportConditions::getAllReportConditionsForFields($report->getId()));
+	$conditionsCp = array_var($parameters, 'conditionsCp', ReportConditions::getAllReportConditionsForCustomProperties($report->getId()));
 	
 	$show_archived = false;
 	
@@ -799,7 +864,7 @@ function build_report_conditions_sql($parameters) {
 				
 				$allConditions .= ' AND ';
 				
-				if ($value == '' && $condField->getIsParametrizable()) $skip_condition = true;
+				if ($condField->getIsParametrizable() && in_array($condField->getId(), $disabled_params)) $skip_condition = true;
 		
 				if (!$skip_condition) {
 					$field_name = $condField->getFieldName();
@@ -881,7 +946,7 @@ function build_report_conditions_sql($parameters) {
 					}
 				}
 				
-				Hook::fire('report_conditions_extra_fields', array('field' => $condField, 'report' => $report, 'report_ot' => $ot, 'value' => $value), $allConditions);
+				Hook::fire('report_conditions_extra_fields', array('field' => $condField, 'report' => $report, 'report_ot' => $ot, 'value' => $value, 'disabled_params' => $disabled_params), $allConditions);
 			}
 		}
 	}
@@ -908,13 +973,28 @@ function build_report_conditions_sql($parameters) {
 			}else{
 				$value = $condCp->getValue();
 			}
-			if ($value == '' && $condCp->getIsParametrizable()) $skip_condition = true;
+			
+			if ($condCp->getIsParametrizable() && in_array($condCp->getId(), $disabled_params)) $skip_condition = true;
+			
 			if (!$skip_condition) {
 				$current_condition = ' AND ';
+				$close_bracket = false;
 				if (in_array($ot->getType(), array('dimension_object', 'dimension_group'))) {
-					$current_condition .= 'm.id IN ( SELECT member_id as id FROM '.TABLE_PREFIX.'member_custom_property_values cpv WHERE ';
+					if (!$value) {
+						$close_bracket = true;
+						$current_condition .= "(NOT EXISTS (SELECT member_id FROM ".TABLE_PREFIX."member_custom_property_values cpv WHERE cpv.object_id=m.id AND cpv.custom_property_id = ".$condCp->getCustomPropertyId().") 
+							OR m.id IN ( SELECT member_id as id FROM ".TABLE_PREFIX."member_custom_property_values cpv WHERE ";
+					} else {
+						$current_condition .= 'm.id IN ( SELECT member_id as id FROM '.TABLE_PREFIX.'member_custom_property_values cpv WHERE ';
+					}
 				} else {
-					$current_condition .= 'o.id IN ( SELECT object_id as id FROM '.TABLE_PREFIX.'custom_property_values cpv WHERE ';
+					if (!$value) {
+						$close_bracket = true;
+						$current_condition .= "(NOT EXISTS (SELECT object_id FROM ".TABLE_PREFIX."custom_property_values cpv WHERE cpv.object_id=o.id AND cpv.custom_property_id = ".$condCp->getCustomPropertyId().") 
+							OR o.id IN ( SELECT object_id as id FROM ".TABLE_PREFIX."custom_property_values cpv WHERE ";
+					} else {
+						$current_condition .= 'o.id IN ( SELECT object_id as id FROM '.TABLE_PREFIX.'custom_property_values cpv WHERE ';
+					}
 				}
 				$current_condition .= ' cpv.custom_property_id = '.$condCp->getCustomPropertyId();
 					
@@ -947,6 +1027,8 @@ function build_report_conditions_sql($parameters) {
 					$current_condition .= ' AND cpv.value like '.DB::escape("%$value");
 				}
 				$current_condition .= ')';
+				if ($close_bracket) $current_condition .= ')';
+				
 				$allConditions .= $current_condition;
 			}
 		}

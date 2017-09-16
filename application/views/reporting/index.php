@@ -104,7 +104,7 @@
 					<div style="float:right; max-width:700px; margin-right:25px; font-weight:normal;" id="report-<?php echo $report->getId();?>">
 						<span class="breadcrumb"></span>
 						<script>
-							<?php $crumbOptions = json_encode($report->getMembersToDisplayPath());
+							<?php $crumbOptions = json_encode($report->getMembersIdsToDisplayPath());
 							$crumbJs = " og.getEmptyCrumbHtml($crumbOptions) ";?>
 							var crumbHtml = <?php echo $crumbJs;?>;
 							$("#report-<?php echo $report->getId()?> .breadcrumb").html(crumbHtml);

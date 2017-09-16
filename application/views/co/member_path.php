@@ -68,6 +68,7 @@
 	
 		<table style="width:100%;">
 <?php
+		$gid = gen_id();
 		$member_path = $object->getMembersIdsToDisplayPath();
 
 		foreach ($dimensions_info as $dname => $dinfo) {
@@ -82,8 +83,11 @@
 		<?php 
 			if (array_var($member_path, $dinfo['id'])) {
 				$dim_mem_path = array($dinfo['id'] => array_var($member_path, $dinfo['id']));
+				foreach ($dim_mem_path as $otid => &$otpath) {
+					if (isset($otpath['is_assoc_dim'])) unset($otpath['is_assoc_dim']);
+				}
 		?>
-					<div class='breadcrumb-container' style='max-width:800px; width:100%;' id="breadcrumb-container-<?php echo $dinfo['id']?>">
+					<div class='breadcrumb-container' style='max-width:800px; width:100%;' id="<?php echo $gid?>-breadcrumb-container-<?php echo $dinfo['id']?>">
 						<script>
 						
 							var dim_mem_path = '<?php echo json_encode($dim_mem_path)?>';
@@ -93,9 +97,9 @@
 							}
 							var mem_path = "";			
 							if (mpath){
-								mem_path = og.getEmptyCrumbHtml(mpath, '.breadcrumb-container');
+								mem_path = og.getEmptyCrumbHtml(mpath, '.breadcrumb-container', null, null, null, true);
 							}
-							$("#breadcrumb-container-<?php echo $dinfo['id']?>").html(mem_path);
+							$("#<?php echo $gid?>-breadcrumb-container-<?php echo $dinfo['id']?>").html(mem_path);
 						
 						</script>
 					</div>
@@ -139,7 +143,7 @@
 	$(function() {
 		// set max breadcrumb width
 		<?php foreach ($dimensions_info as $dname => $dinfo) { ?>
-			$("#breadcrumb-container-<?php echo $dinfo['id']?>").css('max-width', ($("#breadcrumb-container-<?php echo $dinfo['id']?>").parent().width()-10)+'px');
+			$("#<?php echo $gid?>-breadcrumb-container-<?php echo $dinfo['id']?>").css('max-width', ($("#<?php echo $gid?>-breadcrumb-container-<?php echo $dinfo['id']?>").parent().width()-10)+'px');
 		<?php } ?>
 		// draw breadcrumbs
 		og.eventManager.fireEvent('replace all empty breadcrumb', null);

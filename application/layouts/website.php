@@ -466,7 +466,8 @@ if (Ext.isIE) {
 og.dimensions_check_date = new Date();
 
 setInterval(function() {
-	if (window.isActiveBrowserTab) {
+	// document.hidden is false when the current tab is the active tab
+	if (!document.hidden) {
 		og.openLink(og.getUrl('object', 'popup_reminders'), {
 			hideLoading: true,
 			hideErrors: true,

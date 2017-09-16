@@ -203,7 +203,14 @@ function allowed_users_to_assign($context = null, $filter_by_permissions = true,
 			if($root_context && $for_task_list_filters){
 				$tmp_contacts = get_users_with_system_permission('can_task_assignee');
 			}else{
-				$tmp_contacts = allowed_users_in_context(ProjectTasks::instance()->getObjectTypeId(), $context, ACCESS_LEVEL_READ);
+                $for_template_task_assigned_to = array_var($_GET, 'for_template_task_assigned_to');
+
+                $task_object_type_id = ProjectTasks::instance()->getObjectTypeId();
+
+                if($for_template_task_assigned_to){
+                    $task_object_type_id = TemplateTasks::instance()->getObjectTypeId();
+                }
+				$tmp_contacts = allowed_users_in_context($task_object_type_id, $context, ACCESS_LEVEL_READ);
 			}
 		} else {
 			// for template variables selectors

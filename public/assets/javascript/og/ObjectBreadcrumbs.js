@@ -400,7 +400,7 @@ og.replaceAllEmptyBreadcrumbForThisMember = function(dimension_id ,member, extra
  * this function return empty spams for each breadcrumb, so later we can update them with the correct width.
  * after the returned html is inserted on the dom you have to fire the event 'replace all empty breadcrumb'
  * */
-og.getEmptyCrumbHtml = function(dims,container_to_fill,skipped_dimensions,show_link,exclude_parents_path) {
+og.getEmptyCrumbHtml = function(dims,container_to_fill,skipped_dimensions,show_link,exclude_parents_path, allow_associated_dimensions) {
 	var all_bread_crumbs = "";
 	if (typeof show_link == "undefined" || show_link == null ) {
 		var show_link = true;
@@ -416,6 +416,9 @@ og.getEmptyCrumbHtml = function(dims,container_to_fill,skipped_dimensions,show_l
 		var dim = {};
 		var empty_bread_crumbs = "";
 		var members_by_ot = dims[x];
+		
+		// don't show associated dimensions in content objects general breadcrumb
+		if (!allow_associated_dimensions && dims[x].is_assoc_dim) continue;
 		
 		for (ot_id in members_by_ot) {
 			if (ot_id == 'opt') continue;
@@ -519,6 +522,13 @@ og.insertBreadcrumb = function(member_id,target,from_callback) {
 			var onclick = "return false;";
 			if (og.additional_on_dimension_object_click[m.ot]) {
 				onclick = og.additional_on_dimension_object_click[m.ot].replace('<parameters>', m.id);
+			} else {
+				if (m.dim) {
+					var dim_tree = Ext.getCmp("dimension-panel-" + m.dim);
+					if (dim_tree) {
+						onclick = "og.memberTreeExternalClick('"+ dim_tree.dimensionCode +"', "+ m.id +");";
+					}
+				}
 			}  
 			
 			member_name = '<a onclick="'+onclick+';" href="#">'+ m.text +'</a>';

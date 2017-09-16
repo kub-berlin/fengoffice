@@ -140,7 +140,8 @@
     'config option desc show images in document notifications' => 'If the document is an image, it is attached in the content of the notification.',
     'config option name show company logo in notifications' => 'Attach company logo in notifications',
     'config option desc show company logo in notifications' => 'The company logo is attached in the content of the notification.',
-    'config option name notification_recipients_field' => 'Notification recipients email field',
+      'config option name disable_notifications_for_object_type' => 'Disable notifications by object type',
+      'config option name notification_recipients_field' => 'Notification recipients email field',
     'config option desc notification_recipients_field' => 'Select if the recipients for each notifications will be put in the "To" field, in "CC" field or in "BCC" field (by using this last one the recipients will not see each other in the mail header).',
   	'config option name check_unique_mail_contact_comp' => 'Check email unicity between contacts and companies',
   	'config option desc check_unique_mail_contact_comp' => 'If this option is enabled you will not be able to add a company if its email is already used by a contact.',
@@ -966,6 +967,9 @@
   		'original time' => 'Original time',
 
   		'user config option name show_inactive_users_in_list' => 'Show inactive users in the contacts list',
+  		
+  		'user config option name show_associated_dims_in_breadcrumbs' => 'Show associated dimensions in general breadcrumbs',
+  		'user config option desc show_associated_dims_in_breadcrumbs' => 'If enabled then the associated dimensions (such as Project type, Project status, etc.) will be included in general object breadcrumbs.',
   ); // array
 
 

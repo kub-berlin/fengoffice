@@ -26,7 +26,12 @@ class Notifier {
 	static public $exchange_compatible = null;
 	
 	function notifyAction($object, $action, $log_data) {
-		
+
+		//Check disabled object types notificactions.
+		if(in_array($object->getObjectTypeId(),config_option("disable_notifications_for_object_type"))){
+			return;
+		}
+
 		if (!$object instanceof ContentDataObject) {
 			return;
 		}
@@ -185,6 +190,9 @@ class Notifier {
 
 	
 	static function objectNotification($object, $people, $sender, $notification, $description = null, $descArgs = null, $properties = array(), $links = array()) {
+		
+		Hook::fire('filter_object_notification_people', array('object' => $object, 'notification' => $notification) , $people);
+		
 		if (!is_array($people) || !count($people)) {
 			return;
 		}
@@ -598,6 +606,10 @@ class Notifier {
 	static function forgotPassword(Contact $user, $token = null) {
 		if (! $user instanceof Contact) return;
 		
+		$quit = false;
+		Hook::fire('filter_object_notification_single_user', array('user' => $user), $quit);
+		if ($quit) return;
+		
 		//$new_password = $user->resetPassword(true);
 		tpl_assign('user', $user);
 		//tpl_assign('new_password', $new_password);
@@ -650,6 +662,10 @@ class Notifier {
 
 		if (! $user instanceof Contact) return;
 		
+		$quit = false;
+		Hook::fire('filter_object_notification_single_user', array('user' => $user), $quit);
+		if ($quit) return;
+		
 		$administrator = owner_company()->getCreatedBy();
 		if (!$administrator instanceof Contact) {
 			$administrator = Contacts::findOne(array("conditions" => "user_type IN (SELECT id FROM ".TABLE_PREFIX."permission_groups WHERE name IN ('Super Administrator','Administrator'))", "order" => "user_type"));
@@ -694,7 +710,11 @@ class Notifier {
 	static function newUserAccount(Contact $user, $raw_password) {
 		tpl_assign('new_account', $user);
 		tpl_assign('raw_password', $raw_password);
-                tpl_assign('type_notifier',"specify_pass");
+		tpl_assign('type_notifier',"specify_pass");
+		
+		$quit = false;
+		Hook::fire('filter_object_notification_single_user', array('user' => $user), $quit);
+		if ($quit) return;
 
 		$sender = $user->getCreatedBy() instanceof Contact ? $user->getCreatedBy() : owner_company()->getCreatedBy();
 		
@@ -720,10 +740,14 @@ class Notifier {
     static function newUserAccountLinkPassword(Contact $user, $raw_password, $token = null) {
 		tpl_assign('new_account', $user);
 		tpl_assign('raw_password', $raw_password);
-                tpl_assign('type_notifier',"link_pass");
-                
-                //generate password                
-                $new_password = $user->resetPassword(true);
+		tpl_assign('type_notifier',"link_pass");
+		
+		$quit = false;
+		Hook::fire('filter_object_notification_single_user', array('user' => $user), $quit);
+		if ($quit) return;
+		
+		//generate password
+		$new_password = $user->resetPassword(true);
 		tpl_assign('token',$token);                
 
 		$sender = $user->getCreatedBy() instanceof Contact ? $user->getCreatedBy() : owner_company()->getCreatedBy();
@@ -819,6 +843,9 @@ class Notifier {
 	 * @throws NotifierConnectionError
 	 */
 	static function notifEvent(ProjectEvent $object, $people, $notification, $sender) {
+		
+		Hook::fire('filter_object_notification_people', array('object' => $object, 'notification' => $notification) , $people);
+		
 		if(!is_array($people) || !count($people) || !$sender instanceof Contact) {
 			return; // nothing here...
 		} // if
@@ -1025,6 +1052,11 @@ class Notifier {
 		tpl_assign('pending', $pending);
 		
 		$people = array($event->getCreatedBy());
+		
+		$quit = false;
+		Hook::fire('filter_object_notification_single_user', array('user' => $event->getCreatedBy()), $quit);
+		if ($quit) return;
+		
 		$recepients = array();
 		foreach($people as $user) {
 			$tz_offset = Timezones::getTimezoneOffsetToApply($event, $user);
@@ -1086,6 +1118,11 @@ class Notifier {
 		}
 		
 		$assigned_to = $milestone->getAssignedTo();
+		
+		$quit = false;
+		Hook::fire('filter_object_notification_single_user', array('user' => $assigned_to), $quit);
+		if ($quit) return;
+		
 		if ($assigned_to instanceof Contact) {
 			$email_address = trim($assigned_to->getEmailAddress());
 			if ($email_address != '') {
@@ -1121,6 +1158,10 @@ class Notifier {
 		if (!is_valid_email($task->getAssignedTo()->getEmailAddress())) {
 			return true;
 		}		
+		
+		$quit = false;
+		Hook::fire('filter_object_notification_single_user', array('user' => $task->getAssignedTo()), $quit);
+		if ($quit) return;
 		
 		tpl_assign('task_assigned', $task);
 
@@ -1274,6 +1315,10 @@ class Notifier {
 		if (!is_valid_email($task->getAssignedTo()->getEmailAddress())) {
 			return true;
 		}
+		
+		$quit = false;
+		Hook::fire('filter_object_notification_single_user', array('user' => $task->getAssignedTo()), $quit);
+		if ($quit) return;
 
 		$locale = $task->getAssignedTo()->getLocale();
 		Localization::instance()->loadSettings($locale, ROOT . '/language');
@@ -1819,10 +1864,10 @@ class Notifier {
 				foreach ($from as $f_add => $f_name) {
 					$fr = $f_name == '' ? $f_add : "$f_name <$f_add>";
 					$email->setFrom($fr);
-					if (defined('DEBUG_NOTIFICATIONS') && DEBUG_NOTIFICATIONS) file_put_contents(CACHE_DIR."/debug_notifications", "Real from: $fr\n");
+					if (defined('DEBUG_NOTIFICATIONS') && DEBUG_NOTIFICATIONS) file_put_contents(CACHE_DIR."/debug_notifications", "Real from: $fr\n", FILE_APPEND);
 				}
 				
-				if (defined('DEBUG_NOTIFICATIONS') && DEBUG_NOTIFICATIONS) file_put_contents(CACHE_DIR."/debug_notifications", print_r(array('to'=>$to, 'cc'=>$cc, 'bcc'=>$bcc),1)."\n");
+				if (defined('DEBUG_NOTIFICATIONS') && DEBUG_NOTIFICATIONS) file_put_contents(CACHE_DIR."/debug_notifications", print_r(array('to'=>$to, 'cc'=>$cc, 'bcc'=>$bcc),1)."\n", FILE_APPEND);
 				
 				if ($result) {
 					DB::beginWork();
@@ -1845,10 +1890,10 @@ class Notifier {
 				}
 				$count++;
 				
-				if (defined('DEBUG_NOTIFICATIONS') && DEBUG_NOTIFICATIONS) file_put_contents(CACHE_DIR."/debug_notifications", "End sending queued email ".$email->getId()."\n");
+				if (defined('DEBUG_NOTIFICATIONS') && DEBUG_NOTIFICATIONS) file_put_contents(CACHE_DIR."/debug_notifications", "End sending queued email ".$email->getId()."\n", FILE_APPEND);
 				
 			} catch (Exception $e) {
-				if (defined('DEBUG_NOTIFICATIONS') && DEBUG_NOTIFICATIONS) file_put_contents(CACHE_DIR."/debug_notifications", "Error sending queued_email ".$email->getId()."\n".$e->getMessage()."\n");
+				if (defined('DEBUG_NOTIFICATIONS') && DEBUG_NOTIFICATIONS) file_put_contents(CACHE_DIR."/debug_notifications", "Error sending queued_email ".$email->getId()."\n".$e->getMessage()."\n", FILE_APPEND);
 				if ($result) {
 					DB::rollback();
 				}
@@ -1909,6 +1954,7 @@ class Notifier {
 		
 		// Emulate mail() - use NativeMail
 		if($mail_transport_config == self::MAIL_TRANSPORT_MAIL) {
+
 			return Swift_Mailer::newInstance(Swift_MailTransport::newInstance());
 			// Use SMTP server
 		} elseif($mail_transport_config == self::MAIL_TRANSPORT_SMTP) {
@@ -2037,6 +2083,10 @@ class Notifier {
 						$attachments['logo'] = $logo_info;
 					}
 					tpl_assign('attachments', $attachments);
+					
+					$quit = false;
+					Hook::fire('filter_object_notification_single_user', array('user' => $assigned_user), $quit);
+					if ($quit) continue;
 					
 					// send notification
 					$to_addresses = array();
@@ -2210,7 +2260,7 @@ class Notifier {
 				DB::escape(array_var($parameters, 'body', '')), 
 				DB::escape(array_var($parameters, 'attachments', '')), 
 				DB::escape(array_var($parameters, 'timestamp', '')),
-				array_var($parameters, 'object_id', ''),
+				array_var($parameters, 'object_id', '0'),
 			);
 		}
 		// columns to set

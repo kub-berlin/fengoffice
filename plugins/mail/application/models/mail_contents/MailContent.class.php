@@ -155,9 +155,12 @@ class MailContent extends BaseMailContent {
 		if (is_array($rows) && count($rows) > 0) {
 			if ($rows[0]['c'] < 2) {
 				// if no other emails in conversation, delete conversation
-				DB::execute("DELETE FROM `".TABLE_PREFIX."mail_conversations` WHERE `id` = " . DB::escape($this->getCOnversationId()));
+				DB::execute("DELETE FROM `".TABLE_PREFIX."mail_conversations` WHERE `id` = " . DB::escape($this->getConversationId()));
 			}
 		}
+		// delete records from mail_contents_imap_folders
+		DB::execute("DELETE FROM `".TABLE_PREFIX."mail_content_imap_folders` WHERE `object_id` = " . DB::escape($this->getId()));
+		
 		if ($delete_db_record) {
 			return parent::delete();
 		} else {
@@ -455,7 +458,7 @@ class MailContent extends BaseMailContent {
 					}
 				}
 			} else {
-				$macs = MailAccountContacts::instance()->count(array('`account_id` = ? AND `contact_id` = ? AND `can_edit` = 1', $account->getId(), $user->getId()));
+				$macs = MailAccountContacts::instance()->count(array('`account_id` = ? AND `contact_id` = ?', $account->getId(), $user->getId()));
 				return $account->getContactId() == logged_user()->getId() || $macs > 0;
 			}
 		}else{

@@ -857,8 +857,12 @@ class MailController extends ApplicationController {
 			$errorMailId = 0;
 			
 			try {
+				$extra_state_cond = "";
+				if (defined("MAILS_MAX_OUTBOX_STATE") && is_numeric(MAILS_MAX_OUTBOX_STATE)) {
+					$extra_state_cond = " AND `state` < " . MAILS_MAX_OUTBOX_STATE;
+				}
 				$mails = MailContents::findAll(array(
-					"conditions" => array("`is_deleted`=0 AND `state` >= 200 AND `account_id` = ? AND `created_by_id` = ? $from_time_cond", $account->getId(), $accountUser->getContactId()),
+					"conditions" => array("`is_deleted`=0 AND `state` >= 200 $extra_state_cond AND `account_id` = ? AND `created_by_id` = ? $from_time_cond", $account->getId(), $accountUser->getContactId()),
 					"order" => "`state` ASC"
 				));
 				$count = 0;
@@ -929,6 +933,7 @@ class MailController extends ApplicationController {
 						// Inline images
 						preg_match_all("/<img[^>]*src=[\"'][^\"']*[\"']/", $body, $matches);
 						foreach ($matches as $match) {
+							if (!isset($match[0])) continue;
 							$pos = strpos($match[0], 'src="');
 							$url = substr($match[0], $pos + 5);
 							$url = substr($url, 0, -1);
@@ -1086,6 +1091,9 @@ class MailController extends ApplicationController {
 		}
 		ini_set('memory_limit', $old_memory_limit);
 		ajx_current("empty");
+		
+		// set a reminder if user has mails in outbox
+		$utils->check_if_outbox_has_pending_mails($user);
 		
 	}
 	
@@ -1333,7 +1341,7 @@ class MailController extends ApplicationController {
 				// if attachment is an email add the email attachments to the view
 				if (array_var($attach, 'Type') == 'message') {
 					
-					$more_atts = MailUtilities::getAttachmentsFromEmlAttachment($attach);
+					$more_atts = MailUtilities::getAttachmentsFromEmlAttachment($attach, $k);
 					$more_attachments = array_merge($more_attachments, $more_atts);
 					
 				}
@@ -1520,19 +1528,23 @@ class MailController extends ApplicationController {
 				} else {
 					// check if attachments are emails and if they have their own attachments
 					$more_attachments = array();
-					foreach ($parsed_attachments as &$attach) {
+					foreach ($parsed_attachments as $k => &$attach) {
 							
 						// if attachment is an email => get the email attachments
 						if (array_var($attach, 'Type') == 'message') {
 								
-							$more_atts = MailUtilities::getAttachmentsFromEmlAttachment($attach);
+							$more_atts = MailUtilities::getAttachmentsFromEmlAttachment($attach, $k);
 							$more_attachments = array_merge($more_attachments, $more_atts);
 								
 						}
 					}
 					
-					// join the attachments arrays and get the requested attachment
-					$attachments = array_merge($attachments, $more_attachments);
+					// join the attachments arrays
+					foreach ($more_attachments as $k => $more_attachment) {
+						$this_att_id = $more_attachment['inside_attachment'];
+						$attachments[$this_att_id] = $more_attachment;
+					}
+					// get the requested attachment
 					if (isset($attachments[$attId])) {
 						$attachment = $attachments[$attId];
 					}
@@ -1548,6 +1560,9 @@ class MailController extends ApplicationController {
 		}
 
 		$content = $attachment[$data_field];
+		
+		// remove invalid characters from file name
+		$attachment[$name_field] = str_replace("%", "_", $attachment[$name_field]);
 		
 		// if file is binary, then get the content using another mail parser, because mime_parser_class sometimes returns corrupt pdfs 
 		if ($attachment['Type'] == 'binary') {
@@ -1746,6 +1761,9 @@ class MailController extends ApplicationController {
 	 */
 	function do_classify_mail($email, $members, $classification_data = null, $process_conversation = true, $after_receiving = false, $only_attachments = false) {
 		try {
+			$null = null;
+			Hook::fire('before_classify_additional_verifications', array('object' => $email, 'member_ids' => $members, 'after_receiving' => $after_receiving), $null);
+			
 			$ctrl = new ObjectController();
 			$create_task = false;//array_var($classification_data, 'create_task') == 'checked';
 			
@@ -1846,6 +1864,15 @@ class MailController extends ApplicationController {
 				if (!$after_receiving) {
 					DB::commit();
 				}
+				
+				$ignored = null;
+				Hook::fire('after_classify_mail', array(
+					'email' => $email, 
+					'previous_member_ids' => $previous_member_ids, 
+					'new_member_ids' => $members,
+					'conversation' => isset($conversation) ? $conversation : null,
+					'process_conversation' => $process_conversation
+				), $ignored);
 				
 				$success_message = lang('success classify email');
 				if (isset($valid_members) && count($valid_members) > 0) {
@@ -2218,6 +2245,8 @@ class MailController extends ApplicationController {
 				}
 				$mailAccount->setMemberId($member_ids_str);
 				
+				$mailAccount->setColumnValue('can_detect_special_folders', array_var($_POST, 'can_detect_special_folders'));
+				
 				DB::beginWork();
 				$mailAccount->save();
 				
@@ -2240,32 +2269,37 @@ class MailController extends ApplicationController {
 					}
 				}
 				
-				if ($mailAccount->getIsImap() && is_array(array_var($_POST, 'check'))) {
-					$real_folders = MailUtilities::getImapFolders($mailAccount);
-					foreach ($real_folders as $folder_name) {
-						if (!MailAccountImapFolders::findById(array('account_id' => $mailAccount->getId(), 'folder_name' => $folder_name))) {
-							$acc_folder = new MailAccountImapFolder();
-							$acc_folder->setAccountId($mailAccount->getId());
-							$acc_folder->setFolderName($folder_name);
-							$acc_folder->setCheckFolder($folder_name == 'INBOX');// By default only INBOX is checked
-		
+				if ($mailAccount->getIsImap()) {
+					$sent_folders_data = array_var($_POST, 'imap_folders');
+					if (is_array($sent_folders_data)) {
+						foreach ($sent_folders_data as $sent_name => $folder_data) {
+							$folder_name = str_replace(array('¡','!'), array('[',']'), $sent_name);//to avoid a mistaken array if name contains [
+							$acc_folder = MailAccountImapFolders::findById(array('account_id' => $mailAccount->getId(), 'folder_name' => $folder_name));
+							if (!$acc_folder instanceof MailAccountImapFolder) {
+								$acc_folder = new MailAccountImapFolder();
+								$acc_folder->setAccountId($mailAccount->getId());
+								$acc_folder->setFolderName($folder_name);
+							}
+							$acc_folder->setCheckFolder(array_var($folder_data, 'check') == 'checked');
+							$acc_folder->setSpecialUse($folder_data['special_use']);
 							$acc_folder->save();
 						}
-					}
-					$imap_folders = MailAccountImapFolders::getMailAccountImapFolders($mailAccount->getId());
-					
-					$checks = array_var($_POST, 'check');
-					if (is_array($imap_folders) && count($imap_folders)) {
-						foreach ($imap_folders as $folder) {
-							$folder->setCheckFolder(false);
-							foreach ($checks as $name => $cf) {
-								$name = str_replace(array('¡','!'), array('[',']'), $name);//to avoid a mistaken array if name contains [ 
-								if (strcasecmp($name, $folder->getFolderName()) == 0) {
-									$folder->setCheckFolder($cf == 'checked');
-									break;
-								}
+						
+					} else {
+						$mu = new MailUtilities();
+						$can_detect_special_folders = false;
+						$real_folders = $mu->get_imap_account_mailboxes($mailAccount, $can_detect_special_folders);
+						foreach ($real_folders as $folder_data) {
+							$folder_name = array_var($folder_data['name']);
+							if (!MailAccountImapFolders::findById(array('account_id' => $mailAccount->getId(), 'folder_name' => $folder_name))) {
+								$acc_folder = new MailAccountImapFolder();
+								$acc_folder->setAccountId($mailAccount->getId());
+								$acc_folder->setFolderName($folder_name);
+								$acc_folder->setCheckFolder($folder_name == 'INBOX');// By default only INBOX is checked
+								$acc_folder->setSpecialUse($folder_data['special_use']);
+						
+								$acc_folder->save();
 							}
-							$folder->save();
 						}
 					}
 				}
@@ -2308,6 +2342,9 @@ class MailController extends ApplicationController {
 									AND mc.`account_id` NOT IN (SELECT `id` FROM `" . TABLE_PREFIX . "mail_accounts`)");
 				
 				DB::commit();
+				
+				$null = null;
+				Hook::fire('after_mail_account_save', array('account' => $mailAccount, 'is_new' => true), $null);
 
 				flash_success(lang('success add mail account', $mailAccount->getName()));
 				ajx_current("back");
@@ -2369,6 +2406,7 @@ class MailController extends ApplicationController {
 			if ($mailAccount->getIsImap()) {
 				$imap_folders = MailAccountImapFolders::getMailAccountImapFolders($mailAccount->getId());
 				tpl_assign('imap_folders', $imap_folders);
+				tpl_assign('can_detect_special_folders', $mailAccount->getColumnValue('can_detect_special_folders'));
 			}
 		}
 		
@@ -2462,26 +2500,24 @@ class MailController extends ApplicationController {
 						$mailAccount->setContactId($mail_account_user->getId());
 					}
 					
-					//If imap, save folders to check
-					if($mailAccount->getIsImap() && is_array(array_var($_POST, 'check'))) {
-					  	$checks = array_var($_POST, 'check');
+					if ($mailAccount->getIsImap()) {
+						$sent_folders_data = array_var($_POST, 'imap_folders');
+						if (is_array($sent_folders_data)) {
+							foreach ($sent_folders_data as $sent_name => $folder_data) {
+								$folder_name = str_replace(array('¡','!'), array('[',']'), $sent_name);//to avoid a mistaken array if name contains [
+								$acc_folder = MailAccountImapFolders::findById(array('account_id' => $mailAccount->getId(), 'folder_name' => $folder_name));
+								if (!$acc_folder instanceof MailAccountImapFolder) {
+									$acc_folder = new MailAccountImapFolder();
+									$acc_folder->setAccountId($mailAccount->getId());
+									$acc_folder->setFolderName($folder_name);
+								}
+								$acc_folder->setCheckFolder(array_var($folder_data, 'check') == 'checked');
+								$acc_folder->setSpecialUse($folder_data['special_use']);
+								$acc_folder->save();
+							}
+						}
 						
-					  	$names = array();
-					  	foreach ($checks as $name => $checked) {
-					  		$name = str_replace(array('¡','!'), array('[',']'), $name);//to avoid a mistaken array if name contains [
-					  		$names[] = $name;
-					  		$imap_folder = MailAccountImapFolders::instance()->findOne(array('conditions' => array('folder_name = ? AND account_id = ?', $name,$mailAccount->getId())));
-					  		if (!$imap_folder instanceof MailAccountImapFolder) {
-					  			$imap_folder = new MailAccountImapFolder();
-					  			$imap_folder->setAccountId($mailAccount->getId());
-					  			$imap_folder->setFolderName($name);
-					  		}
-					  		$imap_folder->setCheckFolder($checked == 'checked');
-					  		$imap_folder->save();
-					  	}
-					  	if (count($names) > 0) {
-					  		DB::execute("UPDATE ".TABLE_PREFIX."mail_account_imap_folder SET check_folder=0 WHERE account_id=".$mailAccount->getId()." AND folder_name NOT IN ('".implode("','",$names)."')");
-					  	}
+						$mailAccount->setColumnValue('can_detect_special_folders', array_var($_POST, 'can_detect_special_folders'));
 					}
 					
 					// default dimension members where new emails will be classified
@@ -2550,6 +2586,9 @@ class MailController extends ApplicationController {
 				}
 				
 				DB::commit();
+				
+				$null = null;
+				Hook::fire('after_mail_account_save', array('account' => $mailAccount, 'is_new' => false), $null);
 
 				flash_success(lang('success edit mail account', $mailAccount->getName()));
 				ajx_current("back");
@@ -2631,6 +2670,9 @@ class MailController extends ApplicationController {
 			 
 			DB::beginWork();
 			$account->delete($deleteMails);
+			
+			$null = null;
+			Hook::fire('mail_account_deleted', array("id" => $accId), $null);
 			DB::commit();
 
 			evt_add("mail account deleted", array(
@@ -2892,11 +2934,18 @@ class MailController extends ApplicationController {
 	 * @return array
 	 */
 	private function getEmails($attributes, $context = null, $start = null, $limit = null, $order_by = 'sent_date', $dir = 'ASC',$join_params = null, $conversation_list = null, $only_count_result = null, $extra_cond="") {
+		
+		if (!array_var($_REQUEST, 'dont_override_account_filter')) {
+			Hook::fire('override_email_account_filter', array('context' => $context, 'start' => $start, 'limit' => $limit, 'order_by' => $order_by, 'order_dir' => $dir), $attributes);
+		}
+		Hook::fire('override_email_list_filters', array('context' => $context, 'start' => $start, 'limit' => $limit, 'order_by' => $order_by, 'order_dir' => $dir), $attributes);
+		
 		// Return if no emails should be displayed
 		if (!isset($attributes["viewType"]) || ($attributes["viewType"] != "all" && $attributes["viewType"] != "emails")) return null;
 		$account = array_var($attributes, "accountId");
 		$classif_filter = array_var($attributes, 'classifType');
 		$read_filter = array_var($attributes, 'readType');
+		$archived_filter = array_var($attributes, 'archivedType');
 		
 		//set_user_config_option('mails account filter', $account, logged_user()->getId());
 		//set_user_config_option('mails classification filter', $classif_filter, logged_user()->getId());
@@ -2904,7 +2953,7 @@ class MailController extends ApplicationController {
 		
 		$state = array_var($attributes, 'stateType');
 		
-		$result = MailContents::getEmails($account, $state, $read_filter, $classif_filter, $context, $start, $limit, $order_by, $dir, $join_params, null, $conversation_list, $only_count_result, $extra_cond);
+		$result = MailContents::getEmails($account, $state, $read_filter, $classif_filter, $context, $start, $limit, $order_by, $dir, $join_params, $archived_filter, $conversation_list, $only_count_result, $extra_cond);
 		
 
 		return $result;
@@ -3162,7 +3211,7 @@ class MailController extends ApplicationController {
 					switch ($type){
 						case "email":
 							$email = MailContents::findById($id);
-							if (isset($email) && !$email->isDeleted() && $email->canEdit(logged_user())){
+							if ($email instanceof MailContent && !$email->isDeleted() && $email->canEdit(logged_user())){
 								$this->do_unclassify($email);
 								ApplicationLogs::createLog($email, $email->getWorkspaces(), ApplicationLogs::ACTION_TAG,false,null,true,$tag);
 								$resultMessage = lang("success unclassify emails", count($attributes["ids"]));
@@ -3193,7 +3242,7 @@ class MailController extends ApplicationController {
 					switch ($type){
 						case "email":
 							$email = MailContents::findById($id);
-							if (isset($email)) {
+							if ($email instanceof MailContent) {
 								if (user_config_option('show_emails_as_conversations', true, logged_user()->getId())) {
 									$emails_in_conversation = MailContents::getMailsFromConversation($email);
 								} else {
@@ -3225,7 +3274,7 @@ class MailController extends ApplicationController {
 					switch ($type){
 						case "email":
 							$email = MailContents::findById($id);
-							if (isset($email)) {
+							if ($email instanceof MailContent) {
 								if (user_config_option('show_emails_as_conversations', true, logged_user()->getId())) {
 									$emails_in_conversation = MailContents::getMailsFromConversation($email);
 								} else {
@@ -3301,6 +3350,7 @@ class MailController extends ApplicationController {
 	}
 
 	function fetch_imap_folders() {
+		$account_id = trim(array_var($_GET, 'account_id'));
 		$server = trim(array_var($_GET, 'server'));
 		$ssl = array_var($_GET, 'ssl') == "checked";
 		$port = array_var($_GET, 'port');
@@ -3315,21 +3365,146 @@ class MailController extends ApplicationController {
 		$account->setEmail($email);
 		$account->setPassword(MailUtilities::ENCRYPT_DECRYPT($pass));
 		$account->setServer($server);
+		
+		$checked_folders = array();
+		$real_account = MailAccounts::findById($account_id);
+		if ($real_account instanceof MailAccount) {
+			$folders_to_check = MailAccountImapFolders::getMailAccountImapFolders($real_account->getId());
+			if (is_array($folders_to_check) && count($folders_to_check) > 0) {
+				foreach ($folders_to_check as $folder_to_check) {
+					if ($folder_to_check->getCheckFolder()) {
+						$checked_folders[] = $folder_to_check->getFolderName();
+					}
+				}	
+			}
+		} 
+		$check_all_folders = count($checked_folders) == 0;
 
 		try {
-			$real_folders = MailUtilities::getImapFolders($account);
+			$can_detect_special_folders = false;
+			$mu = new MailUtilities();
+			$real_folders = $mu->get_imap_account_mailboxes($account, $can_detect_special_folders);
 			$imap_folders = array();
-			foreach ($real_folders as $folder_name) {
+			foreach ($real_folders as $folder_data) {
 				$acc_folder = new MailAccountImapFolder();
 				$acc_folder->setAccountId(0);
-				$acc_folder->setFolderName($folder_name);
-				$acc_folder->setCheckFolder($folder_name == 'INBOX');// By default only INBOX is checked
+				$acc_folder->setFolderName($folder_data['name']);
+				
+				$check_this_folder = $check_all_folders || in_array($folder_data['name'], $checked_folders);
+				$acc_folder->setCheckFolder($check_this_folder);
+				if ($can_detect_special_folders) {
+					$acc_folder->setSpecialUse($folder_data['special_use']);
+				} else {
+					$fname = substr_utf($folder_data['name'], strpos($folder_data['name'], $folder_data['delimiter'])+1);
+					if (in_array("\\$fname", $mu->getSpecialImapFolderCodes())) {
+						$acc_folder->setSpecialUse("\\$fname");
+					}
+				}
+				
 				$imap_folders[] = $acc_folder;
 			}
 			tpl_assign('imap_folders', $imap_folders);
+			tpl_assign('can_detect_special_folders', $can_detect_special_folders);
+			
+			evt_add('clean_mail_auth_error_message', array('genid' => $genid));
+			
 		} catch (Exception $e) {
 			Logger::log($e->getMessage());
-			Logger::log($e->getTraceAsString());
+			
+			$this->show_email_account_error($account, $e, $genid);
+		}
+	}
+	
+	
+	
+	function check_mail_account_connection() {
+		ajx_current("empty");
+		
+		$account_id = trim(array_var($_REQUEST, 'account_id'));
+		$server = trim(array_var($_REQUEST, 'server'));
+		$ssl = array_var($_REQUEST, 'ssl') == "checked";
+		$port = array_var($_REQUEST, 'port');
+		$email = trim(array_var($_REQUEST, 'email'));
+		$pass = array_var($_REQUEST, 'pass');
+		$is_imap = array_var($_REQUEST, 'is_imap');
+		$genid = array_var($_REQUEST, 'genid');
+		$hide_success_msg = array_var($_REQUEST, 'hide_success_msg');
+		
+		
+		$account = new MailAccount();
+		$account->setIsImap($is_imap);
+		$account->setIncomingSsl($ssl);
+		$account->setIncomingSslPort($port);
+		$account->setEmail($email);
+		$account->setPassword(MailUtilities::ENCRYPT_DECRYPT($pass));
+		$account->setServer($server);
+		
+		// try to make the connection, show the message if an error ocurred
+		try {
+			if ($account->getIsImap()) {
+				$imap = $account->imapConnect();
+				$ret = $imap->login($account->getEmail(), MailUtilities::ENCRYPT_DECRYPT($account->getPassword()),null,false);
+				if ($ret !== true || PEAR::isError($ret)) {
+					throw new Exception($ret->getMessage());
+				}
+				$imap->disconnect();
+				
+			} else {
+				require_once "Net/POP3.php";
+				
+				$pop3 = new Net_POP3();
+				if ($account->getIncomingSsl()) {
+					$pop3->connect("ssl://" . $account->getServer(), $account->getIncomingSslPort());
+				} else {
+					$pop3->connect($account->getServer());
+				}
+				if (PEAR::isError($ret=$pop3->login($account->getEmail(), MailUtilities::ENCRYPT_DECRYPT($account->getPassword()), 'USER'))) {
+					throw new Exception($ret->getMessage());
+				}
+				$pop3->disconnect();
+			}
+			
+			if (!$hide_success_msg) {
+				flash_success(lang("connection data is correct"));
+			}
+			evt_add('clean_mail_auth_error_message', array('genid' => $genid));
+			
+		} catch (Exception $e) {
+			
+			Logger::log("ERROR CHECKING ACCOUNT CONNECTION:\n".$e->getMessage());
+			
+			$this->show_email_account_error($account, $e, $genid);
+		}
+		
+	}
+	
+	private function show_email_account_error($account, Exception $e, $genid) {
+	
+		$error_shown = false;
+		
+		// for gmail accounts: check if user has to use the unlock captcha function to enable the connection
+		if (strpos($server, "gmail.com") !== false) {
+			$unlock_captcha_msg = "Please log in via your web browser";
+			if (strpos($e->getMessage(), $unlock_captcha_msg) !== false) {
+				evt_add('go_to_gmail_unlock_captcha', array('genid' => $genid));
+				$error_shown = true;
+			}
+		}
+		
+		if (!$error_shown) {
+			$error_message = lang('error connecting to mail server');
+			$error_message .= '</br>'. lang('mail server response') . ":";
+			$error_message .= '</br><span class="bold">'. $e->getMessage() .'</span>';
+			
+			$auth_fail_msgs = array('[AUTHENTICATIONFAILED]', '[AUTH]');
+			foreach ($auth_fail_msgs as $auth_fail_msg) {
+				if (strpos($e->getMessage(), $auth_fail_msg) !== false) {
+					$error_message .= '</br></br>'. lang('ensure that your password is correct');
+					break;
+				}
+			}
+			
+			evt_add('show_mail_auth_error_message', array('genid' => $genid, 'message' => $error_message));
 		}
 	}
 
@@ -3543,6 +3718,9 @@ class MailController extends ApplicationController {
 			$object = $this->prepareObject($emails, $start, $limit, $total,$attributes);
 			
 			ajx_extra_data(array('mails' => $object['messages'], 'context_sent' => array_var($_REQUEST, 'context')));
+			
+			$ret = null;
+			Hook::fire('after_check_if_new_mails', $attributes, $ret);
 			
 		} catch (Exception $e) {
 			

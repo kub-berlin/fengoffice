@@ -59,7 +59,8 @@
 	'config option name notification_from_name' => 'Nombre del emisor',
 	'config option name show company logo in notifications' => 'Adjuntar el logo de la organización al contenido de notificaciones',
     'config option desc show company logo in notifications' => 'Se incluirá el logo de la organización en el contenido de la notificación.',
-	'config option name min_password_length' => 'Tamaño mínimo de la contraseña',
+    'config option name disable_notifications_for_object_type' => 'Desactivar notificaciones por tipo de objecto',
+    'config option name min_password_length' => 'Tamaño mínimo de la contraseña',
 	'config option desc min_password_length' => 'Cantidad mínima de caracteres requerida para la contraseña',
 	'config option name password_numbers' => 'Números en la contraseña',
 	'config option desc password_numbers' => 'Cantidad de caracteres numéricos requeridos para la contraseña',
@@ -624,4 +625,7 @@
 		
 		'config option desc show images in document notifications' => 'Si el documento es una imagen será adjuntado en el contenido de las notificaciones.',
 		'user config option name show_inactive_users_in_list' => 'Mostrar usuarios inactivos en el listado de contactos',
+		
+		'user config option name show_associated_dims_in_breadcrumbs' => 'Mostrar dimensiones asociadas en las rutas de ubicación (breadcrumbs) de objetos',
+  		'user config option desc show_associated_dims_in_breadcrumbs' => 'Si se habilita entonces las dimensiones asciadas (ej: Tipo de proyecto, Estado de proyecto, etc.) serán incluídas en las rutas de ubicación del objeto.',
 );

@@ -265,8 +265,7 @@ if ($calendar_panel instanceof TabPanel && $calendar_panel->getEnabled()) {
 						} elseif($event instanceof ProjectMilestone ){
 							$milestone = $event;
 							
-							$tz_value = Timezones::getTimezoneOffsetToApply($event, logged_user());
-							$due_date = new DateTimeValue($milestone->getDueDate()->getTimestamp() + $tz_value);
+							$due_date = new DateTimeValue($milestone->getDueDate()->getTimestamp());
 							
 							if ($dtv->getTimestamp() == mktime(0,0,0,$due_date->getMonth(),$due_date->getDay(),$due_date->getYear())) {	
 								$count++;
@@ -305,15 +304,17 @@ if ($calendar_panel instanceof TabPanel && $calendar_panel->getEnabled()) {
 							//$task = $event;
 							
 							$tz_value = Timezones::getTimezoneOffsetToApply($event, logged_user());
+							$tz_value_due = $event['use_due_time'] ? $tz_value : 0;
+							$tz_value_start = $event['use_start_time'] ? $tz_value : 0;
 							
 							$start_of_task = false;
 							$end_of_task = false;
 							if ($event['due_date'] != EMPTY_DATETIME){
-								$due_date = new DateTimeValue(strtotime($event['due_date']) + $tz_value);
+								$due_date = new DateTimeValue(strtotime($event['due_date']) + $tz_value_due);
 								if ($dtv->getTimestamp() == mktime(0,0,0, $due_date->getMonth(), $due_date->getDay(), $due_date->getYear())) $end_of_task = true;
 							}
 							if ($event['start_date'] != EMPTY_DATETIME){
-								$start_date = new DateTimeValue(strtotime($event['start_date']) + $tz_value);
+								$start_date = new DateTimeValue(strtotime($event['start_date']) + $tz_value_start);
 								if ($dtv->getTimestamp() == mktime(0,0,0, $start_date->getMonth(), $start_date->getDay(), $start_date->getYear())) $start_of_task = true;
 							}
 							

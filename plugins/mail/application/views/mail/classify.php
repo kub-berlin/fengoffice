@@ -13,7 +13,11 @@
 	<input type="hidden" name="submit" value="1" />
 	
 	<div class="classify mail-classify-selector">
-		<?php render_member_selectors(MailContents::instance()->getObjectTypeId(), $genid, $email->getMemberIds()); ?>
+		<?php 
+			$options = array();
+			Hook::fire('modify_mail_classify_selector_options', array('object'=>$email, 'genid'=>$genid), $options);
+			
+			render_member_selectors(MailContents::instance()->getObjectTypeId(), $genid, $email->getMemberIds(), $options); ?>
 			
 		<?php 
 		if (!$only_attachments && user_config_option('mail_drag_drop_prompt') == 'prompt' && $email->getHasAttachments()) {

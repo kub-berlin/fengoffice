@@ -375,7 +375,8 @@
 	'config option desc show images in document notifications' => 'Si el documento es una imagen se incluirá la misma en el contenido de la notificación.',
 	'config option name show company logo in notifications' => 'Adjuntar el logo de la organización al contenido de notificaciones',
     'config option desc show company logo in notifications' => 'Se incluirá el logo de la organización en el contenido de la notificación.',
-	'config option name use_time_in_task_dates' => 'Utilizar horas en fechas de tarea',
+    'config option name disable_notifications_for_object_type' => 'Desactivar notificaciones por tipo de objecto',
+    'config option name use_time_in_task_dates' => 'Utilizar horas en fechas de tarea',
 	'config option desc use_time_in_task_dates' => 'Permite ingresar hora de fin y hora de inicio de tareas.',
 	'user config category name mails panel' => 'Opciones del módulo de Correo',
 	'user config option name show pending tasks widget' => 'Mostrar widget de tareas pendientes',
@@ -698,4 +699,7 @@
 		
 		'config option desc show images in document notifications' => 'Si el documento es una imagen será adjuntado en el contenido de las notificaciones.',
 		'user config option name show_inactive_users_in_list' => 'Mostrar usuarios inactivos en el listado de contactos',
+		
+		'user config option name show_associated_dims_in_breadcrumbs' => 'Mostrar dimensiones asociadas en las rutas de ubicación (breadcrumbs) de objetos',
+  		'user config option desc show_associated_dims_in_breadcrumbs' => 'Si se habilita entonces las dimensiones asciadas (ej: Tipo de proyecto, Estado de proyecto, etc.) serán incluídas en las rutas de ubicación del objeto.',
 );

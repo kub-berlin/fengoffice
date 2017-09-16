@@ -41,12 +41,18 @@ for ($i = $depth; $i <= $max_depth['depth']; $i++) {
 echo "\nStart Truncate  contact_member_cache\n-----------------------------------------------------------------";
 DB::execute("TRUNCATE TABLE ".TABLE_PREFIX."contact_member_cache;");
 echo "\nEnd Truncate  contact_member_cache\n-----------------------------------------------------------------";
-$users = Contacts::getAllUsers();
+
+$resource_cond = "";
+if (Plugins::instance()->isActivePlugin('advanced_services')) {
+	$resource_cond = " AND is_resource=0 ";
+}
+
+$users = Contacts::getAllUsers($resource_cond);
 
 $dimensions = Dimensions::findAll();
 $dimensions_ids = array();
 foreach ($dimensions as $dimension) {
-	if ($dimension->getDefinesPermissions()) {
+	if ($dimension->getDefinesPermissions() && $dimension->getCode() != 'feng_persons') {
 		$dimensions_ids[] = $dimension->getId();
 	}
 }

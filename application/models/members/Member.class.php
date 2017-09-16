@@ -333,9 +333,11 @@ class Member extends BaseMember {
 	
 	function getObjectClass() {
 		if ($handler = $this->getObjectHandlerClass() ) {
-			eval ("\$itemClass = $handler::instance()->getItemClass();");
-			if ($itemClass) {
-				return $itemClass ;
+			if (class_exists($handler)) {
+				eval ("\$itemClass = $handler::instance()->getItemClass();");
+				if ($itemClass) {
+					return $itemClass ;
+				}
 			}
 		}
 		return '' ;
@@ -676,7 +678,7 @@ class Member extends BaseMember {
 	function getDataForHistory() {
 		$previous_data = array();
 		
-		$previous_data['original_member'] = Members::findById($this->getId());
+		$previous_data['original_member_data'] = DB::executeOne("SELECT * FROM ".TABLE_PREFIX."members WHERE id=".$this->getId());
 		
 		if (Plugins::instance()->isActivePlugin('member_custom_properties')) {
 			$previous_data['custom_properties'] = MemberCustomPropertyValues::instance()->getAllCustomPropertyValues($this->getId());

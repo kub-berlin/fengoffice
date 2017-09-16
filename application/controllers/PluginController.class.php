@@ -354,11 +354,14 @@ static function executeInstaller($name) {
 			DB::execute("UPDATE ".TABLE_PREFIX."plugins SET is_installed=1 WHERE name='$name'");
 			
 			DB::commit ();
+			
+			@unlink(ROOT . '/cache/autoloader.php');
+			
 			return true;
 		}
 		
 	} catch (Exception $e) {
-		//echo $e->getMessage();
+		Logger::log("ERROR installing plugin $name".$e->getMessage());
 		DB::rollback();
 		throw $e;
 	}

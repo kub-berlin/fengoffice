@@ -956,7 +956,11 @@ function create_user($user_data, $permissionsString, $rp_permissions_data = arra
 
 	if ( can_manage_security(logged_user()) ) {
 		
-		$sp = new SystemPermission();
+		$sp = SystemPermissions::instance()->findById($permission_group->getId());
+		if (!$sp instanceof SystemPermission) {
+			$sp = new SystemPermission();
+			$sp->setPermissionGroupId($permission_group->getId());
+		}
 		if (!$user_from_contact) {
 			$rol_permissions=SystemPermissions::getRolePermissions(array_var($user_data, 'type'));
 			if (is_array($rol_permissions)) {
@@ -965,7 +969,6 @@ function create_user($user_data, $permissionsString, $rp_permissions_data = arra
 				}
 			}
 		}
-		$sp->setPermissionGroupId($permission_group->getId());
 
 		if (isset($user_data['can_manage_security'])) $sp->setCanManageSecurity(array_var($user_data, 'can_manage_security'));
 		if (isset($user_data['can_manage_configuration'])) $sp->setCanManageConfiguration(array_var($user_data, 'can_manage_configuration'));
@@ -2422,7 +2425,8 @@ function copy_additional_object_data($object, &$copy, $options=array()) {
 		$object_members = $object->getMembers();
 		$copy->addToMembers($object_members);
 		Hook::fire ('after_add_to_members', $copy, $object_members);
-		add_object_to_sharing_table($copy, logged_user());
+		$copy->addToSharingTable();
+		//add_object_to_sharing_table($copy, logged_user());
 	}
 
 	// copy linked objects

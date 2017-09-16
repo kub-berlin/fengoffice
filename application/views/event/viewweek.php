@@ -125,7 +125,7 @@ $(function(){
 			$today_style[$day_of_week] = 'background-color:#E4EEEE;opacity:0.4;filter: alpha(opacity = 40);z-index=0;';
 		}
 
-		$results[$day_of_week] = ProjectEvents::getDayProjectEvents($dates[$day_of_week], active_context(), $user_filter, $status_filter); 
+		$results[$day_of_week] = ProjectEvents::getDayProjectEvents($dates[$day_of_week], active_context(), $user_filter, $status_filter, false, array('order_dir' => 'DESC')); 
 		if(!$results[$day_of_week]) $results[$day_of_week]=array();
 		foreach ($results[$day_of_week] as $key => $event){
 			if ($event->getTypeId()> 1){
@@ -150,10 +150,12 @@ $(function(){
 			foreach ($tmp_tasks as $task) {
 				$added = false;
 				$tz_value = Timezones::getTimezoneOffsetToApply($task, logged_user());
+				$tz_value_due = $task->getUseDueTime() ? $tz_value : 0;
+				$tz_value_start = $task->getUseStartTime() ? $tz_value : 0;
 				
 				if ($task->getDueDate() instanceof DateTimeValue){
 					
-					$due_date = new DateTimeValue($task->getDueDate()->getTimestamp() + $tz_value);
+					$due_date = new DateTimeValue($task->getDueDate()->getTimestamp() + $tz_value_due);
 					
 					if ($dates[$day_of_week]->getTimestamp() == mktime(0,0,0, $due_date->getMonth(), $due_date->getDay(), $due_date->getYear())) {
 						if ($task->getUseDueTime() && ($task->getStartDate() instanceof DateTimeValue || $task->getTimeEstimate() > 0)) {
@@ -166,7 +168,8 @@ $(function(){
 					}
 				}
 				if ($task->getStartDate() instanceof DateTimeValue){
-					$start_date = new DateTimeValue($task->getStartDate()->getTimestamp() + $tz_value);
+					$start_date = new DateTimeValue($task->getStartDate()->getTimestamp() + $tz_value_start);
+					
 					if (!$added && $dates[$day_of_week]->getTimestamp() == mktime(0,0,0, $start_date->getMonth(), $start_date->getDay(), $start_date->getYear())) {
 						if ($task->getUseStartTime() && ($task->getDueDate() instanceof DateTimeValue|| $task->getTimeEstimate() > 0)) {
 							$results[$day_of_week][] = $task;
@@ -383,19 +386,19 @@ $(function(){
 										$is_repe_task = $event->isRepetitive();
 										
 										$tz_value = Timezones::getTimezoneOffsetToApply($task, logged_user());
+										$tz_value_due = $event->getUseDueTime() ? $tz_value : 0;
+										$tz_value_start = $event->getUseStartTime() ? $tz_value : 0;
 										
 										if ($event->getDueDate() instanceof DateTimeValue) {
-											$due_date = new DateTimeValue($event->getDueDate()->getTimestamp() + $tz_value);
+											$due_date = new DateTimeValue($event->getDueDate()->getTimestamp() + $tz_value_due);
 											if ($dates[$day_of_week]->getTimestamp() == mktime(0,0,0, $due_date->getMonth(), $due_date->getDay(), $due_date->getYear())){
 												$end_of_task = true;
-												$start_of_task = true;
 											}
 										}
 										if ($event->getStartDate() instanceof DateTimeValue) {
-											$start_date = new DateTimeValue($event->getStartDate()->getTimestamp() + $tz_value);
+											$start_date = new DateTimeValue($event->getStartDate()->getTimestamp() + $tz_value_start);
 											if ($dates[$day_of_week]->getTimestamp() == mktime(0,0,0, $start_date->getMonth(), $start_date->getDay(), $start_date->getYear())) {
 												$start_of_task = true;
-												$end_of_task = true;
 											}
 										}
 										if ($start_of_task && $end_of_task) {
@@ -946,7 +949,7 @@ onmouseup="og.showEventPopup(<?php echo $date->getDay() ?>, <?php echo $date->ge
 	});
 	
 	resizer.on('resize', function() {
-		for (var dow=0; dow<5; dow++) {
+		for (var dow=0; dow<7; dow++) {
 			og.adjustAllDayEventsHeight(genid);
 		}
 	});

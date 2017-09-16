@@ -48,3 +48,6 @@ blockquote {
 	color: #dd4b39;
 }
 
+.mail-account-item label {
+	max-width: 650px;
+}

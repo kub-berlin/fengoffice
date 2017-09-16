@@ -228,7 +228,8 @@ foreach ($all_type_codes as $type_code) {
 	<div class="info-type" ><?php echo lang('user type') ?></div>
 	<div class="info-content">
 		<div class="<?php echo ($is_alt ? 'alt-row' : '')?> info-content-item"><?php 
-			echo $contact->getUserTypeName(); 
+			echo $contact->getUserTypeName();
+			$null = null; Hook::fire('user_card_user_type_more_info', $contact, $null); 
 		?></div>
 	</div>
 	<div class="clear"></div>

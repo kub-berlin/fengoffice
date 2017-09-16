@@ -82,7 +82,7 @@ var editor = CKEDITOR.replace('<?php echo $genid ?>ckeditor', {
 	contentsCss: ['<?php echo get_javascript_url('ckeditor/contents.css').'?rev='.product_version_revision();?>', '<?php echo get_stylesheet_url('og/ckeditor_override.css').'?rev='.product_version_revision();?>'],
 	toolbar: [
 				['Source','-','PasteText','PasteFromWord','-','Print', 'SpellChecker', 'Scayt','-',
-				'Undo','Redo','-','Find','Replace','-','SelectAll', '-',
+				'Undo','Redo','-','Find','Replace','-','SelectAll',
 				'Format','Font','FontSize'],
 				'/',
 				['Bold','Italic','Underline','Strike','-','Subscript','Superscript','-',

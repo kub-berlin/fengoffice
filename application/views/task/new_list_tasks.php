@@ -305,19 +305,25 @@ ogTasks.custom_properties = <?php echo json_encode($cps_definition)?>;
 		});
 	}
 	
-	
 
+    ogTasks.additional_groupby_dimensions_member_types = [];
 
-	// tasks group by dimensions
-	var dimensions_panel = Ext.getCmp('menu-panel');
-	ogTasks.additional_groupby_dimensions = [];
-	dimensions_panel.items.each(function(item, index, length) {
-		ogTasks.additional_groupby_dimensions.push({
-			id: item.dimensionId,
-			name: item.title
-		});
-	});
-	
+    <?php
+    $enabled_dimension_ids = config_option('enabled_dimensions');
+    $enabled_dimensions = Dimensions::findAll(array('conditions' => '`id` IN ('. implode(",", $enabled_dimension_ids) .')'));
+    foreach ($enabled_dimensions as $enabled_dimension) {
+        $ot_ids = implode(",", DimensionObjectTypes::getObjectTypeIdsByDimension($enabled_dimension->getId()));
+        $dimension_obj_types = ObjectTypes::findAll(array("conditions" => "`id` IN ($ot_ids)"));
+        foreach ($dimension_obj_types as $ot) {
+            if ($ot->getName() != 'project_folder' && $ot->getName() != 'customer_folder') {
+                echo 'ogTasks.additional_groupby_dimensions_member_types.push({dim_id: ' . $enabled_dimension->getId() . ', dim_name:"' . $enabled_dimension->getName() . '", mem_type_id: ' . $ot->getId() . ', mem_type_name:"' . lang($ot->getName()) . '"});';
+
+            }
+        }
+    }
+
+    ?>
+
 
 	Handlebars.registerHelper('isTasksColumnCPVisible', function (cp_id) {
 		if (ogTasks && ogTasks.userPreferences) {

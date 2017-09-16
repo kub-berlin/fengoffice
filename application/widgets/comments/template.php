@@ -14,7 +14,7 @@
 			$style = '';
 			$row_cls = "";
 			foreach ($comments as $k => $comment): /* @var $comment Comment */
-				$crumbOptions = json_encode($comment->getMembersToDisplayPath());
+				$crumbOptions = json_encode($comment->getMembersIdsToDisplayPath());
 				if($crumbOptions == ""){
 					$crumbOptions = "{}";
 				}
@@ -34,7 +34,7 @@
 						<table class="comment-info-table">
 							<tr>
 								<td class="comment-object">
-									<a href="<?php echo $comment->getViewUrl() ?>" title="<?php echo lang('comment posted on by linktitle', format_datetime($comment->getCreatedOn()), clean($comment->getCreatedByDisplayName())) ?>">
+									<a href="#" onclick="og.openLink('<?php echo $comment->getViewUrl() ?>');" title="<?php echo lang('comment posted on by linktitle', format_datetime($comment->getCreatedOn()), clean($comment->getCreatedByDisplayName())) ?>">
 										<span class="comment-title"><?php echo clean($comment->getObjectName());?></span>
 									</a>
 								</td>

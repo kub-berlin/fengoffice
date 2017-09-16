@@ -625,7 +625,7 @@ class ContactController extends ApplicationController {
 					$id = $attributes["ids"][$i];
 					$type = $attributes["types"][$i];
 					$contact = Contacts::findById($id);
-					if (isset($contact) && $contact->canEdit(logged_user())){
+					if ($contact instanceof Contact && $contact->canEdit(logged_user())){
 						try{
 							DB::beginWork();
 							$contact->archive();
@@ -1230,6 +1230,8 @@ class ContactController extends ApplicationController {
 				// Error...
 			} catch(Exception $e) {
 				DB::rollback();
+				Logger::log_r("ERROR creating contact: ".$e->getMessage());
+				Logger::log_r($e->getTraceAsString());
 				flash_error($e->getMessage());
 				mark_dao_validation_error_fields($e);
 				return;
@@ -2407,6 +2409,9 @@ class ContactController extends ApplicationController {
 	
 	
 	function export_to_csv_file() {
+		set_time_limit(0);
+		ini_set("memory_limit", "512M");
+		
 		$ids = array_var($_REQUEST, 'ids');
 		$idsall = array_var($_REQUEST, 'allIds');
 		$export_all = array_var($_REQUEST, 'export_all');

@@ -279,10 +279,9 @@ og.TasksTopToolbar = function(config) {
 			by: {
 		        text: lang('assigned by'),
 				checked: (ogTasks.userPreferences.showBy == 1),
+				hideOnClick: false,	           
 				checkHandler: function() {
-					ogTasks.redrawGroups = false;
-					ogTasks.draw();
-					ogTasks.redrawGroups = true;
+					ogTasksWaitTimeOutAndDraw();
 					var url = og.getUrl('account', 'update_user_preference', {name: 'tasksShowAssignedBy', value:(this.checked?1:0)});
 					og.openLink(url,{hideLoading:true});
 				}
@@ -291,10 +290,9 @@ og.TasksTopToolbar = function(config) {
 				hidden: (typeof(ogTasks.userPreferences.showTime) == "undefined"),
 		        text: lang('time'),
 				checked: (ogTasks.userPreferences.showTime == 1),
+				hideOnClick: false,
 				checkHandler: function() {
-					ogTasks.redrawGroups = false;
-					ogTasks.draw();
-					ogTasks.redrawGroups = true;
+					ogTasksWaitTimeOutAndDraw();
 					var url = og.getUrl('account', 'update_user_preference', {name: 'tasksShowTime', value:(this.checked?1:0)});
 					og.openLink(url,{hideLoading:true});
 				}
@@ -302,10 +300,9 @@ og.TasksTopToolbar = function(config) {
 			dates_start: {
 		        text: lang('start date'),
 				checked: (ogTasks.userPreferences.showStartDates == 1),
+				hideOnClick: false,
 				checkHandler: function() {
-					ogTasks.redrawGroups = false;
-					ogTasks.draw();
-					ogTasks.redrawGroups = true;
+					ogTasksWaitTimeOutAndDraw();
 					var url = og.getUrl('account', 'update_user_preference', {name: 'tasksShowStartDates', value:(this.checked?1:0)});
 					og.openLink(url,{hideLoading:true});
 				}
@@ -313,10 +310,9 @@ og.TasksTopToolbar = function(config) {
 			dates_end: {
 		        text: lang('due date'),
 				checked: (ogTasks.userPreferences.showEndDates == 1),
+				hideOnClick: false,
 				checkHandler: function() {
-					ogTasks.redrawGroups = false;
-					ogTasks.draw();
-					ogTasks.redrawGroups = true;
+					ogTasksWaitTimeOutAndDraw();
 					var url = og.getUrl('account', 'update_user_preference', {name: 'tasksShowEndDates', value:(this.checked?1:0)});
 					og.openLink(url,{hideLoading:true});
 				}
@@ -324,28 +320,26 @@ og.TasksTopToolbar = function(config) {
 			empty_milestones: {
 		        text: lang('empty milestones'),
 				checked: (ogTasks.userPreferences.showEmptyMilestones == 1),
+				hideOnClick: false,
 				checkHandler: function() {
 					ogTasks.userPreferences.showEmptyMilestones = 1 - ogTasks.userPreferences.showEmptyMilestones;
 					var url = og.getUrl('account', 'update_user_preference', {name: 'tasksShowEmptyMilestones', value:(this.checked?1:0)});
 					og.openLink(url,{hideLoading:true});
-					ogTasks.redrawGroups = false;
-					ogTasks.draw();
-					ogTasks.redrawGroups = true;					
+					ogTasksWaitTimeOutAndDraw();				
 				},
 				hidden: (!og.config.use_milestones)
 			},
             time_estimates: {
 		        text: lang('estimated time'),
 				checked: (ogTasks.userPreferences.showTimeEstimates == 1),
+				hideOnClick: false,
 				checkHandler: function() {
 					if(this.checked){
 						ogTasks.TotalCols.estimatedTime = {title: 'estimated', group_total_field: 'TimeEstimate', row_field: 'estimatedTime'};
 					}else{
 						delete ogTasks.TotalCols.estimatedTime;				
 					}					
-					ogTasks.redrawGroups = false;
-					ogTasks.draw();
-					ogTasks.redrawGroups = true;
+					ogTasksWaitTimeOutAndDraw();
 					var url = og.getUrl('account', 'update_user_preference', {name: 'tasksShowTimeEstimates', value:(this.checked?1:0)});
 					og.openLink(url,{hideLoading:true});
 				}
@@ -353,15 +347,14 @@ og.TasksTopToolbar = function(config) {
 			time_pending: {
 		        text: lang('pending time'),
 				checked: (ogTasks.userPreferences.showTimePending == 1),
+				hideOnClick: false,
 				checkHandler: function() {
 					if(this.checked){
 						ogTasks.TotalCols.pendingTime = {title: 'pending', group_total_field: 'pending_time', row_field: 'pending_time_string'};
 					}else{
 						delete ogTasks.TotalCols.pendingTime;				
 					}
-					ogTasks.redrawGroups = false;
-					ogTasks.draw();
-					ogTasks.redrawGroups = true;
+					ogTasksWaitTimeOutAndDraw();
 					var url = og.getUrl('account', 'update_user_preference', {name: 'tasksShowTimePending', value:(this.checked?1:0)});
 					og.openLink(url,{hideLoading:true});
 				}
@@ -369,15 +362,14 @@ og.TasksTopToolbar = function(config) {
 			time_worked: {
 		        text: lang('worked time'),
 				checked: (ogTasks.userPreferences.showTimeWorked == 1),
+				hideOnClick: false,
 				checkHandler: function() {
 					if(this.checked){
 						ogTasks.TotalCols.workedTime = {title: 'worked', group_total_field: 'worked_time', row_field: 'worked_time_string'};
 					}else{
 						delete ogTasks.TotalCols.workedTime;				
 					}
-					ogTasks.redrawGroups = false;
-					ogTasks.draw();
-					ogTasks.redrawGroups = true;
+					ogTasksWaitTimeOutAndDraw();
 					var url = og.getUrl('account', 'update_user_preference', {name: 'tasksShowTimeWorked', value:(this.checked?1:0)});
 					og.openLink(url,{hideLoading:true});
 				}
@@ -385,10 +377,9 @@ og.TasksTopToolbar = function(config) {
 			percent_completed_bar: {
 		        text: lang('percent completed'),
 				checked: (ogTasks.userPreferences.showPercentCompletedBar == 1),
+				hideOnClick: false,
 				checkHandler: function() {
-					ogTasks.redrawGroups = false;
-					ogTasks.draw();
-					ogTasks.redrawGroups = true;
+					ogTasksWaitTimeOutAndDraw();
 					var url = og.getUrl('account', 'update_user_preference', {name: 'tasksShowPercentCompletedBar', value:(this.checked?1:0)});
 					og.openLink(url,{hideLoading:true});
 				}
@@ -396,10 +387,9 @@ og.TasksTopToolbar = function(config) {
 			show_quick_edit: {
 		        text: lang('quick edit'),
 				checked: (ogTasks.userPreferences.showQuickEdit == 1),
+				hideOnClick: false,
 				checkHandler: function() {
-					ogTasks.redrawGroups = false;
-					ogTasks.draw();
-					ogTasks.redrawGroups = true;
+					ogTasksWaitTimeOutAndDraw();
 					var url = og.getUrl('account', 'update_user_preference', {name: 'tasksShowQuickEdit', value:(this.checked?1:0)});
 					og.openLink(url,{hideLoading:true});
 				}
@@ -407,10 +397,9 @@ og.TasksTopToolbar = function(config) {
 			show_quick_complete: {
 		        text: lang('quick complete'),
 				checked: (ogTasks.userPreferences.showQuickComplete == 1),
+				hideOnClick: false,
 				checkHandler: function() {
-					ogTasks.redrawGroups = false;
-					ogTasks.draw();
-					ogTasks.redrawGroups = true;
+					ogTasksWaitTimeOutAndDraw();
 					var url = og.getUrl('account', 'update_user_preference', {name: 'tasksShowQuickComplete', value:(this.checked?1:0)});
 					og.openLink(url,{hideLoading:true});
 				}
@@ -418,10 +407,9 @@ og.TasksTopToolbar = function(config) {
 			show_quick_comment: {
 		        text: lang('quick comment'),
 				checked: (ogTasks.userPreferences.showQuickComment == 1),
+				hideOnClick: false,
 				checkHandler: function() {
-					ogTasks.redrawGroups = false;
-					ogTasks.draw();
-					ogTasks.redrawGroups = true;
+					ogTasksWaitTimeOutAndDraw();
 					var url = og.getUrl('account', 'update_user_preference', {name: 'tasksShowQuickComment', value:(this.checked?1:0)});
 					og.openLink(url,{hideLoading:true});
 				}
@@ -429,10 +417,9 @@ og.TasksTopToolbar = function(config) {
 			show_quick_add_sub_tasks: {
 		        text: lang('quick add sub tasks'),
 				checked: (ogTasks.userPreferences.showQuickAddSubTasks == 1),
+				hideOnClick: false,
 				checkHandler: function() {
-					ogTasks.redrawGroups = false;
-					ogTasks.draw();
-					ogTasks.redrawGroups = true;
+					ogTasksWaitTimeOutAndDraw();
 					var url = og.getUrl('account', 'update_user_preference', {name: 'tasksShowQuickAddSubTasks', value:(this.checked?1:0)});
 					og.openLink(url,{hideLoading:true});
 				}
@@ -440,10 +427,9 @@ og.TasksTopToolbar = function(config) {
 			show_classification: {
 		        text: lang('classified under'),
 				checked: (ogTasks.userPreferences.showClassification == 1),
+				hideOnClick: false,
 				checkHandler: function() {
-					ogTasks.redrawGroups = false;
-					ogTasks.draw();
-					ogTasks.redrawGroups = true;
+					ogTasksWaitTimeOutAndDraw();
 					var url = og.getUrl('account', 'update_user_preference', {name: 'tasksShowClassification', value:(this.checked?1:0)});
 					og.openLink(url,{hideLoading:true});
 				}
@@ -451,10 +437,9 @@ og.TasksTopToolbar = function(config) {
 			previous_pending_tasks: {
 		        text: lang('previous pending tasks'),
 				checked: (ogTasks.userPreferences.previousPendingTasks == 1),
+				hideOnClick: false,
 				checkHandler: function() {
-					ogTasks.redrawGroups = false;
-					ogTasks.draw();
-					ogTasks.redrawGroups = true;					
+					ogTasksWaitTimeOutAndDraw();				
 					var url = og.getUrl('account', 'update_user_preference', {name: 'tasksPreviousPendingTasks', value:(this.checked?1:0)});
 					og.openLink(url,{hideLoading:true});
 										
@@ -464,12 +449,11 @@ og.TasksTopToolbar = function(config) {
 			show_subtasks_structure: {
 		        text: lang('subtasks structure'),
 				checked: (ogTasks.userPreferences.showSubtasksStructure == 1),
+				hideOnClick: false,
 				checkHandler: function() {
 					var url = og.getUrl('account', 'update_user_preference', {name: 'tasksShowSubtasksStructure', value:(this.checked?1:0)});
 					og.openLink(url,{hideLoading:true});
-					ogTasks.redrawGroups = false;
-					ogTasks.draw();
-					ogTasks.redrawGroups = true;					
+					ogTasksWaitTimeOutAndDraw();				
 				}
 			}
 		};
@@ -498,15 +482,14 @@ og.TasksTopToolbar = function(config) {
 			id: opt_key,
 	        text: cp.name,
 			checked: (ogTasks.userPreferences[opt_key] == 1),
+			hideOnClick: false,
 			checkHandler: function() {
 				ogTasks.userPreferences[this.id] = (this.checked ? 1 : 0);
 				var url = og.getUrl('account', 'update_user_preference', {name: this.id, value:(this.checked ? 1 : 0)});
 				og.openLink(url,{
 					hideLoading:true, 
 					callback: function(success, data) {
-						ogTasks.redrawGroups = false;
-						ogTasks.draw();
-						ogTasks.redrawGroups = true;					
+						ogTasksWaitTimeOutAndDraw();				
 					}
 				});
 				
@@ -532,18 +515,18 @@ og.TasksTopToolbar = function(config) {
 			menu_items.push({
 		        text: col.name,
 				checked: (ogTasks.userPreferences[col.id] == 1),
+				hideOnClick: false,
 				checkHandler: function() {
 					var url = og.getUrl('account', 'update_user_preference', {name: col.id, value:(this.checked?1:0)});
 					og.openLink(url,{hideLoading:true});
-					ogTasks.redrawGroups = false;
-					ogTasks.draw();
-					ogTasks.redrawGroups = true;					
+					ogTasksWaitTimeOutAndDraw();
 				}
 			});
 		}
 	}
 
 	this.show_menu = new Ext.Action({
+		id: 'table-show-columns-task',
        	iconCls: 'op-ico-details',
 		text: lang('show'),
 		menu: {items: menu_items}
@@ -627,6 +610,29 @@ function ogTasksOrderUsers(usersList){
 			}
 	return usersList;
 }
+
+function ogTasksWaitTimeOutAndDraw (){
+	
+	// timeout to reload the panel
+	if (og.task_show_by_select_timeout) {
+		clearTimeout(og.task_show_by_select_timeout);
+	}
+
+	//draw table with tasks again and hide window with selects to show
+	og.task_show_by_select_timeout = setTimeout(function(){
+		
+		ogTasks.redrawGroups = false;
+		ogTasks.draw();
+		ogTasks.redrawGroups = true;
+		
+		var topToolbar = Ext.getCmp('tasksPanelTopToolbarObject');
+		topToolbar.items.get('table-show-columns-task').menu.hide();
+		
+	}, 2000);
+	
+	
+}
+
 
 Ext.extend(og.TasksTopToolbar, Ext.Toolbar, {
 	getDrawOptions : function(){

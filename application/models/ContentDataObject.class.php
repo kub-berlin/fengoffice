@@ -1053,7 +1053,7 @@ abstract class ContentDataObject extends ApplicationDataObject {
 	// ---------------------------------------------------
 	
 	
-	function archive($archiveDate = null) {
+	function archive($archiveDate = null, $fire_hook = true) {
 		if(!isset($archiveDate))
 			$archiveDate = DateTimeValueLib::now();
 		if ($this->getObject()->columnExists('archived_on')) {
@@ -1069,10 +1069,15 @@ abstract class ContentDataObject extends ApplicationDataObject {
 		if ($mem instanceof Member) {
 			$mem->archive(logged_user());
 		}
+		
+		if ($fire_hook) {
+			$null = null;
+			Hook::fire("after_content_object_archive", array('object' => $this), $null);
+		}
 	}
 	
 	
-	function unarchive() {
+	function unarchive($fire_hook = true) {
 		if ($this->getObject()->columnExists('archived_on')) {
 			$this->getObject()->setColumnValue('archived_on', EMPTY_DATETIME);
 		}
@@ -1085,6 +1090,11 @@ abstract class ContentDataObject extends ApplicationDataObject {
 		$mem = Members::findOneByObjectId($this->getId());
 		if ($mem instanceof Member) {
 			$mem->unarchive(logged_user());
+		}
+		
+		if ($fire_hook) {
+			$null = null;
+			Hook::fire("after_content_object_unarchive", array('object' => $this), $null);
 		}
 	}
 	
@@ -1235,7 +1245,7 @@ abstract class ContentDataObject extends ApplicationDataObject {
 	// ---------------------------------------------------
 	
 	
-	function trash($trashDate = null) {
+	function trash($trashDate = null, $fire_hook = true) {
 		// dont delete owner company and account owner
 		if ($this instanceof Contact && ($this->isOwnerCompany() || $this->isAccountOwner()) ){
 			return false;
@@ -1258,10 +1268,15 @@ abstract class ContentDataObject extends ApplicationDataObject {
 				foreach ($comments as $comment) $comment->trash();
 			}
 		}
+		
+		if ($fire_hook) {
+			$null = null;
+			Hook::fire("after_content_object_trash", array('object' => $this), $null);
+		}
 	}
 	
 	
-	function untrash() {
+	function untrash($fire_hook = true) {
 		if ($this->getObject()->columnExists('trashed_on')) {
 			$this->getObject()->setColumnValue('trashed_on', EMPTY_DATETIME);
 		}
@@ -1279,6 +1294,11 @@ abstract class ContentDataObject extends ApplicationDataObject {
 					if ($comment->getTrashedById() > 0) $comment->untrash();
 				}
 			}
+		}
+		
+		if ($fire_hook) {
+			$null = null;
+			Hook::fire("after_content_object_untrash", array('object' => $this), $null);
 		}
 	}
 	
@@ -1803,6 +1823,8 @@ abstract class ContentDataObject extends ApplicationDataObject {
 					}
 					$extra_cond = " AND m.dimension_id = ".$dimension['dimension_id'];
 					
+					Hook::fire("breadcrumbs_extra_conditions", array('dim'=>$dim), $extra_cond);
+					
 					$dim_members = ObjectMembers::getMembersIdsByObjectAndExtraCond($this->getId(), $extra_cond, $to_display, false);
 					if (is_array($dim_members)) {
 						foreach ($dim_members as $mem) {
@@ -1816,6 +1838,20 @@ abstract class ContentDataObject extends ApplicationDataObject {
 							} else {
 								if (!isset($member_ids[$dimension['dimension_id']][$ot_id])) $member_ids[$dimension['dimension_id']][$ot_id] = array();
 								$member_ids[$dimension['dimension_id']][$ot_id][] = $mem['member_id'];
+							}
+						}
+						
+						if (!user_config_option('show_associated_dims_in_breadcrumbs')) {
+							// check if this dimension is associated to any main dimensions
+							$main_dims_of_this_dim = array_var($_SESSION['main_dims_of_this_dim'], $dimension['dimension_id']);
+							if (is_null($main_dims_of_this_dim)) { 
+								$main_dims_of_this_dim = DimensionMemberAssociations::instance()->getAssociatedDimensions($dimension['dimension_id']);
+								if (!isset($_SESSION['main_dims_of_this_dim'])) $_SESSION['main_dims_of_this_dim'] = array();
+								$_SESSION['main_dims_of_this_dim'][$dimension['dimension_id']] = $main_dims_of_this_dim;
+							}
+							// don't show associated dimensions in content objects general breadcrumb
+							if (count($main_dims_of_this_dim) > 0) {
+								$member_ids[$dimension['dimension_id']]['is_assoc_dim'] = '1';
 							}
 						}
 					}

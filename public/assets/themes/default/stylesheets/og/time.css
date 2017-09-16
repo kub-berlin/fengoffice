@@ -112,3 +112,35 @@
     overflow: hidden; 
     text-overflow: ellipsis;
 }
+
+
+.x-grid3-row.open-timeslot, .x-grid3-row.open-timeslot.x-grid3-row-over {
+	background: #FDFFCC;
+}
+.x-grid3-row.open-timeslot .task-single-div, .x-grid3-row.open-timeslot .task-action-icon {
+	display: inline-block;
+}
+.x-grid3-row.open-timeslot .open-ts-clock {
+	float: left;
+	margin-top: 6px;
+	margin-right: 5px;
+	font-weight: bold;
+}
+
+
+.x-grid3-row.quick-add-row, .x-grid3-row.quick-add-row.x-grid3-row-over {
+	background: #d6ecd6;
+}
+.x-grid3-col.x-grid3-cell button.add-first-btn.blue:focus {
+	background-color: #2d62ac;
+}
+.x-grid3-col.x-grid3-cell button.add-first-btn {
+	height: 26px;
+	padding-right: 4px;
+	padding-left: 22px;
+	background-position: 2px center;
+	background-repeat: no-repeat;
+	min-width: 50px;
+	font-size: 13px;
+}
+

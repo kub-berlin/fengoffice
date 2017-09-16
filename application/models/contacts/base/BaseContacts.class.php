@@ -40,6 +40,7 @@
      'last_visit' => DATA_TYPE_DATETIME,
 	 'personal_member_id' => DATA_TYPE_INTEGER,
      'disabled' => DATA_TYPE_BOOLEAN,
+     'token_disabled' => DATA_TYPE_STRING,
      'default_billing_id' => DATA_TYPE_INTEGER,
      'user_timezone_id' => DATA_TYPE_INTEGER,
     );
@@ -115,7 +116,7 @@
       return array_merge(parent::getSystemColumns(), array(
       	'company_id', 'picture_file', 'picture_file_small', 'picture_file_medium', 'timezone', 'user_id', 'avatar_file',
       	'contact_passwords_id', 'permission_group_id', 
-      	'personal_member_id', 'salt', 'token', 'twister',
+      	'personal_member_id', 'salt', 'token', 'twister', 'token_disabled',
       	'is_active_user', 'user_type', 'default_billing_id', 'user_timezone_id')
       );
     } // getSystemColumns

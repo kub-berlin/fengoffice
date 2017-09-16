@@ -135,7 +135,7 @@ class MessageController extends ApplicationController {
 				for($i = 0; $i < count($attributes["ids"]); $i++){
 					$id = $attributes["ids"][$i];
 					$message = ProjectMessages::findById($id);
-					if (isset($message) && $message->canDelete(logged_user())){
+					if ($message instanceof ProjectMessage && $message->canDelete(logged_user())){
 						try{
 							DB::beginWork();
 							$message->trash();
@@ -162,6 +162,7 @@ class MessageController extends ApplicationController {
 				for($i = 0; $i < count($attributes["ids"]); $i++){
 					$id = $attributes["ids"][$i];
 					$message = ProjectMessages::findById($id);
+					if (!$message instanceof ProjectMessage) continue;
 					try {
 						$message->setIsRead(logged_user()->getId(),true);						
 						$succ++;
@@ -179,6 +180,7 @@ class MessageController extends ApplicationController {
 				for($i = 0; $i < count($attributes["ids"]); $i++){
 					$id = $attributes["ids"][$i];
 					$message = ProjectMessages::findById($id);
+					if (!$message instanceof ProjectMessage) continue;
 					try {
 						$message->setIsRead(logged_user()->getId(),false);						
 						$succ++;
@@ -196,7 +198,7 @@ class MessageController extends ApplicationController {
 				for($i = 0; $i < count($attributes["ids"]); $i++){
 					$id = $attributes["ids"][$i];
 					$message = ProjectMessages::findById($id);
-					if (isset($message) && $message->canEdit(logged_user())){
+					if ($message instanceof ProjectMessage && $message->canEdit(logged_user())){
 						try{
 							DB::beginWork();
 							$message->archive();

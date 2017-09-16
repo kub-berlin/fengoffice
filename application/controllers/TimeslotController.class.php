@@ -33,7 +33,7 @@ class TimeslotController extends ApplicationController {
 		$object_id = get_id('object_id');
 
 		$object = Objects::findObject($object_id);
-		if(!($object instanceof ContentDataObject) || !($object->canAddTimeslot(logged_user()))) {
+		if($object instanceof ContentDataObject && !($object->canAddTimeslot(logged_user()))) {
 			flash_error(lang('no access permissions'));
 			ajx_current("empty");
 			return;
@@ -43,16 +43,21 @@ class TimeslotController extends ApplicationController {
 		$dt = DateTimeValueLib::now();
 		$timeslot->setStartTime($dt);
 		$timeslot->setContactId(logged_user()->getId());
-		$timeslot->setRelObjectId($object_id);
+		if ($object instanceof ContentDataObject) {
+			$timeslot->setRelObjectId($object_id);
+		}
 		
 		try{
 			DB::beginWork();
 			$timeslot->save();
 			
-			/*	dont add timeslots to members, members are taken from the related object
 			$object_controller = new ObjectController();
-			$object_controller->add_to_members($timeslot, $object->getMemberIds());
-			*/
+			if ($object instanceof ContentDataObject) {
+				$object_controller->add_to_members($timeslot, $object->getMemberIds());
+			} else {
+				$object_controller->add_to_members($timeslot, active_context_members(false));
+			}
+			
 			DB::commit();
 			ApplicationLogs::createLog($timeslot, ApplicationLogs::ACTION_OPEN);
 			
@@ -166,13 +171,7 @@ class TimeslotController extends ApplicationController {
 		}
 
 		$object = $timeslot->getRelObject();
-		if(!($object instanceof ContentDataObject)) {
-			flash_error(lang('object dnx'));
-			ajx_current("empty");
-			return;
-		}
-		
-		if(!($object->canAddTimeslot(logged_user()))) {
+		if($object instanceof ContentDataObject && !($object->canAddTimeslot(logged_user()))) {
 			flash_error(lang('no access permissions'));
 			ajx_current("empty");
 			return;
@@ -238,12 +237,7 @@ class TimeslotController extends ApplicationController {
 		}
 
 		$object = $timeslot->getRelObject();
-		if(!($object instanceof ContentDataObject)) {
-			flash_error(lang('object dnx'));
-			return;
-		}
-		
-		if(!($object->canAddTimeslot(logged_user()))) {
+		if($object instanceof ContentDataObject && !($object->canAddTimeslot(logged_user()))) {
 			flash_error(lang('no access permissions'));
 			return;
 		}
@@ -278,12 +272,7 @@ class TimeslotController extends ApplicationController {
 		}
 
 		$object = $timeslot->getRelObject();
-		if(!($object instanceof ContentDataObject)) {
-			flash_error(lang('object dnx'));
-			return;
-		}
-		
-		if(!($object->canAddTimeslot(logged_user()))) {
+		if($object instanceof ContentDataObject && !($object->canAddTimeslot(logged_user()))) {
 			flash_error(lang('no access permissions'));
 			return;
 		}

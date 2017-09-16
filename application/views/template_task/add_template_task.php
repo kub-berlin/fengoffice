@@ -725,6 +725,9 @@ og.config.multi_assignment = '<?php echo config_option('multi_assignment') && Pl
 			}
 			
 			parameters = context ? {context: context} : {};
+
+            parameters.for_template_task_assigned_to = true;
+
 			og.openLink(og.getUrl('task', 'allowed_users_to_assign', parameters), {callback: function(success, data){
 				only_me = data.only_me ? data.only_me : null;
 				if (combo) {
@@ -811,7 +814,7 @@ og.config.multi_assignment = '<?php echo config_option('multi_assignment') && Pl
 					context: dimension_members_json,
 					users: uids,
 					genid: '<?php echo $genid ?>',
-					otype: '<?php echo $projectTask->manager()->getObjectTypeId()?>'
+					otype: '<?php echo $task->manager()->getObjectTypeId()?>'
 				}),
 				scripts: true
 			});
@@ -839,7 +842,7 @@ og.config.multi_assignment = '<?php echo config_option('multi_assignment') && Pl
 	});
 
 	var listenerId = og.eventManager.addListener('after member_selector init',function(){
-		og.reload_task_form_selectors(<?php echo $task->isNew() ? '1' : '0'?>, false);
+		og.reload_task_form_selectors(<?php echo $task->isNew() ? '1' : '0'?>, true);
 		og.eventManager.removeListener(listenerId) ;
 	});	
 

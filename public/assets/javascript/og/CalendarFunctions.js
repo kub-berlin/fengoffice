@@ -271,14 +271,17 @@
 	
 	og.adjustAllDayEventsHeight = function(genid) {
 		var h = $("#allDayGrid").outerHeight() - 31;
-		for (var dow=0; dow<5; dow++) {
-			$("#"+ genid +"view_calendar #alldayeventowner_"+dow).css('height', h+'px');
-			
-			var real_h = document.getElementById("alldayeventowner_"+dow).scrollHeight;
-			if (h < real_h) {
-				$("#all_ev_show_more_link_"+dow).css('visibility', 'visible');
-			} else {
-				$("#all_ev_show_more_link_"+dow).css('visibility', 'hidden');
+		for (var dow=0; dow<7; dow++) {
+			var all_day_div = document.getElementById("alldayeventowner_"+dow);
+			if (all_day_div) {
+				$("#"+ genid +"view_calendar #alldayeventowner_"+dow).css('height', h+'px');
+				
+				var real_h = all_day_div.scrollHeight;
+				if (h < real_h) {
+					$("#all_ev_show_more_link_"+dow).css('visibility', 'visible');
+				} else {
+					$("#all_ev_show_more_link_"+dow).css('visibility', 'hidden');
+				}
 			}
 		}
 	}

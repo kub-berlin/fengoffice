@@ -265,7 +265,7 @@ og.FileManager = function() {
 		} else {
 			var ret = '';
 			for (var i=0; i < selections.length; i++) {
-				ret += "," + selections[i].data.object_id;
+				if (!isNaN(selections[i].data.object_id)) ret += "," + selections[i].data.object_id;
 			}
 			og.lastSelectedRow.documents = selections[selections.length-1].data.ix;
 			return ret.substring(1);
@@ -418,7 +418,7 @@ og.FileManager = function() {
 	];
 	// custom property columns
 	var cps = og.custom_properties_by_type['file'] ? og.custom_properties_by_type['file'] : [];
-	this.addCustomPropertyColumns(cps, cm_info);
+	this.addCustomPropertyColumns(cps, cm_info, 'file-manager');
 
 	// dimension columns
 	for (did in og.dimensions_info) {
@@ -438,6 +438,7 @@ og.FileManager = function() {
 	// create column model
 	var cm = new Ext.grid.ColumnModel(cm_info);
 	cm.defaultSortable = false;
+    cm.on('hiddenchange', this.afterColumnShowHide, this);
 
 	og.eventManager.fireEvent('hook_filemanager_columns', cm.config);
 	
@@ -618,7 +619,7 @@ og.FileManager = function() {
 				if (confirm(lang('confirm archive selected objects'))) {
 					this.load({
 						action: 'archive',
-						ids: getSelectedIds()
+						objects: getSelectedIds()
 					});
 					this.getSelectionModel().clearSelections();
 				}
@@ -762,7 +763,7 @@ Ext.extend(og.FileManager, Ext.grid.GridPanel, {
 		if (confirm(lang('confirm archive selected objects'))) {
 			this.load({
 				action: 'archive',
-				ids: this.getSelectedIds()
+				objects: this.getSelectedIds()
 			});
 			this.getSelectionModel().clearSelections();
 		}

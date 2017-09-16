@@ -49,4 +49,8 @@
 	'new due date' => 'New due date',
 	'new start date desc' => 'Start date of selected tasks will be changed.',
 	'new due date desc' => 'Due date of selected tasks will be changed.',
+	'show archived' => 'Show archived',
+	'by archived status' => 'By Archived Status',
+	'archived' => 'Archived',
+	'unarchived' => 'Unarchived',
 );

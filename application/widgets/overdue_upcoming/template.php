@@ -61,13 +61,13 @@
 			    <td style="padding-left:5px;padding-bottom:2px;overflow:hidden;text-overflow:ellipsis;max-width:10px;vertical-align: middle;">
 			    	<div class="nobr">
 			    		<?php
-			    			$crumbOptions = json_encode($object->getMembersToDisplayPath());
+			    			$crumbOptions = json_encode($object->getMembersIdsToDisplayPath());
 			    			if($crumbOptions == ""){
 			    				$crumbOptions = "{}";
 			    			}
 							$crumbJs = " og.getEmptyCrumbHtml($crumbOptions, '.nobr' ) "; 
 			    		?>
-			    		<a class="internalLink" href="<?php echo $object->getViewUrl() ?>" title="<?php echo clean($object->getObjectName()) ?>">
+			    		<a class="internalLink" href="#" onclick="og.openLink('<?php echo $object->getViewUrl() ?>');" title="<?php echo clean($object->getObjectName()) ?>">
 							<?php if ($object instanceof ProjectTask && $object->getAssignedToContactId() > 0) echo "<span class='bold'>". clean($object->getAssignedToName()).": </span>"; ?>
 							<?php echo clean($object->getObjectName()) ?>
 						</a>

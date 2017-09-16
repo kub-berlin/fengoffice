@@ -60,6 +60,15 @@ og.ObjectGrid = function(config, ignore_context) {
 			}
 		}
 	}
+	// default actions column
+	if (typeof(config.add_default_actions_column) != "undefined") {
+		this.add_default_actions_column = config.add_default_actions_column;
+	} else {
+		this.add_default_actions_column = true;
+	}
+	if (config.columns.indexOf('actions') >= 0) {
+		this.add_default_actions_column = false;
+	}
 	
 	var cps = og.custom_properties_by_type[config.type_name] ? og.custom_properties_by_type[config.type_name] : [];
 	var cp_names = [];
@@ -113,6 +122,13 @@ og.ObjectGrid = function(config, ignore_context) {
 						}
 					}
 					grid.setHeight(h);
+					
+					if (config.no_totals_row) d.totals = null;
+					
+					// add first row to add
+					if (config.quick_add_row) {
+						og.add_object_grid_quick_add_row(grid, config);
+					}
 					
 					og.eventManager.fireEvent('after grid panel load', {man:grid, data:d});
 					
@@ -223,17 +239,18 @@ og.ObjectGrid = function(config, ignore_context) {
 	if (config.columns) {
 		for (i=0; i<config.columns.length; i++) {
 			var col = config.columns[i];
-			if (col && !col.is_system && col.before_name) {
+			if (col && !col.is_system && !col.is_right_column && col.before_name) {
 				cm_info.push({
 					id: col.id ? col.id : col.name,
 			    	header: col.header ? col.header : lang(col.name),
 			    	dataIndex: col.dataIndex ? col.dataIndex : col.name,
 			    	width: col.width ? col.width : 100,
-			    	renderer: col.renderer ? col.renderer : og.clean,
+			    	renderer: col.renderer ? col.renderer : og.default_grid_column_renderer,
 			    	sortable: col.sortable ? col.sortable : false,
 			    	fixed: col.fixed ? col.fixed : false,
 			    	align: col.align ? col.align : 'left',
 			    	resizable: col.resizable ? col.resizable : true,
+					hidden: col.hidden ? col.hidden : false,
 			    	menuDisabled: col.menuDisabled ? col.menuDisabled : false
 				});
 			}
@@ -244,24 +261,26 @@ og.ObjectGrid = function(config, ignore_context) {
 		id: 'name',
 		header: lang("name"),
 		dataIndex: 'name',
-    	width: 100,
-		renderer: config.nameRenderer ? config.nameRenderer : og.clean
+		fixed: config.name_fixed | false,
+    	width: typeof(config.name_width) != "undefined" ? config.name_width : 200,
+		renderer: config.nameRenderer ? config.nameRenderer : og.default_grid_column_renderer
     });
 	
 	if (config.columns) {
 		for (i=0; i<config.columns.length; i++) {
 			var col = config.columns[i];
-			if (col && !col.is_system && !col.before_name) {
+			if (col && !col.is_system && !col.is_right_column && !col.before_name) {
 				cm_info.push({
 					id: col.id ? col.id : col.name,
 			    	header: col.header ? col.header : lang(col.name),
 			    	dataIndex: col.dataIndex ? col.dataIndex : col.name,
 			    	width: col.width ? col.width : 100,
-			    	renderer: col.renderer ? col.renderer : og.clean,
+			    	renderer: col.renderer ? col.renderer : og.default_grid_column_renderer,
 			    	sortable: col.sortable ? col.sortable : false,
 			    	fixed: col.fixed ? col.fixed : false,
 			    	align: col.align ? col.align : 'left',
 			    	resizable: col.resizable ? col.resizable : true,
+					hidden: col.hidden ? col.hidden : false,
 			    	menuDisabled: col.menuDisabled ? col.menuDisabled : false
 				});
 			}
@@ -269,7 +288,7 @@ og.ObjectGrid = function(config, ignore_context) {
 	}
 	// custom property columns
 	var cps = og.custom_properties_by_type[config.type_name] ? og.custom_properties_by_type[config.type_name] : [];
-	this.addCustomPropertyColumns(cps, cm_info);
+	this.addCustomPropertyColumns(cps, cm_info, grid_id);
 	
 	if (!config.skip_dimension_columns) {
 		// dimension columns
@@ -288,9 +307,45 @@ og.ObjectGrid = function(config, ignore_context) {
 			}
 		}
 	}
+	
+
+	
+	if (this.add_default_actions_column) {
+		config.columns.push({
+	    	name: 'actions',
+	    	is_right_column: true,
+	    	fixed: true,
+	    	width: 100, 
+	    	renderer: og.render_default_grid_actions
+	    });
+	}
+	
+	// columns to the right
+	if (config.columns) {
+		for (i=0; i<config.columns.length; i++) {
+			var col = config.columns[i];
+			if (col && !col.is_system && col.is_right_column) {
+				cm_info.push({
+					id: col.id ? col.id : col.name,
+			    	header: col.header ? col.header : lang(col.name),
+			    	dataIndex: col.dataIndex ? col.dataIndex : col.name,
+			    	width: col.width ? col.width : 100,
+			    	renderer: col.renderer ? col.renderer : og.default_grid_column_renderer,
+			    	sortable: col.sortable ? col.sortable : false,
+			    	fixed: col.fixed ? col.fixed : false,
+			    	align: col.align ? col.align : 'left',
+			    	resizable: col.resizable ? col.resizable : true,
+					hidden: col.hidden ? col.hidden : false,
+			    	menuDisabled: col.menuDisabled ? col.menuDisabled : false
+				});
+			}
+		}
+	}
+	
 
 	var cm = new Ext.grid.ColumnModel(cm_info);
     cm.defaultSortable = true;
+    cm.on('hiddenchange', this.afterColumnShowHide, this);
     
     
     // toolbar items
@@ -317,6 +372,16 @@ og.ObjectGrid = function(config, ignore_context) {
 	    		for (var x=0; x<items.length; x++) {
 	    			tbar.push(items[x]);
 	    		}
+    		}
+    	}
+    }
+    
+    // toolbar right items
+    if (config.tbar_right_items) {
+    	tbar.push('->');
+    	for (i=0; i<config.tbar_right_items.length; i++) {
+    		if (!config.tbar_right_items[i].initialConfig || !config.tbar_right_items[i].initialConfig.secondToolbar) {
+    			tbar.push(config.tbar_right_items[i]);
     		}
     	}
     }
@@ -367,7 +432,7 @@ og.ObjectGrid = function(config, ignore_context) {
             emptyMsg: lang("no objects to display")
         }),
 		viewConfig: {
-            forceFit:true
+            forceFit: typeof(config.forceFit) != "undefined" ? config.forceFit : true
         },
 		sm: sm,
 		tbar: tbar,
@@ -398,15 +463,19 @@ og.ObjectGrid = function(config, ignore_context) {
 					if (!this.hidden) {
 						var v = this.getView();
 						if (v) {
-							// fit columns in the view
-							v.fitColumns();
-							// adjust containers width
-							$("#"+v.grid.id+" .x-grid3").css('width', '');
-							$("#"+v.grid.id+" .x-grid3 .x-grid3-header-inner").css('width', '');
-							$("#"+v.grid.id+" .x-grid3 .x-grid3-scroller").css('width', '');
-							// adjust panel height
-							var h = $("#"+v.grid.id).parent().height();
-							v.grid.setSize({height:h});
+							setTimeout(function(){
+								// fit columns in the view
+								if (v.forceFit) {
+									v.fitColumns();
+								}
+								// adjust containers width
+								$("#"+v.grid.id+" .x-grid3").css('width', '');
+								$("#"+v.grid.id+" .x-grid3 .x-grid3-header-inner").css('width', '');
+								$("#"+v.grid.id+" .x-grid3 .x-grid3-scroller").css('width', '');
+								// adjust panel height
+								var h = $("#"+v.grid.id).parent().height();
+								v.grid.setSize({height:h});
+							}, 200);
 						}
 					}
 				},

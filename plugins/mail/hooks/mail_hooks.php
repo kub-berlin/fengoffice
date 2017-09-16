@@ -41,6 +41,11 @@ function mail_delete_member($member){
 
 function mail_on_page_load(){
 	//check if have outbox mails
+	
+	$utils = new MailUtilities();
+	$utils->check_if_outbox_has_pending_mails(logged_user());
+	
+	/*
 	$usu = logged_user();
 	$accounts = MailAccounts::instance()->getMailAccountsByUser($usu);
 	$account_ids = array();
@@ -76,7 +81,7 @@ function mail_on_page_load(){
 				$reminder->save();
 			}
 		}
-	}
+	}*/
 }
 
 function mail_do_mark_as_read_unread_objects($ids_to_mark, $read) {
@@ -89,7 +94,8 @@ function mail_do_mark_as_read_unread_objects($ids_to_mark, $read) {
 		evt_add("remove from email list", array('ids' => $ids_to_mark, 'remove_later' => $dont_remove));
 	}
 	
-	foreach ($ids_to_mark as $id) {
+	if (!Plugins::instance()->isActivePlugin('advanced_mail_imap_sync')) {
+	  foreach ($ids_to_mark as $id) {
 		$obj = Objects::findObject($id);
 		if ($obj instanceof MailContent && logged_user() instanceof Contact) {
 			//conversation set the rest of the conversation
@@ -129,10 +135,10 @@ function mail_do_mark_as_read_unread_objects($ids_to_mark, $read) {
 				$all_accounts[$obj->getAccountId()]['folders'][$obj->getImapFolderName()][] = $obj->getUid();
 			}
 		} 
-	}
+	  }
 			
-	//foreach account send uids by folder to mark in the mail server
-	foreach ($all_accounts as $account_data){
+	  //foreach account send uids by folder to mark in the mail server
+	  foreach ($all_accounts as $account_data){
 		$account = $account_data['account'];
 		$folders = $account_data['folders'];
 		foreach ($folders as $key => $folder){
@@ -147,8 +153,8 @@ function mail_do_mark_as_read_unread_objects($ids_to_mark, $read) {
 			}
 		}
 		
-	}	
-
+	  }
+	}
 }
 
 function mail_custom_reports_external_column_info($params, &$field) {

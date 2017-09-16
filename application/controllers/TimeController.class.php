@@ -21,62 +21,7 @@ class TimeController extends ApplicationController {
 	} // __construct
 	
 	function index() {
-		
-		$tasksUserId = array_var($_GET, 'tu');
-		if (is_null($tasksUserId)) {
-			$tasksUserId = user_config_option('TM tasks user filter', logged_user()->getId());
-		} else if (user_config_option('TM tasks user filter') != $tasksUserId) {
-			set_user_config_option('TM tasks user filter', $tasksUserId, logged_user()->getId());
-		}
-				
-		$timeslotsUserId = array_var($_GET, 'tsu');
-		if (is_null($timeslotsUserId)) {
-			$timeslotsUserId = user_config_option('TM user filter', 0);
-		} else if (user_config_option('TM user filter') != $timeslotsUserId) {
-			set_user_config_option('TM user filter', $timeslotsUserId, logged_user()->getId());
-		}
-		
-		if (!SystemPermissions::userHasSystemPermission(logged_user(), 'can_see_assigned_to_other_tasks')) {
-			$timeslotsUserId = logged_user()->getId();
-		}
-				
-		$showTimeType = array_var($_GET, 'stt');
-		if (is_null($showTimeType)) {
-			$showTimeType = user_config_option('TM show time type', 0);
-		} else if (user_config_option('TM show time type') != $showTimeType) {
-			set_user_config_option('TM show time type', $showTimeType, logged_user()->getId());
-		}
-		
-		$start = array_var($_GET, 'start', 0);
-		$limit = 20;
-		
-		$tasksUser = Contacts::findById($tasksUserId);
-		$timeslotsUser = Contacts::findById($timeslotsUserId);	
-		
-		//Active tasks view
-		$open_timeslots = Timeslots::instance()->listing(array(
-			"extra_conditions" => " AND end_time = '".EMPTY_DATETIME."' AND contact_id = ".$tasksUserId 
-		))->objects;
-		$tasks = array();
-		foreach($open_timeslots as $open_timeslot) {
-			$task = ProjectTasks::findById($open_timeslot->getRelObjectId());
-			if ($task instanceof ProjectTask && !$task->isCompleted() && !$task->isTrashed() && !$task->isArchived()) $tasks[] = $task;
-		}
-		ProjectTasks::populateTimeslots($tasks);
-		
-		//Timeslots view
-		$total = 0;
-		switch ($showTimeType){
-			case 0: //Show only timeslots added through the time panel
-				$result = Timeslots::getGeneralTimeslots(active_context(), $timeslotsUser, $start, $limit);
-				$timeslots = $result->objects;
-				$get_total = Timeslots::getGeneralTimeslots(active_context(), $timeslotsUser, $start, $limit, true);
-				$total = $get_total->total;
-				break;
-			default:
-				throw new Error('Unrecognised TM show time type: ' . $showTimeType);
-		}
-		
+
 		//Get Users Info
 		$users = array();
 		$context = active_context();
@@ -93,20 +38,13 @@ class TimeController extends ApplicationController {
 			if (count($selected_members) > 0) {
 				$tmp_users = array();
 				foreach ($users as $user) {
-					if (can_add($user, $context, Timeslots::instance()->getObjectTypeId())) $tmp_users[] = $user;
+					if (can_read($user, $context, Timeslots::instance()->getObjectTypeId())) $tmp_users[] = $user;
 				}
 				$users = $tmp_users;
 			}
 		}
 		
-		//Get Companies Info
-		if (logged_user()->isMemberOfOwnerCompany() || logged_user()->isAdminGroup()) {
-			$companies = Contacts::getCompaniesWithUsers();
-		} else {
-			$companies = array();
-			if (logged_user()->getCompanyId() > 0) $companies[] = logged_user()->getCompany();
-		}
-		
+		/*
 		$required_dimensions = DimensionObjectTypeContents::getRequiredDimensions(Timeslots::instance()->getObjectTypeId());
 		$draw_inputs = !$required_dimensions || count($required_dimensions) == 0;
 		if (!$draw_inputs) {
@@ -124,17 +62,9 @@ class TimeController extends ApplicationController {
 				}
 			}
 		}
+		*/
 		
-		tpl_assign('draw_inputs', $draw_inputs);
-		tpl_assign('selected_user', logged_user()->getId());
-		tpl_assign('timeslots', $timeslots);
-		tpl_assign('tasks', $tasks);
-		if (count($tasks) > 0) tpl_assign('all_users', Contacts::getAllUsers());
 		tpl_assign('users', $users);
-		tpl_assign('start', $start);
-		tpl_assign('limit', $limit);
-		tpl_assign('total', $total);
-		tpl_assign('companies', $companies);
 		ajx_set_no_toolbar(true);
 	}
 	
@@ -145,17 +75,14 @@ class TimeController extends ApplicationController {
 		if (!is_array($timeslot_data)) {
 			
 			$timeslot = new Timeslot();
-			$timeslot->setContactId(array_var($_REQUEST, "contact_id"));
+			$timeslot->setContactId(array_var($_REQUEST, "contact_id", logged_user()->getId()));
 			$timeslot->setRelObjectId(array_var($_REQUEST, "object_id"));
 			$dont_reload = array_var($_REQUEST, "dont_reload");
-				
-			if (logged_user()->isAdminGroup()) {
-				//Get Users Info
-				$users = array();
-				if (!can_manage_time(logged_user())) {
-					if (can_add(logged_user(), $context, Timeslots::instance()->getObjectTypeId())) $users = array(logged_user());
-				} else {
-						
+
+            //Get Users Info
+            $users = array();
+			if (can_manage_time(logged_user())) {
+
 					if (logged_user()->isMemberOfOwnerCompany()) {
 						$users = Contacts::getAllUsers();
 					} else {
@@ -170,9 +97,11 @@ class TimeController extends ApplicationController {
 						}
 						$users = $tmp_users;
 					}
-				}
+
 				tpl_assign('users', $users);
-			}
+			}else{
+                if (can_add(logged_user(), $context, Timeslots::instance()->getObjectTypeId())) $users = array(logged_user());
+            }
 			
 			$pre_selected_member_ids = null;
 			$rel_obj = $timeslot->getRelObject();
@@ -209,6 +138,49 @@ class TimeController extends ApplicationController {
 			}
 			
 		}
+	}
+	
+	
+	private function parse_hours_and_minutes_to_save($timeslot_data) {
+		// if end time is spacified calculate the amount of hours and minutes using start and date inputs
+		if (array_var($timeslot_data, 'specify_end_time') > 0) {
+			
+			$sd = getDateValue(array_var($timeslot_data, 'date'));
+			$st = getTimeValue(array_var($timeslot_data, 'start_time'));
+			$ed = getDateValue(array_var($timeslot_data, 'end_date'));
+			$et = getTimeValue(array_var($timeslot_data, 'end_time'));
+			if (!$sd instanceof DateTimeValue || !$ed instanceof DateTimeValue || !$st || !$et) {
+				throw new Exception(lang('you have to fill all the date and time fields'));
+			}
+			$sd->setHour($st['hours']);
+			$sd->setMinute($st['mins']);
+			$sd->setSecond(0);
+			$ed->setHour($et['hours']);
+			$ed->setMinute($et['mins']);
+			$ed->setSecond(0);
+			
+			$diff_seconds = $ed->getTimestamp() - $sd->getTimestamp();
+			$diff_minutes = floor($diff_seconds / 60);
+			
+			$sub_h = array_var($timeslot_data, 'subtract_hours',0);
+			$sub_m = array_var($timeslot_data, 'subtract_minutes',0);
+			$sub_total_mins = $sub_h * 60 + $sub_m;
+			
+			$diff_minutes -= $sub_total_mins;
+			if ($diff_minutes <= 0) {
+				throw new Exception(lang('time has to be greater than 0'));
+			}
+			
+			$hoursToAdd = floor($diff_minutes /60);
+			$minutes = $diff_minutes % 60;
+			
+		} else {
+			// an amount of time has been specified
+			$hoursToAdd = array_var($timeslot_data, 'hours',0);
+			$minutes = array_var($timeslot_data, 'minutes',0);
+		}
+		
+		return array('hours' => $hoursToAdd, 'minutes' => $minutes);
 	}
 	
 	
@@ -270,8 +242,23 @@ class TimeController extends ApplicationController {
 		}		
 		
 		try {
-			$hoursToAdd = array_var($timeslot_data, 'hours',0);
-			$minutes = array_var($timeslot_data, 'minutes',0);
+			$hhmm = $this->parse_hours_and_minutes_to_save($timeslot_data);
+			
+			$hoursToAdd = array_var($hhmm, 'hours',0);
+			$minutes = array_var($hhmm, 'minutes',0);
+			
+			// if paused time is specified then add it to the total lapse
+			$sub_hours = array_var($timeslot_data, 'subtract_hours',0);
+			$sub_minutes = array_var($timeslot_data, 'subtract_minutes',0);
+			if ($sub_hours > 0 || $sub_minutes > 0) {
+				$hoursToAdd += $sub_hours;
+				$minutes += $sub_minutes;
+				if ($minutes > 60) {
+					$minutes = $minutes - 60;
+					$hoursToAdd += 1;
+				}
+				$timeslot_data['subtract'] = 60 * ($sub_hours*60 + $sub_minutes);
+			}
                         
 			if (strpos($hoursToAdd,',') && !strpos($hoursToAdd,'.'))
 				$hoursToAdd = str_replace(',','.',$hoursToAdd);
@@ -299,6 +286,10 @@ class TimeController extends ApplicationController {
 			$logged_user_tz_hours_offset = logged_user()->getUserTimezoneValue() / 3600;
 			
 			$startTime = getDateValue(array_var($timeslot_data, 'date'));
+			if (!$startTime instanceof DateTimeValue) {
+				$startTime = DateTimeValueLib::now();
+				$startTime->add('h', -$hoursToAdd);
+			}
 			
 			$startTimeHours = getTimeValue(array_var($timeslot_data, 'start_time'));
 			if ($startTimeHours) {
@@ -387,7 +378,7 @@ class TimeController extends ApplicationController {
 			ApplicationLogs::createLog($timeslot, ApplicationLogs::ACTION_ADD);
 			
 			$show_billing = can_manage_billing(logged_user());
-			ajx_extra_data(array("timeslot" => $timeslot->getArrayInfo($show_billing),"real_obj_id" => $timeslot->getRelObjectId()));
+			ajx_extra_data(array("timeslot" => $timeslot->getArrayInfo($show_billing, true, true),"real_obj_id" => $timeslot->getRelObjectId()));
 			
 			return true;
 		} catch(Exception $e) {
@@ -409,13 +400,11 @@ class TimeController extends ApplicationController {
 				
 		$timeslot_data = array_var($_POST, 'timeslot');
 		if (!is_array($timeslot_data)) {
-			
-			if (logged_user()->isAdminGroup()) {
-				//Get Users Info
-				$users = array();
-				if (!can_manage_time(logged_user())) {
-					if (can_add(logged_user(), $context, Timeslots::instance()->getObjectTypeId())) $users = array(logged_user());
-				} else {
+            //Get Users Info
+            $users = array();
+			if (can_manage_time(logged_user())) {
+
+
 					
 					if (logged_user()->isMemberOfOwnerCompany()) {
 						$users = Contacts::getAllUsers();
@@ -427,13 +416,15 @@ class TimeController extends ApplicationController {
 					if (count($members) > 0) {
 						$tmp_users = array();
 						foreach ($users as $user) {
-							if (can_add($user, $members, Timeslots::instance()->getObjectTypeId())) $tmp_users[] = $user;
+							if (can_read($user, $members, Timeslots::instance()->getObjectTypeId())) $tmp_users[] = $user;
 						}
 						$users = $tmp_users;
 					}
-				}
+
 				tpl_assign('users', $users);
-			}
+			}else{
+                if (can_add(logged_user(), $context, Timeslots::instance()->getObjectTypeId())) $users = array(logged_user());
+            }
 			
 			tpl_assign('timeslot', $timeslot);
 			
@@ -469,9 +460,24 @@ class TimeController extends ApplicationController {
 			}
 						
 			try {
-				$hoursToAdd = array_var($timeslot_data, 'hours',0);
-				$minutes = array_var($timeslot_data, 'minutes',0);
-	
+				$hhmm = $this->parse_hours_and_minutes_to_save($timeslot_data);
+				
+				$hoursToAdd = array_var($hhmm, 'hours',0);
+				$minutes = array_var($hhmm, 'minutes',0);
+				
+				// if paused time is specified then add it to the total lapse
+				$sub_hours = array_var($timeslot_data, 'subtract_hours',0);
+				$sub_minutes = array_var($timeslot_data, 'subtract_minutes',0);
+				if ($sub_hours > 0 || $sub_minutes > 0) {
+					$hoursToAdd += $sub_hours;
+					$minutes += $sub_minutes;
+					if ($minutes > 60) {
+						$minutes = $minutes - 60;
+						$hoursToAdd += 1;
+					}
+					$timeslot_data['subtract'] = 60 * ($sub_hours*60 + $sub_minutes);
+				}
+				
 				if (strpos($hoursToAdd,',') && !strpos($hoursToAdd,'.')) {
 					$hoursToAdd = str_replace(',','.',$hoursToAdd);
 				}
@@ -606,7 +612,221 @@ class TimeController extends ApplicationController {
 			flash_error($e->getMessage());
 		} // try
 	}
+	
+	
+	function list_all() {
+		ajx_current("empty");
+		
+		// Get all variables from request
+		$start = array_var($_REQUEST, 'start', 0);
+		$limit = array_var($_REQUEST, 'limit', config_option('files_per_page'));
+		$order = array_var($_REQUEST, 'sort', 'start_time');
+		$order_dir = array_var($_REQUEST, 'dir');
+		
+		$only_count_result = array_var($_REQUEST, 'only_result', false);
+		$rel_object_id = array_var($_REQUEST, 'rel_object_id');
+		$only_closed = array_var($_REQUEST, 'only_closed');
+		$ignore_context = array_var($_REQUEST, 'ignore_context');
+		
+		$type_filter = array_var($_REQUEST, 'type_filter');
+		$user_filter = array_var($_REQUEST, 'user_filter');
+		$from_filter = array_var($_REQUEST, 'from_filter');
+		$to_filter = array_var($_REQUEST, 'to_filter');
+		
+		$dim_order = null;
+		$cp_order = null;
+		
+		$join_params = array();
+		$select_columns = array('*');
+		$extra_conditions = "";
+		
+		if ($rel_object_id) $extra_conditions .= " AND rel_object_id='$rel_object_id' ";
+		
+		$extra_conditions .= " AND end_time<>'".EMPTY_DATETIME."' ";
+		
+		switch ($type_filter) {
+			case 1: $extra_conditions .= " AND rel_object_id>0 "; break;
+			case 2: $extra_conditions .= " AND rel_object_id=0 "; break;
+			default: break;
+		}
+		
+		if ($user_filter) $extra_conditions .= " AND contact_id='$user_filter' ";
+		
+		if ($from_filter) {
+			$from_date = DateTimeValueLib::dateFromFormatAndString(user_config_option('date_format'), $from_filter);
+			if ($from_date instanceof DateTimeValue) {
+				$from_date->beginningOfDay();
+				$extra_conditions .= " AND e.start_time >= '".$from_date->toMySQL()."'";
+			}
+		}
+		if ($to_filter) {
+			$to_date = DateTimeValueLib::dateFromFormatAndString(user_config_option('date_format'), $to_filter);
+			if ($to_date instanceof DateTimeValue) {
+				$to_date->endOfDay();
+				$extra_conditions .= " AND e.start_time <= '".$to_date->toMySQL()."'";
+			}
+		}
+		
+		if (!isset($_SESSION['current_time_module_filters'])) $_SESSION['current_time_module_filters'] = array();
+		$_SESSION['current_time_module_filters']['type_filter'] = $type_filter;
+		$_SESSION['current_time_module_filters']['user_filter'] = $user_filter;
+		$_SESSION['current_time_module_filters']['from_filter'] = $from_filter;
+		$_SESSION['current_time_module_filters']['to_filter'] = $to_filter;
+		
+		
+		switch ($order){
+			case 'updatedOn':
+				$order = '`updated_on`';
+				break;
+			case 'createdOn':
+				$order = '`created_on`';
+				break;
+			case 'name':
+				$order = 'contact_name';
+				$join_params = array(
+					'table' => Objects::instance()->getTableName(),
+					'jt_field' => 'id',
+					'e_field' => 'contact_id',
+				);
+				$select_columns = array("e.*, o.*, jt.`name` as contact_name");
+				break;
+			case 'description':
+			case 'start_time':
+			case 'end_time':
+			case 'subtract':
+			case 'worked_time':
+			case 'fixed_billing':
+			case 'fixed_cost':
+			case 'invoicing_status':
+				break;
+			default:
+				//if order by custom prop
+				if (strpos($order, 'cp_') == 1 ){
+					$cp_order = substr($order, 3);
+					$order = 'customProp';
+				} else if (str_starts_with($order, "dim_")) {
+					$dim_order = substr($order, 4);
+					$order = 'dimensionOrder';
+				} else {
+					$order = '`start_time`';
+				}
+				break;
+		}
+		
+		if (!$order_dir) {
+			$order_dir = 'ASC';
+		}
+		
+		Hook::fire("listing_extra_conditions", null, $extra_conditions);
+		
+		$res = Timeslots::instance()->listing(array(
+				"join_ts_with_task" => false,
+				"order" => $order,
+				"order_dir" => $order_dir,
+				"dim_order" => $dim_order,
+				"cp_order" => $cp_order,
+				"start" => $start,
+				"limit" => $limit,
+				"ignore_context" => $ignore_context,
+				"extra_conditions" => $extra_conditions,
+				"count_results" => false,
+				"only_count_results" => $only_count_result,
+				"join_params" => $join_params,
+				"select_columns" => $select_columns
+		));
+		$messages = $res->objects;
+		
+		// get active timeslots to put in the top of the list (only in the first page)
+		if (!$only_closed && $start == 0) {
+			$active_timeslots = Timeslots::instance()->listing(array(
+				"extra_conditions" => " AND end_time = '".EMPTY_DATETIME."' AND contact_id = ".logged_user()->getId() 
+			))->objects;
+			foreach ($active_timeslots as $active_ts) {
+				array_unshift($messages, $active_ts);
+			}
+		}
+		
+		// Prepare response object
+		$object = $this->prepareObject($messages, $start, $limit, $res);
+		ajx_extra_data($object);
+		tpl_assign("listing", $object);
+	}
+	
+	
+	
+	private function prepareObject($totMsg, $start, $limit, $res_obj) {
+		
+		$object = array(
+			"totalCount" => $res_obj->total,
+			"start" => $start,
+			"timeslots" => array()
+		);
+		foreach ($res_obj as $k => $v) {
+			if ($k != 'total' && $k != 'objects') $object[$k] = $v;
+		}
+		
+		$show_billing = can_manage_billing(logged_user());
+		
+		$rel_object_ids = array();
+		
+		$custom_properties = CustomProperties::getAllCustomPropertiesByObjectType(Timeslots::instance()->getObjectTypeId());
+		$ids = array();
+		for ($i = 0; $i < $limit; $i++){
+			if (isset($totMsg[$i])){
+				$msg = $totMsg[$i];
+				if ($msg instanceof Timeslot){
+					$msg->setObjectTypeId(Timeslots::instance()->getObjectTypeId());
+					$general_info = $msg->getObject()->getArrayInfo();
+					$info = array_merge($msg->getArrayInfo($show_billing, true, true), $general_info);
+					$info["ix"] = $i;
+					
+					if ($msg->getRelObjectId() > 0) $rel_object_ids[$i] = $msg->getRelObjectId();
+					
+					$add_cls = "";
+					if (!$msg->getEndTime()) $add_cls = "open-timeslot ";
+					
+					Hook::fire("additional_task_timeslot_class", $msg, $add_cls);
+					if ($add_cls) $info['add_cls'] .= $add_cls;
+					
+					$add_columns = "";
+					Hook::fire("view_timeslot_render_more_columns", $msg, $add_columns);
+					foreach ($add_columns as $col_id => $val) {
+						if (!isset($info[$col_id])) $info[$col_id] = $val;
+					}
+					
+					$object["timeslots"][$i] = $info;
+					$ids[] = $msg->getId();
+						
+					foreach ($custom_properties as $cp) {
+						$object["timeslots"][$i]['cp_'.$cp->getId()] = get_custom_property_value_for_listing($cp, $msg);
+					}
+				}
+			}
+		}
+		
+		if (count($rel_object_ids) > 0) {
+			$rel_object_name_rows = DB::executeAll("SELECT id, name FROM ".TABLE_PREFIX."objects WHERE id IN (".implode(',',$rel_object_ids).")");
+			foreach ($object["timeslots"] as &$data) {
+				if ($data['rel_object_id'] > 0) {
+					foreach ($rel_object_name_rows as $r) {
+						if ($data['rel_object_id'] == $r['id']) {
+							$data['rel_object_name'] = $r['name'];
+							break;
+						}
+					}
+				}
+			}
+		}
+	
+		$read_objects = ReadObjects::getReadByObjectList($ids, logged_user()->getId());
+		if (is_array($object["timeslots"])) {
+			foreach($object["timeslots"] as &$data) {
+				$data['isRead'] = isset($read_objects[$data['object_id']]);
+			}
+		}
+	
+		return $object;
+	}
 
 } // TimeController
 
-?>

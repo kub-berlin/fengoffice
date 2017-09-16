@@ -1079,7 +1079,7 @@ class FilesController extends ApplicationController {
 	}
 	
 	
-	private function upload_document_image($url, $filename, $img_num) {
+	public function upload_document_image($url, $filename, $img_num) {
 		$file_dt = array();
 		$file_content = file_get_contents(html_entity_decode($url));
 		$extension = get_file_extension($url);
@@ -1792,14 +1792,20 @@ class FilesController extends ApplicationController {
 		$user = array_var($_GET,'user');
 		$dim_order = null;
 		$cp_order = null;
+		
+		$ids = array();
+		$exploded = explode(',', array_var($_GET, 'objects'));
+		foreach ($exploded as $exp) {
+			if (is_numeric($exp)) $ids[] = $exp;
+		}
 
 		// if there's an action to execute, do so 
 		if (array_var($_GET, 'action') == 'delete') {
-			$ids = explode(',', array_var($_GET, 'objects'));
+			
 			$succ = 0; $err = 0;
 			foreach ($ids as $id) {
 				$file = ProjectFiles::findById($id);
-				if (isset($file) && $file->canDelete(logged_user())) {
+				if ($file instanceof ProjectFile && $file->canDelete(logged_user())) {
 					try{
 						DB::beginWork();
 						$file->trash();
@@ -1826,10 +1832,11 @@ class FilesController extends ApplicationController {
 			}
 
 		} else if (array_var($_GET, 'action') == 'markasread') {
-			$ids = explode(',', array_var($_GET, 'objects'));
+			
 			$succ = 0; $err = 0;
 				foreach ($ids as $id) {
-				$file = ProjectFiles::findById($id);
+					$file = ProjectFiles::findById($id);
+					if (!$file instanceof ProjectFile) continue;
 					try {
 						$file->setIsRead(logged_user()->getId(),true);
 						$succ++;
@@ -1842,10 +1849,11 @@ class FilesController extends ApplicationController {
 				flash_error(lang("error markasread files", $err));
 			}
 		}else if (array_var($_GET, 'action') == 'markasunread') {
-			$ids = explode(',', array_var($_GET, 'objects'));
+			
 			$succ = 0; $err = 0;
 				foreach ($ids as $id) {
-				$file = ProjectFiles::findById($id);
+					$file = ProjectFiles::findById($id);
+					if (!$file instanceof ProjectFile) continue;
 					try {
 						$file->setIsRead(logged_user()->getId(),false);
 						$succ++;
@@ -1860,12 +1868,13 @@ class FilesController extends ApplicationController {
 		}
 		 else if (array_var($_GET, 'action') == 'zip_add') {
 			$this->zip_add();
+			
 		} else if (array_var($_GET, 'action') == 'archive') {
-			$ids = explode(',', array_var($_GET, 'ids'));
+			
 			$succ = 0; $err = 0;
 			foreach ($ids as $id) {
 				$file = ProjectFiles::findById($id);
-				if (isset($file) && $file->canEdit(logged_user())) {
+				if ($file instanceof ProjectFile && $file->canEdit(logged_user())) {
 					try{
 						DB::beginWork();
 						$file->archive();
@@ -1922,12 +1931,18 @@ class FilesController extends ApplicationController {
 				if ($d instanceof Dimension && $d->getIsManageable()) $tmp_mids[] = $selection->getId();
 			}
 		}
+		/*
 		if (count($tmp_mids) == 0) {
 			if (Plugins::instance()->isActivePlugin('mail')) {
-				$extra_conditions .= " AND IF(e.mail_id=0, true, EXISTS (SELECT mac.contact_id FROM ".TABLE_PREFIX."mail_account_contacts mac 
+				$persons_dim_id = Dimensions::findByCode('feng_persons')->getId();
+				$extra_conditions .= " AND IF(e.mail_id=0, true, 
+					EXISTS (SELECT omm.object_id FROM ".TABLE_PREFIX."object_members omm 
+							INNER JOIN ".TABLE_PREFIX."members mm ON mm.id=omm.member_id WHERE mm.dimension_id<>'$persons_dim_id')
+						OR
+					EXISTS (SELECT mac.contact_id FROM ".TABLE_PREFIX."mail_account_contacts mac 
 					WHERE mac.contact_id=o.created_by_id AND mac.account_id=(SELECT mc.account_id FROM ".TABLE_PREFIX."mail_contents mc WHERE mc.object_id=e.mail_id)))";
 			}
-		}
+		}*/
 		
 		Hook::fire("listing_extra_conditions", null, $extra_conditions);
 		
@@ -2879,8 +2894,13 @@ class FilesController extends ApplicationController {
 			flash_error(lang('zip not supported'));
 			return;
 		}
+		$object_ids = array();
+		$exploded = explode(',', array_var($_GET, 'objects'));
+		foreach ($exploded as $exp) {
+			if (is_numeric($exp)) $object_ids[] = $exp;
+		}
 
-		$files = ProjectFiles::findByCSVIds(array_var($_GET, 'objects'), '`type` = 0');
+		$files = ProjectFiles::findByCSVIds(implode(',', $object_ids), '`type` = 0');
 		if (count($files) == 0) {
 			flash_error(lang('no files to compress'));
 			return;

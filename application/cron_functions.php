@@ -182,7 +182,11 @@ function rebuild_contact_member_cache() {
 	Env::useHelper('permissions');
 	_log("Recalculating contact member cache...");
 	
-	$users = Contacts::getAllUsers();
+	$resource_cond = "";
+	if (Plugins::instance()->isActivePlugin('advanced_services')) {
+		$resource_cond = " AND is_resource=0 ";
+	}
+	$users = Contacts::getAllUsers($resource_cond);
 	foreach ($users as $user) {
 		ContactMemberCaches::updateContactMemberCacheAllMembers($user);
 	}

@@ -528,7 +528,7 @@ tr.list-totals-row td {
 .report tr.list-totals-row td {
 	padding: 0 10px;
 }
-tr.list-totals-row td.textrow, tr.list-totals-row td.x-grid3-td-name {
+tr.list-totals-row td.textrow, tr.list-totals-row td.x-grid3-td-name, tr.list-totals-row .x-grid3-col-title {
 	text-align: left;
 }
 tr.list-totals-row.level-0 td.textrow {
@@ -562,7 +562,7 @@ tr.list-totals-row td.x-grid3-td-checker {
 tr.list-totals-row div.x-grid3-col-checker, tr.list-totals-row td.x-grid3-td-icon {
 	display: none;
 }
-tr.list-totals-row td.x-grid3-col.x-grid3-cell.x-grid3-td-name {
+tr.list-totals-row td.x-grid3-col.x-grid3-cell.x-grid3-td-name, tr.list-totals-row .x-grid3-col-title {
     padding-left: 30px;
 }
 

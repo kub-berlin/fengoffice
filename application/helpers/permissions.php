@@ -1318,19 +1318,31 @@
 		$users_with_permissions = array();
 		
 		if (count($members) == 0) {
-			// users with permissions in root
-			if (config_option('let_users_create_objects_in_root')) {
-				
-				$users_with_permissions = Contacts::findAll(array("conditions" => "
+
+            if(TemplateTasks::instance()->getObjectTypeId() == $object_type_id || TemplateMilestones::instance()->getObjectTypeId() == $object_type_id){
+                $users_with_permissions = Contacts::getAllUsers($extra_conditions);
+            }else{
+                // users with permissions in root
+                if (config_option('let_users_create_objects_in_root')) {
+
+                    $users_with_permissions = Contacts::findAll(array("conditions" => "
 					disabled=0 AND permission_group_id IN (
 						SELECT cmp.permission_group_id FROM ".TABLE_PREFIX."contact_member_permissions cmp
 						INNER JOIN ".TABLE_PREFIX."permission_groups pg ON pg.id=cmp.permission_group_id
 						WHERE cmp.member_id=0 AND cmp.object_type_id='$object_type_id' AND pg.type='permission_groups'
 					)
 				"));
-			}
+                }
+            }
+
 			
 		} else {
+            if(TemplateTasks::instance()->getObjectTypeId() == $object_type_id){
+                $object_type_id = ProjectTasks::instance()->getObjectTypeId();;
+            }
+            if(TemplateMilestones::instance()->getObjectTypeId() == $object_type_id){
+                $object_type_id = ProjectMilestones::instance()->getObjectTypeId();;
+            }
 			// foreach user check if can access in $members for $object_type_id and $access_level
 			$users = Contacts::getAllUsers($extra_conditions);
 			foreach ($users as $user){

@@ -766,6 +766,17 @@ class TemplateController extends ApplicationController {
 		foreach ($copies as $c) {
 			if ($c instanceof ProjectTask) {
 				ApplicationLogs::createLog($c, ApplicationLogs::ACTION_ADD);
+
+                // notify asignee
+                if(1) { //array_var($task_data, 'send_notification')
+                    if(($c instanceof ProjectTask) && ($c->getAssignedToContactId() != $c->getAssignedById())) {
+                        try {
+                            Notifier::taskAssigned($c);
+                        } catch(Exception $e) {
+                            evt_add("debug", $e->getMessage());
+                        } // try
+                    }
+                }
 			}
 			
 			$ret = null;
@@ -805,8 +816,16 @@ class TemplateController extends ApplicationController {
 			$id = get_id();
 
 			$additional_member_ids = array();
-			if(get_id('member_id')){
-				$additional_member_ids[] = get_id('member_id');
+			if($add_mem_id = get_id('member_id')){
+				$additional_member_ids[] = $add_mem_id;
+				
+				// ensure that new member is in context before rendering the template paramters form
+				if (!in_array($add_mem_id, active_context_members(false))) {
+					$current_context = active_context();
+					$add_mem = Members::findById($add_mem_id);
+					if ($add_mem instanceof Member) $current_context[] = $add_mem;
+					CompanyWebsite::instance()->setContext($current_context);
+				}
 			}
 			$linked_objects = array();
 			$parameters = TemplateParameters::getParametersByTemplate($id);

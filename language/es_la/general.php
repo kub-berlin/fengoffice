@@ -380,6 +380,9 @@
 	'next month' => 'Mes siguiente',
 	'next three months(after next month)' => 'Siguientes tres meses (posterior al mes siguiente)',
 	'this year' => 'Este año',
+	'last year' => 'Año pasado',
+	'this quarter' => 'Este trimestre',
+	'last quarter' => 'Trimestre pasado',
 	'after this year' => 'Posterior a este año',
 	
 	'type name here' => 'Nombre...',
@@ -436,4 +439,6 @@
 	'if not specified then current time will be used' => 'Si no se especifica se utilizará la hora actual.',
 
 	'couldnt assign user to task due to permissions' => 'No se pudo asignar {0} a la tarea {1} porque el usuario no tiene permisos donde la tarea está clasificada.',
+	'specify end date' => 'Especificar fecha de fin',
+	'you have to fill all the date and time fields' => 'Debe ingresar todos los campos de fecha y hora',
 );

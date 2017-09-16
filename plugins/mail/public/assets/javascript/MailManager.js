@@ -103,6 +103,16 @@ og.MailManager = function() {
 					if (active_page == 1 && d.messages.length > 0) {
 						manager.last_email_date = d.messages[0].rawdate;
 					}
+					
+					// post load processing
+					if (og.mail.after_mail_manager_load && og.mail.after_mail_manager_load.length > 0) {
+						for (var x=0; x<og.mail.after_mail_manager_load.length; x++) {
+							var func = og.mail.after_mail_manager_load[x];
+							if (typeof(func) == 'function') {
+								func.call(null);
+							}
+						}
+					}
 				}
 			}
 		});
@@ -173,11 +183,11 @@ og.MailManager = function() {
 	}
 	
 	function renderIcon(value, p, r) {
+		var icon_cls = 'ico-classify';
 		if (r.data.memberIds.length > 0) {
-			return '<div class="db-ico ico-email"></div>';
-		} else {
-			return String.format('<a href="#" onclick="{0}" title={1}><div class="db-ico ico-classify"></div></a>', "og.render_modal_form('', {c:'mail', a:'classify', params: {id: "+r.data.object_id+", from_mail_list: true},focusFirst: false})", lang('classify'));
+			icon_cls = 'ico-email';
 		}
+		return String.format('<a href="#" onclick="{0}" title={1}><div class="db-ico '+icon_cls+'"></div></a>', "og.render_modal_form('', {c:'mail', a:'classify', params: {id: "+r.data.object_id+", from_mail_list: true},focusFirst: false})", lang('classify'));
 	}
 	
 	function renderStatusIcon(value, p, r) {
@@ -440,7 +450,7 @@ og.MailManager = function() {
 		}];
 	// custom property columns
 	var cps = og.custom_properties_by_type['mail'] ? og.custom_properties_by_type['mail'] : [];
-	this.addCustomPropertyColumns(cps, cm_info);
+	this.addCustomPropertyColumns(cps, cm_info, 'mails-manager');
 
 	// dimension columns
 	for (did in og.dimensions_info) {
@@ -457,9 +467,18 @@ og.MailManager = function() {
 			og.breadcrumbs_skipped_dimensions[did] = did;
 		}
 	}
+	
+	if (og.mail && og.mail.additional_mail_list_columns && og.mail.additional_mail_list_columns.length > 0) {
+		for (x in og.mail.additional_mail_list_columns) {
+			if (typeof(og.mail.additional_mail_list_columns[x]) == 'function') continue;
+			cm_info.push(og.mail.additional_mail_list_columns[x]);
+		}
+	}
+	
 	// create column model
 	var cm = new Ext.grid.ColumnModel(cm_info);
 	cm.defaultSortable = true;
+    cm.on('hiddenchange', this.afterColumnShowHide, this);
 
 	moreActions = {};
 	
@@ -1064,6 +1083,15 @@ og.MailManager = function() {
 							if (acc.length == 0) comp.removeClass('filter-selected');
 							else comp.addClass('filter-selected');
 							
+							if (og.mail.after_filter_by_mail_account_fn && og.mail.after_filter_by_mail_account_fn.length > 0) {
+								for (var x=0; x<og.mail.after_filter_by_mail_account_fn.length; x++) {
+									var func = og.mail.after_filter_by_mail_account_fn[x];
+									if (typeof(func) == 'function') {
+										func.call(null, this.accountId);
+									}
+								}
+							}
+							
 							// timeout to reload the panel
 							if (og.mail_acc_select_timeout) {
 								clearTimeout(og.mail_acc_select_timeout);
@@ -1078,10 +1106,6 @@ og.MailManager = function() {
 								
 								var acc = man.accountId.split(',');
 								acc = acc.filter(function(n){ return n != undefined && n != ''});
-								
-								if (acc.length == 0) {
-									man.checkmail(true); // check all account emails because if filter was in a particular account then there are unchecked accounts.
-								}
 								
 							}, timeout_milis);
 						},
@@ -1374,14 +1398,33 @@ Ext.extend(og.MailManager, Ext.grid.GridPanel, {
 			start = isNaN(params.start) ? 0 : params.start;
 		}
 		
+		// before load processing
+		if (og.mail.before_mail_manager_load && og.mail.before_mail_manager_load.length > 0) {
+			for (var x=0; x<og.mail.before_mail_manager_load.length; x++) {
+				var func = og.mail.before_mail_manager_load[x];
+				if (typeof(func) == 'function') {
+					func.call(null, this);
+				}
+			}
+		}
+		
 		this.store.baseParams = {
 	      read_type: this.readType,
 	      view_type: this.viewType,
 	      state_type : this.stateType,
 	      classif_type: this.classifType,
 	      context: og.contextManager.plainContext(),
+	      prev_context: this.last_context_sent,
 		  account_id: this.accountId
 	    };
+		if (this.store.extraParams) {
+			for (var x in this.store.extraParams) {
+				if (typeof(this.store.extraParams[x]) != 'function') {
+					this.store.baseParams[x] = this.store.extraParams[x];
+				}
+			}
+			this.store.extraParams = [];
+		}
 		
 		// save last context sent to reload the list always if it has changed
 		this.last_context_sent = og.contextManager.plainContext();

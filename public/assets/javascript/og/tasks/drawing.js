@@ -1227,7 +1227,7 @@ ogTasks.initTasksList = function() {
 			did = exp[0];
 			if (!isNaN(ot_id)) ot_id = exp[1];
 		}
-		if (did == 0) continue;
+		if (did == 0 || !og.dimensions_info[did]) continue;
 		
 		var key = 'lp_dim_' + did + '_show_as_column';
 		if (og.preferences['listing_preferences'][key]) {

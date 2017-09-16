@@ -50,4 +50,8 @@
 	'new due date' => 'Nueva fecha de fin',
 	'new start date desc' => 'Se cambiará la fecha de inicio de las tareas seleccionadas.',
 	'new due date desc' => 'Se cambiará la fecha de fin de las tareas seleccionadas.',
+	'show archived' => 'Por archivado',
+	'by archived status' => 'Por archivado',
+	'archived' => 'Archivados',
+	'unarchived' => 'No archivados',
 );

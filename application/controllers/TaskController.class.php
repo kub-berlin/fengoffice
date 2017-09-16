@@ -592,6 +592,8 @@ class TaskController extends ApplicationController {
 			$all_tasks = array();
 			foreach($ids as $id){
 				$task = Objects::findObject($id);
+				if (!$task instanceof ProjectTask) continue;
+				
 				$task->setDontMakeCalculations(true); // all the calculations should be after all tasks are saved
 				$all_tasks[] = $task;
 				
@@ -677,7 +679,7 @@ class TaskController extends ApplicationController {
 							
 							if ($user instanceof Contact && $user->isUser()) {
 								
-								if (!can_task_assignee($user) || !$task->canView($user)) {
+								if (!can_task_assignee($user)) {
 									$additional_error_message_info .= "\n - ".lang('task x cant be assigned to user y', $task->getName(), $user->getName());
 								} else {
 									$task->setAssignedToContactId($user->getId());
@@ -908,7 +910,7 @@ class TaskController extends ApplicationController {
 				break;
 			case 'completed_by':
 				if ($filter_value != 0) {
-					$task_filter_condition = " AND  `completed_by_id` = " . $filter_value . " ";
+					$task_filter_condition = " AND  e.`completed_by_id` = " . $filter_value . " ";
 				}
 				break;
 			case 'milestone':
@@ -1640,7 +1642,7 @@ class TaskController extends ApplicationController {
 		}	
 	}
 	
-	private function getDimensionGroups($dim_id,$conditions,$show_more_conditions,$list_subtasks_cond){
+	private function getDimensionGroups($dim_id,$member_type_id,$conditions,$show_more_conditions,$list_subtasks_cond){
 		$groupId = $show_more_conditions['groupId'];
 		$start = $show_more_conditions['start'];
 		$limit = $show_more_conditions['limit'];
@@ -1656,8 +1658,15 @@ class TaskController extends ApplicationController {
 			$member_more_cond = " AND  `jt`.`member_id` = $groupId";
 		}
 		
-		$join_params['on_extra'] = " INNER  JOIN `".TABLE_PREFIX."members` `jtm` ON `jt`.`member_id` = `jtm`.`id` AND `jtm`.`dimension_id` = $dim_id AND `jt`.`is_optimization` = 0 $member_more_cond";
-		
+		$join_params['on_extra'] = " INNER  JOIN `".TABLE_PREFIX."members` `jtm` ON `jt`.`member_id` = `jtm`.`id` AND `jtm`.`dimension_id` = $dim_id AND `jtm`.`object_type_id` = $member_type_id $member_more_cond ";
+
+        $join_params['on_extra'] .= " AND NOT EXISTS (
+ 										SELECT my.id FROM ".TABLE_PREFIX."members my
+ 										INNER JOIN ".TABLE_PREFIX."object_members tom ON my.id=tom.member_id
+										WHERE my.dimension_id='$dim_id' AND my.object_type_id='$member_type_id' AND tom.object_id=o.id
+  										AND my.depth > jtm.depth
+		)";
+
 		if(is_null($groupId) || $groupId > 0){
 			$groups = ProjectTasks::instance()->listing(array(
 					"select_columns" => array("`jtm`.`id` AS group_id " , "`jtm`.`parent_member_id` AS group_parent " , "`jtm`.`name` AS group_name ", "`jtm`.`object_type_id` AS group_parent_type_id ", "`jtm`.`color` AS group_icon ", "SUM(time_estimate) AS group_time_estimate ", "COUNT(`e`.`object_id`) AS total"),
@@ -1694,8 +1703,15 @@ class TaskController extends ApplicationController {
 				$group_time_estimate = $group_time_estimate[0]['group_time_estimate'];
 				
 				$join_on_extra = " INNER  JOIN `".TABLE_PREFIX."object_members` `jtom` ON `e`.`object_id` = `jtom`.`object_id` ";
-				$join_on_extra .= " INNER  JOIN `".TABLE_PREFIX."members` `jtm` ON `jtom`.`member_id` = `jtm`.`id` AND `jtm`.`dimension_id` = $dim_id AND `jtom`.`is_optimization` = 0";
-							
+				$join_on_extra .= " INNER  JOIN `".TABLE_PREFIX."members` `jtm` ON `jtom`.`member_id` = `jtm`.`id` AND `jtm`.`dimension_id` = $dim_id AND `jtm`.`object_type_id` = $member_type_id ";
+
+                $join_on_extra .= " AND NOT EXISTS (
+ 										SELECT my.id FROM ".TABLE_PREFIX."members my
+ 										INNER JOIN ".TABLE_PREFIX."object_members tom ON my.id=tom.member_id
+										WHERE my.dimension_id='$dim_id' AND my.object_type_id='$member_type_id' AND tom.object_id=o.id
+  										AND my.depth > jtm.depth
+				)";
+
 				$totals = $this->getGroupTotals($conditions.$group_conditions, $group_time_estimate, $join_on_extra);
 				
 				foreach($totals as $total_key => $total){
@@ -1715,9 +1731,17 @@ class TaskController extends ApplicationController {
 		if(is_null($groupId) ||  $groupId == 0){
 			$unknown_group['group_id'] = 0;
 			$dimension = Dimensions::getDimensionById($dim_id);
-			$unknown_group['group_name'] = lang('without a member')." ".lang($dimension->getCode());
+            $member_type = ObjectTypes::findById($member_type_id);
+			$unknown_group['group_name'] = lang('without a member')." ".lang($member_type->getName());
 			$join_params['join_type'] = "LEFT ";
-			$join_params['on_extra'] = " LEFT  JOIN `".TABLE_PREFIX."members` `jtm` ON `jt`.`member_id` = `jtm`.`id` AND `jtm`.`dimension_id` = $dim_id AND `jt`.`is_optimization` = 0";
+			$join_params['on_extra'] = " LEFT  JOIN `".TABLE_PREFIX."members` `jtm` ON `jt`.`member_id` = `jtm`.`id` AND `jtm`.`dimension_id` = $dim_id AND `jtm`.`object_type_id` = $member_type_id ";
+
+            $join_params['on_extra'] .= " AND NOT EXISTS (
+ 										SELECT my.id FROM ".TABLE_PREFIX."members my
+ 										INNER JOIN ".TABLE_PREFIX."object_members tom ON my.id=tom.member_id
+										WHERE my.dimension_id='$dim_id' AND my.object_type_id='$member_type_id' AND tom.object_id=o.id
+  										AND my.depth > jtm.depth
+			)";
 			
 			$tasks_in_group = $this->getTasksInGroup($conditions.$list_subtasks_cond, $start, $limit, $join_params, " `e`.`object_id` HAVING SUM(`jtm`.`dimension_id`) is null");
 			$unknown_group['root_total'] = $tasks_in_group['total_roots_tasks'];
@@ -1792,9 +1816,10 @@ class TaskController extends ApplicationController {
 		$list_subtasks = user_config_option('tasksShowSubtasksStructure') && !user_config_option('show_tasks_list_as_gantt');
 		if($list_subtasks){
 			// get the sql that brings all the root tasks ids
+
 			$listing_sql = ProjectTasks::instance()->listing(array(
 					"select_columns" => array("e.object_id","e.parent_id","e.depth","e.parents_path"),
-					"extra_conditions" => $conditions,
+					"extra_conditions" => $conditions. " AND e2.object_id IN (e.parents_path) ",
 					"join_params"=> $join_params,
 					"group_by" => $group_by,				
 					"count_results" => false,
@@ -1806,7 +1831,6 @@ class TaskController extends ApplicationController {
 			// have their parent in the current group with the same conditions
 			$sub_listing_sql = str_replace(array("`e`.","e."), "e2.", $listing_sql);
 			$sub_listing_sql = str_replace("project_tasks e", "project_tasks e2", $sub_listing_sql);
-			$sub_listing_sql = str_replace("WHERE", "WHERE e2.object_id IN (e.parents_path) AND ", $sub_listing_sql);
 			
 			$conditions = $conditions . " AND NOT EXISTS($sub_listing_sql)";
 		
@@ -1930,9 +1954,42 @@ class TaskController extends ApplicationController {
 		}elseif(in_array($groupBy,$group_by_nothing)){
 			$groups = $this->getNothingGroups($conditions,$show_more_conditions,$list_subtasks_cond);
 		//Group by dimension
-		}elseif(substr( $groupBy, 0, 10 ) === "dimension_"){			
-			$dim_id = (int) substr( $groupBy, 10);			
-			$groups = $this->getDimensionGroups($dim_id,$conditions,$show_more_conditions,$list_subtasks_cond);
+		}elseif(substr( $groupBy, 0, 16 ) === "dimmembertypeid_"){
+			$dim_str = substr( $groupBy, 16);
+            $dim_arr = explode("_", $dim_str);
+
+            $dim_id = (int) $dim_arr[0];
+            $member_type_id = (int) $dim_arr[1];
+
+            //If Group by folder check context in order to decide which folder type use
+			//Remove this part when the folders are all the same
+            $otf = ObjectTypes::findByName('folder');
+            if($otf->getId() == $member_type_id){
+                $acontext = active_context();
+
+                $ot_customer = ObjectTypes::findByName('customer');
+                $ot_customer_id = $ot_customer->getId();
+
+                $ot_project = ObjectTypes::findByName('project');
+                $ot_project_id = $ot_project->getId();
+
+                foreach ($acontext as $scontext){
+                    if ($scontext instanceof Member) {
+                        $scontext_ot = $scontext->getObjectTypeId();
+                        if ($scontext_ot == $ot_project_id) {
+                            $ot_project_folder = ObjectTypes::findByName('project_folder');
+                            $member_type_id = $ot_project_folder->getId();
+                        }
+                        if ($scontext_ot == $ot_customer_id) {
+                            $ot_customer_folder = ObjectTypes::findByName('customer_folder');
+                            $member_type_id = $ot_customer_folder->getId();
+                        }
+                    }
+				}
+
+			}
+
+			$groups = $this->getDimensionGroups($dim_id,$member_type_id,$conditions,$show_more_conditions,$list_subtasks_cond);
 		}
 		
 		$list_subtasks = user_config_option('tasksShowSubtasksStructure') && !user_config_option('show_tasks_list_as_gantt');
@@ -2041,6 +2098,44 @@ class TaskController extends ApplicationController {
 		ajx_extra_data($data);
 	}
 	
+	
+	
+	function users_for_tasks_list_filter() {
+		ajx_current("empty");
+		// Get Users Info
+		if (logged_user()->isGuest()) {
+			$users = array(logged_user());
+		} else {
+			$users = allowed_users_to_assign(null,true,false,true);
+		}
+		
+		$users_data = array();
+		$user_ids = array(-1);
+		foreach ($users as $user) {
+			$user_ids[] = $user->getId();
+			$users_data[] = $user->getArrayInfo();
+		}
+		
+		// only companies with users
+		$companies = Contacts::findAll(array(
+			"conditions" => "e.is_company = 1",
+			"join" => array(
+					"table" => Contacts::instance()->getTableName(),
+					"jt_field" => "object_id",
+					"j_sub_q" => "SELECT xx.object_id FROM ".Contacts::instance()->getTableName(true)." xx WHERE
+				xx.is_company=0 AND xx.company_id = e.object_id AND xx.object_id IN (".implode(",", $user_ids).") LIMIT 1"
+			)
+		));
+		
+		$companies_data = array();
+		foreach ($companies as $comp) {
+			$companies_data[] = $comp->getArrayInfo();
+		}
+		
+		ajx_extra_data(array('companies' => $companies_data, 'users' => $users_data));
+	}
+	
+	
 	function new_list_tasks(){
 		//load config options into cache for better performance
 		load_user_config_options_by_category_name('task panel');
@@ -2131,30 +2226,6 @@ class TaskController extends ApplicationController {
 
 		$externalMilestones = ProjectMilestones::findAll(array('conditions' => $ext_milestone_conditions));
 		
-		// Get Users Info
-		if (logged_user()->isGuest()) {
-			$users = array(logged_user());
-		} else {
-			$users = allowed_users_to_assign(null,true,false,true);
-		}
-
-		$allUsers = Contacts::getAllUsers(null, true);
-		
-		$user_ids = array(-1);
-		foreach ($allUsers as $user) {
-			$user_ids[] = $user->getId();
-		}
-		
-		// only companies with users
-		$companies = Contacts::findAll(array(
-			"conditions" => "e.is_company = 1",
-			"join" => array(
-				"table" => Contacts::instance()->getTableName(),
-				"jt_field" => "object_id",
-				"j_sub_q" => "SELECT xx.object_id FROM ".Contacts::instance()->getTableName(true)." xx WHERE 
-					xx.is_company=0 AND xx.company_id = e.object_id AND xx.object_id IN (".implode(",", $user_ids).") LIMIT 1"
-			)
-		));
         tpl_assign('tasks', $tasks);
         
        
@@ -4131,7 +4202,7 @@ class TaskController extends ApplicationController {
 		
 		$for_template_var = array_var($_GET, 'for_template_var');
 		
-		$comp_array = allowed_users_to_assign($context, !$for_template_var);
+		$comp_array = allowed_users_to_assign($context, !$for_template_var, true, true);
 		$object = array(
 			"companies" => $comp_array
 		);

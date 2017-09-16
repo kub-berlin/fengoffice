@@ -40,6 +40,7 @@ INSERT INTO `<?php echo $table_prefix ?>config_options` (`category_name`, `name`
 	('mailing', 'show images in document notifications', '0', 'BoolConfigHandler', 0, 0, NULL),
 	('mailing', 'show company logo in notifications', '1', 'BoolConfigHandler', 0, 0, NULL),
 	('mailing', 'notification_recipients_field', 'to', 'MailFieldConfigHandler', '0', '10', NULL),
+    ('mailing', 'disable_notifications_for_object_type', '', 'MultipleObjectTypeConfigHandler', 0, 0, NULL),
 	('passwords', 'min_password_length', '0', 'IntegerConfigHandler', 0, '1', NULL),
 	('passwords', 'password_numbers', '0', 'IntegerConfigHandler', 0, '2', NULL),
 	('passwords', 'password_uppercase_characters', '0', 'IntegerConfigHandler', 0, '3', NULL),

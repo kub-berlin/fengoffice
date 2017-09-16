@@ -242,7 +242,7 @@ og.WebpageManager = function() {
         }];
     // custom property columns
 	var cps = og.custom_properties_by_type['weblink'] ? og.custom_properties_by_type['weblink'] : [];
-	this.addCustomPropertyColumns(cps, cm_info);
+	this.addCustomPropertyColumns(cps, cm_info, 'webpage-manager');
 
 	// dimension columns
 	for (did in og.dimensions_info) {
@@ -262,6 +262,7 @@ og.WebpageManager = function() {
 	// create column model
 	var cm = new Ext.grid.ColumnModel(cm_info);
     cm.defaultSortable = false;
+    cm.on('hiddenchange', this.afterColumnShowHide, this);
     
     markactions = {
 		markAsRead: new Ext.Action({

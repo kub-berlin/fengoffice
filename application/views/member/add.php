@@ -146,11 +146,14 @@
 					$selected_members[] = $parent_sel;
 				}
 				
-				render_single_member_selector($current_dimension, $genid, $selected_members, array('is_multiple' => false, 'label' => lang('located under'),
+				$render = true;
+				Hook::fire('member_add_render_parent_selector', array('member' => $member), $render);
+				
+				if ($render) {
+					render_single_member_selector($current_dimension, $genid, $selected_members, array('is_multiple' => false, 'label' => lang('located under'),
 					'width'=>400, 'allow_non_manageable' => true, 'dont_filter_this_selector' => true,
 					'select_function' => 'og.onParentMemberSelect', 'listeners' => array('on_remove_relation' => "og.onParentMemberRemove('".$genid."');")), false);
-				
-				
+				}
 			?>
 				<input type="hidden" id="<?php echo $genid ?>memberParent" value="<?php echo $parent_sel; ?>" name="member[parent_member_id]"></input>
 				<div class="clear"></div>

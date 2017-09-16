@@ -7,10 +7,10 @@ $genid = gen_id();
 if (!isset($conditions)) $conditions = array();
 ?>
 <form style='height: 100%; background-color: white' class="internalForm report"
-	action="<?php echo $url  ?>" method="post"
-	onsubmit="return og.validateReport('<?php echo $genid ?>');"><input
-	type="hidden" name="report[report_object_type_id]" id="report[report_object_type_id]"
-	value="<?php echo array_var($report_data, 'report_object_type_id', '') ?>" />
+	action="<?php echo $url  ?>" method="post" onsubmit="return og.validateReport('<?php echo $genid ?>');">
+	
+	<input type="hidden" name="report[report_object_type_id]" id="<?php echo $genid?>report[report_object_type_id]" 
+		value="<?php echo array_var($report_data, 'report_object_type_id', '') ?>" />
 
 <div class="coInputHeader">
 
@@ -114,6 +114,8 @@ echo select_box('objectTypeSel', $options, array('id' => 'objectTypeSel' ,'oncha
 </form>
 
 <script>
+$(function() {
+
 	og.loadReportingFlags();
 	og.reportObjectTypeChanged('<?php echo $genid?>', '<?php echo array_var($report_data, 'order_by') ?>', '<?php echo array_var($report_data, 'order_by_asc') ?>', '<?php echo (isset($columns) ? implode(',', $columns) : '') ?>', false);
 	<?php if(isset($conditions)){ ?>
@@ -125,4 +127,6 @@ echo select_box('objectTypeSel', $options, array('id' => 'objectTypeSel' ,'oncha
 	
 	var first = document.getElementById('<?php echo $genid ?>reportFormName');
 	if (first) first.focus();
+
+});
 </script>

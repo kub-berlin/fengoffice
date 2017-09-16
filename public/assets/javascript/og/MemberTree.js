@@ -911,17 +911,45 @@ Ext.extend(og.MemberTree, Ext.tree.TreePanel, {
 					
 					var dimension_tree = Ext.getCmp('dimension-panel-'+data.dimension_id);
 					if (dimension_tree) {
-						
-						dimension_tree.addMembersToTree(data.members, data.dimension_id);
-						dimension_tree.innerCt.unmask();
-						
-						var n = dimension_tree.getNodeById(data.member_id);
-						if(n){
-							dimension_tree.suspendEvents();
-							if (n.parentNode) dimension_tree.expandPath(n.parentNode.getPath(), false);
-							dimension_tree.resumeEvents();
-							if (n.getOwnerTree()) n.select();
-							og.eventManager.fireEvent('member tree node click', n);
+						if (dimension_tree.hidden) {
+							// if tree is hidden then show and expand it
+							dimension_tree.show();
+							dimension_tree.expand();
+							dimension_tree.getRootNode().expand();
+							dimension_tree.innerCt.unmask();
+							
+							// mark dimension as checked in the dimension panel selector but don't fire the event to modify the user preference.
+							Ext.getCmp("dimension-selector-" + data.dimension_id).setChecked(true, true);
+							
+							// expand parents path
+							if (data.members && data.members.length > 0) {
+								for (var i=0; i<data.members.length; i++) {
+									var mem = data.members[i];
+									if (mem.id == data.member_id) {
+										break;
+									} else {
+										og.eventManager.fireEvent('try to expand member', {id: mem.id, dimension_id: data.dimension_id});
+									}
+								}
+							}
+							
+							// select the node
+							og.eventManager.fireEvent('try to select member', {id: data.member_id, dimension_id: data.dimension_id});
+							
+						} else {
+							
+							dimension_tree.addMembersToTree(data.members, data.dimension_id);
+							dimension_tree.innerCt.unmask();
+							
+							var n = dimension_tree.getNodeById(data.member_id);
+							if(n){
+								dimension_tree.suspendEvents();
+								if (n.parentNode) dimension_tree.expandPath(n.parentNode.getPath(), false);
+								dimension_tree.resumeEvents();
+								if (n.getOwnerTree()) n.select();
+								og.eventManager.fireEvent('member tree node click', n);
+							}
+							
 						}
 						
 						// ensure that first level nodes are ordered after the insertion

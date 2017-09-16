@@ -146,15 +146,18 @@ class MemberController extends ApplicationController {
 	
 	function build_listing_associated_dimensions_parameters($dimension, $member_type_id, $mem_table_prefix='mem') {
 		if (!$member_type_id) return array();
+		if (!$dimension instanceof Dimension) return array();
 		
 		$persons_dim = Dimensions::findByCode('feng_persons');
+		if (!$persons_dim instanceof Dimension) $persons_dim_id = $persons_dim->getId();
+		else $persons_dim_id = 0;
 		
 		// get associations (exclude persons dimension)
 		$associated_dimension_ids = array();
 		$dimension_associations = DimensionMemberAssociations::findAll(array(
 				"conditions" => array("(`dimension_id` = ? AND `associated_dimension_id` != ? AND `object_type_id` = ?)
 						OR (`associated_dimension_id` = ? AND `dimension_id` != ? AND `associated_object_type_id` = ?)",
-						$dimension->getId(), $persons_dim->getId(), $member_type_id, $dimension->getId(), $persons_dim->getId(), $member_type_id)
+						$dimension->getId(), $persons_dim_id, $member_type_id, $dimension->getId(), $persons_dim_id, $member_type_id)
 		));
 		
 		// dimension ids
@@ -1851,11 +1854,17 @@ class MemberController extends ApplicationController {
 			$member = Members::findById($mem_id);
 			
 			$objects = array();
+			$prev_classification = array();
 			$from = array();
 			foreach ($ids as $oid) {
 				/* @var $obj ContentDataObject */
 				$obj = Objects::findObject($oid);
 				if ($obj instanceof ContentDataObject && $obj->canAddToMember(logged_user(), $member, active_context())) {
+					
+					$prev_classification[$obj->getId()] = $obj->getMemberIds();
+					
+					$null = null;
+					Hook::fire('before_classify_additional_verifications', array('object' => $obj, 'member_ids' => array($member->getId())), $null);
 					
 					$dim_obj_type_content = DimensionObjectTypeContents::findOne(array('conditions' => array('`dimension_id`=? AND `dimension_object_type_id`=? AND `content_object_type_id`=?', $member->getDimensionId(), $member->getObjectTypeId(), $obj->getObjectTypeId())));
 					if (!($dim_obj_type_content instanceof DimensionObjectTypeContent)) continue;
@@ -1901,7 +1910,7 @@ class MemberController extends ApplicationController {
 				evt_add('ask to assign default permissions', array('user_ids' => $user_ids, 'member' => array('id' => $member->getId(), 'name' => clean($member->getName())), ''));
 			}
 			
-			Hook::fire('after_dragdrop_classify', $objects, $member);
+			Hook::fire('after_dragdrop_classify', array('objects' => $objects, 'prev_classification' => $prev_classification), $member);
 			
 			$display_name = $member->getName();
 			$lang_key = count($ids)>1 ? 'objects moved to member success' : 'object moved to member success';

@@ -704,6 +704,10 @@ og.eventManager.addListener('after grid panel load', function(data){
 		cp.setHeight(cph-1); // change height to fire the resize event, so it relocates the toolbars that were bad positioned
 		cp.setHeight(cph); // restore original height
 	}
+
+	if (data.man && data.man.id.indexOf('_timeslots_module_grid') >= 0) {
+		og.module_timeslots_grid.start_clocks();
+	}
 });
 
 og.eventManager.addListener('update tasks in list', function(data) {

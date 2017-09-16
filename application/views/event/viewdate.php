@@ -196,19 +196,19 @@ $genid = gen_id();
 									$end_of_task = false;
 									
 									$tz_value = Timezones::getTimezoneOffsetToApply($event, logged_user());
+									$tz_value_due = $event->getUseDueTime() ? $tz_value : 0;
+									$tz_value_start = $event->getUseStartTime() ? $tz_value : 0;
 									
 									if ($event->getDueDate() instanceof DateTimeValue) {
-										$due_date = new DateTimeValue($event->getDueDate()->getTimestamp() + $tz_value);
+										$due_date = new DateTimeValue($event->getDueDate()->getTimestamp() + $tz_value_due);
 										if ($dtv->getTimestamp() == mktime(0,0,0, $due_date->getMonth(), $due_date->getDay(), $due_date->getYear())){
 											$end_of_task = true;
-											$start_of_task = true;
 										}
 									}
 									if ($event->getStartDate() instanceof DateTimeValue) {
-										$start_date = new DateTimeValue($event->getStartDate()->getTimestamp() + $tz_value);
+										$start_date = new DateTimeValue($event->getStartDate()->getTimestamp() + $tz_value_start);
 										if ($dtv->getTimestamp() == mktime(0,0,0, $start_date->getMonth(), $start_date->getDay(), $start_date->getYear())){
 											$start_of_task = true;
-											$end_of_task = true;
 										}
 									}
 									if ($start_of_task && $end_of_task) {

@@ -141,7 +141,7 @@
 	                        }
 	                    },
 					fillEmptyBlocks: false,
-					removePlugins: 'scayt,liststyle,magicline',
+					removePlugins: 'scayt,liststyle,magicline,contextmenu,tabletools',
 	                entities_additional : '#336,#337,#368,#369,#124'
 	            });
 	

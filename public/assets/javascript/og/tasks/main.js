@@ -216,6 +216,7 @@ ogTasks.loadData = function(data){
 				this.currentUser = user;
 		}
 	}
+	if (!this.currentUser) this.currentUser = og.loggedUser;
 	
 	this.TotalCols = {};
 	var topToolbar = Ext.getCmp('tasksPanelTopToolbarObject');

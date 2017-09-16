@@ -1874,3 +1874,58 @@ a.underline {
 .dataBlock .country-combo-container select {
 	max-width:200px;
 }
+
+
+
+
+.object-view-grid-container {
+	border-left:1px solid #ccc;
+	border-top:1px solid #ccc;
+	height:auto;
+	max-height:700px;
+}
+.object-view-grid-container .list-totals-row-container {
+	position:absolute;
+	bottom:0px;
+}
+
+.x-btn-text.btn-text-bold {
+	font-weight: bold;
+}
+.x-btn-text.btn-text-red {
+	color: #dd4b39;
+}
+
+
+
+.x-tab-panel.subtab ul.x-tab-strip-top {
+	background-color: #fff;
+	padding-left: 10px !important;
+	border-bottom: 1px solid #ccc;
+}
+.x-tab-panel.subtab ul.x-tab-strip-top li {
+	height: 25px;
+	margin: 6px 2px -1px;
+    border: 1px solid #ccc;
+    border-radius: 5px 5px 0 0;
+}
+.x-tab-panel.subtab ul.x-tab-strip-top li.x-tab-strip-active {
+	border-bottom: 1px solid #fff;
+}
+.x-tab-panel.subtab ul.x-tab-strip-top span.x-tab-strip-text {
+	padding: 1px;
+	font-size: 12px;
+	color: #888888;
+}
+.x-tab-panel.subtab ul.x-tab-strip-top li.x-tab-strip-active span.x-tab-strip-text {
+	color: #333333;
+}
+
+
+table.date-range-inputs {
+	margin-top: 10px;
+}
+table.date-range-inputs td {
+	padding: 1px 5px;
+	vertical-align: middle;
+}

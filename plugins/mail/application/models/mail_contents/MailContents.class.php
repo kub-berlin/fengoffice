@@ -267,7 +267,7 @@ class MailContents extends BaseMailContents {
 	 * @param Project $project
 	 * @return array
 	 */
-	function getEmails($account_id = null, $state = null, $read_filter = "", $classif_filter = "", $context = null, $start = null, $limit = null, $order_by = 'received_date', $dir = 'ASC', $join_params = null, $archived = false, $conversation_list = null, $only_count_result = false, $extra_cond="") {
+	function getEmails($account_id = null, $state = null, $read_filter = "", $classif_filter = "", $context = null, $start = null, $limit = null, $order_by = 'received_date', $dir = 'ASC', $join_params = null, $archived = 'unarchived', $conversation_list = null, $only_count_result = false, $extra_cond="") {
 		$mailTablePrefix = "e";
 		if (!$limit) $limit = user_config_option('mails_per_page') ? user_config_option('mails_per_page') : config_option('files_per_page');
 		$accountConditions = "";
@@ -290,8 +290,11 @@ class MailContents extends BaseMailContents {
 			$persons_dim = Dimensions::findByCode('feng_persons');
 			$persons_dim_id = $persons_dim instanceof Dimension ? $persons_dim->getId() : "0";
 			
+			$extra_ignore_classif_cond = '';
+			Hook::fire('mail_list_dim_ids_excluded_from_classified_filder', array('classif_filter'=>$classif_filter), $extra_ignore_classif_cond);
+			
 			$classified = "AND " . ($classif_filter == 'unclassified' ? "NOT " : "");
-			$classified .= "o.id IN (SELECT om.object_id FROM ".TABLE_PREFIX."object_members om INNER JOIN ".TABLE_PREFIX."members m ON m.id=om.member_id WHERE m.dimension_id<>$persons_dim_id)";
+			$classified .= "o.id IN (SELECT om.object_id FROM ".TABLE_PREFIX."object_members om INNER JOIN ".TABLE_PREFIX."members m ON m.id=om.member_id WHERE m.dimension_id<>$persons_dim_id $extra_ignore_classif_cond)";
 		}
 		
 		// if not filtering by account or classification then check that emails are classified or from one of my accounts
@@ -381,7 +384,8 @@ class MailContents extends BaseMailContents {
 			'join_with_searchable_objects' => $join_with_searchable_objects,
 			'count_results' => false,
 			'only_count_results' => $only_count_result,
-			'join_params' => $join_params
+			'join_params' => $join_params,
+			'archived' => $archived,
 		));
 		
 		

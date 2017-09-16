@@ -10,10 +10,16 @@ if (!defined('LOG_SWIFT')) {
 	define('LOG_SWIFT', 1);
 }
 if (!defined('MAIL_SIGNATURE_DIV_ATTRIBUTES')) {
-	define('MAIL_SIGNATURE_DIV_ATTRIBUTES', 'class="fengoffice_signature" contenteditable="false"');
+	define('MAIL_SIGNATURE_DIV_ATTRIBUTES', 'class="fengoffice_signature" contenteditable="false" style="font-size:24px;"');
 }
 
 class MailUtilities {
+	
+	private $special_imap_folder_codes = array("\\All", "\\Archive", "\\Drafts", "\\Flagged", "\\Junk", "\\Sent", "\\Trash", "\\Important");
+	
+	function getSpecialImapFolderCodes() {
+		return $this->special_imap_folder_codes;
+	}
 
 	function getmails($accounts = null, &$err, &$succ, &$errAccounts, &$mailsReceived, $maxPerAccount = 0) {
 		if (defined('DONT_CHECK_MAIL') && DONT_CHECK_MAIL) {
@@ -263,10 +269,13 @@ class MailUtilities {
 						ON DUPLICATE KEY UPDATE uid=".DB::escape($uid).";
 					");
 					
+					$null = null;
+					Hook::fire('after_mail_content_imap_folder_saved', array('mail_id' => $exists_object_id, 'folder' => $imap_folder_name, 'account' => $account, 'uid' => $uid), $null);
+					
 					// ensure that the last uid is updated correctly if needed, for future chekmails
 					if (is_numeric($uid)) {
 						$max_uid_saved = $account->getImapMaxUID($imap_folder_name);
-						if (is_numeric($max_uid_saved) && $max_uid_saved < $uid) {
+						if (is_numeric($max_uid_saved) && $max_uid_saved < $uid || trim($max_uid_saved) == '') {
 							DB::execute("
 								UPDATE `".TABLE_PREFIX."mail_account_imap_folder` ma 
 								SET ma.last_uid_in_folder=".DB::escape($uid)." 
@@ -355,6 +364,22 @@ class MailUtilities {
 					if (strtolower($from) == strtolower($account->getEmailAddress())) {
 						if (strpos($to_addresses, $from) !== FALSE) $state = 5; //Show in inbox and sent folders
 						else $state = 1; //Show only in sent folder
+					}
+				}
+				
+				if ($imap_folder_name) {
+					$maif = MailAccountImapFolders::instance()->findOne(
+						array("conditions" => array("account_id=? AND folder_name=?", $account->getId(), $imap_folder_name))
+					);
+					if ($maif instanceof MailAccountImapFolder && $maif->getSpecialUse() != "") {
+						switch ($maif->getSpecialUse()) {
+							case "\\Sent": $state = 1; break;
+							case "\\Drafts": $state = 2; break;
+							case "\\Junk": $state = 4; break;
+							case "\\Trash": $mail_is_trashed = true; break;
+							case "\\Archive": $mail_is_archived = true; break;
+							default: break;
+						}
 					}
 				}
 			}
@@ -550,7 +575,7 @@ class MailUtilities {
 			
 			// START TRANSACTION
 			DB::beginWork();
-			
+			$transaction_started = true;
 			// Conversation
 			//check if exists a conversation for this mail
 			$conv_mail = "";
@@ -598,8 +623,15 @@ class MailUtilities {
 				DB::execute("
 					UPDATE `".TABLE_PREFIX."mail_account_imap_folder` ma SET ma.last_uid_in_folder=".DB::escape($uid)." WHERE ma.account_id = ".$account->getId()." AND ma.folder_name = ".DB::escape($imap_folder_name).";
 				");
+				
+				$null = null;
+				Hook::fire('after_mail_content_imap_folder_saved', array('mail_id' => $mail->getId(), 'folder' => $imap_folder_name, 'account' => $account, 'uid' => $uid), $null);
 			}
-
+			
+			// if mails comes from archived imap folder -> archive it
+			if (isset($mail_is_archived) && $mail_is_archived) $mail->archive();
+			// if mails comes from trash imap folder -> trash it
+			if (isset($mail_is_trashed) && $mail_is_trashed) $mail->trash();
 			
 			// CLASSIFY RECEIVED MAIL WITH THE CONVERSATION
 			$classified_with_conversation = false;
@@ -658,8 +690,11 @@ class MailUtilities {
 			$ret = null;
 			Hook::fire('on_save_mail_error', array('content' => $content, 'account' => $account, 'exception' => $e), $ret);
 			
+			debug_log("  ON SAVE MAIL ERROR: ".$e->__toString(), "checkmail_log.php");
 			Logger::log($e->__toString());
-			DB::rollback();
+			if (isset($transaction_started) && $transaction_started) {
+				DB::rollback();
+			}
 			if (FileRepository::isInRepository($repository_id)) {
 				FileRepository::deleteFile($repository_id);
 			}
@@ -748,7 +783,7 @@ class MailUtilities {
 	}
 	
 	
-	static function getAttachmentsFromEmlAttachment(&$attach) {
+	static function getAttachmentsFromEmlAttachment(&$attach, $main_att_idx="") {
 		$more_attachments = array();
 		
 		if (!array_var($attach, 'FileName')) {
@@ -761,11 +796,12 @@ class MailUtilities {
 		if (in_array($attach_parsedEmail['Type'], array('text','html'))) {
 			
 			$more_parsed_attachments = array_var($attach_parsedEmail, 'Attachments');
-			foreach ($more_parsed_attachments as $a) {
+			foreach ($more_parsed_attachments as $k => $a) {
 				$att = array(
 					'Data' => $a['Data'],
 					'Type' => $a['Type'],
 					'FileName' => $a['FileName'],
+					'inside_attachment' => $main_att_idx . "_" . $k,
 					'size' => format_filesize(strlen($a["Data"])),
 				);
 				$more_attachments[] = $att;
@@ -777,6 +813,7 @@ class MailUtilities {
 				'Data' => $attach_parsedEmail['Data'],
 				'Type' => $attach_parsedEmail['Type'],
 				'FileName' => $attach_parsedEmail['FileName'],
+				'inside_attachment' => $main_att_idx . "_0",
 				'size' => format_filesize(strlen($attach_parsedEmail["Data"])),
 			);
 			$more_attachments[] = $att;
@@ -1172,10 +1209,21 @@ class MailUtilities {
 	}
 	
 	
-	private function getNewImapMails(MailAccount $account, $max = 0) {
+	function getNewImapMails(MailAccount $account, $max = 0, $imap_folders_to_check = null) {
 		$received = 0;
 		debug_log("  start getNewImapMails ".$account->getId(), "checkmail_log.php");
 
+		// verify if there are any folders to check, if not add the INBOX
+		$folders_to_check = MailAccountImapFolders::findAll(array("conditions" => "account_id=".$account->getId()." AND check_folder=1"));
+		if (!$folders_to_check || count($folders_to_check) == 0) {
+			DB::execute("
+				INSERT INTO ".TABLE_PREFIX."mail_account_imap_folder (account_id, folder_name, check_folder, last_uid_in_folder) 
+					VALUES ('".$account->getId()."', 'INBOX', '1', '')
+				ON DUPLICATE KEY UPDATE check_folder='1';
+			");
+			$null=null; Hook::fire('after_mail_imap_folder_inbox_forced', array('account' => $account), $null);
+		}
+		
 		$imap = $account->imapConnect();
 		
 		$ret = $imap->login($account->getEmail(), self::ENCRYPT_DECRYPT($account->getPassword()),null,false);
@@ -1184,11 +1232,19 @@ class MailUtilities {
 			foreach ($mailboxes as $box) {
 				if ($max > 0 && $received >= $max) break;
 				if ($box->getCheckFolder()) {
-					debug_log("  getting imap folder ".$box->getFolderName(), "checkmail_log.php");
+					
+					// verify if checking only some folders
+					if (is_array($imap_folders_to_check) && count($imap_folders_to_check) > 0
+							&& !in_array($box->getFolderName(), $imap_folders_to_check)) {
+								continue;
+					}
+					
+					debug_log("  getting imap folder ".$account->getId()." - ".$box->getFolderName(), "checkmail_log.php");
 					//if the account is configured to mark as read emails on server call selectMailBox else call examineMailBox.
 					if ($account->getMarkReadOnServer() > 0 ? $imap->selectMailbox(utf8_decode($box->getFolderName())) : $imap->examineMailbox(utf8_decode($box->getFolderName()))) {
 						$oldUids = $account->getUids($box->getFolderName(), 1);
 						$numMessages = $imap->getNumberOfMessages(utf8_decode($box->getFolderName()));
+						if ($numMessages == 0) continue;
 						if (!is_array($oldUids) || count($oldUids) == 0 || PEAR::isError($numMessages) || $numMessages == 0) {
 							if (PEAR::isError($numMessages)) {
 								debug_log("    PEAR ERROR numMessages has error: ".$numMessages->getMessage(), "checkmail_log.php");
@@ -1226,7 +1282,7 @@ class MailUtilities {
 								debug_log("    PEAR ERROR in imap->getSummary(numMessages). numMessages=$numMessages. errmsg: ".$server_max_summary->getMessage(), "checkmail_log.php");
 								Logger::log($server_max_summary->getMessage());
 							}else{
-								if ($server_max_summary) {
+								if ($server_max_summary && $server_max_summary[0]['UID']) {
 									$server_max_uid = $server_max_summary[0]['UID'];
 								} else {
 									$is_last_mail_on_mail_server = false;
@@ -1276,17 +1332,27 @@ class MailUtilities {
 							$lastReceived = 0;
 
 							// if this constant is defined, mails older than this date will not be fetched
-							//FIRST_MAIL_DATE format example 30-Dec-2016 for imap
+							// FIRST_MAIL_DATE format example 30-Dec-2016 for imap
+							
+							$first_mail_date_imap = null;
 							if (defined('FIRST_MAIL_DATE_IMAP')) {
-								$last_mails = $imap->search('SINCE '.FIRST_MAIL_DATE_IMAP);
-								Logger::log(print_r("last_mails", true));//$hola
-								Logger::log(print_r($box->getFolderName(), true));//$hola
-								Logger::log(print_r($last_mails, true));//$hola
-
+								$first_mail_date_imap = FIRST_MAIL_DATE_IMAP;
+							} else {
+								$first_mail_date_imap = config_option('first_mail_date_imap');
+							}
+							
+							if (!is_null($first_mail_date_imap)) {
+								$last_mails = $imap->search('SINCE '.$first_mail_date_imap);
+								debug_log("      Getting mails since $first_mail_date_imap - folder: ".$box->getFolderName(), "checkmail_log.php");
 								if (PEAR::isError($last_mails)) {
 									Logger::log($last_mails->getMessage());
 									debug_log("      Error search FIRST_MAIL_DATE_IMAP folder ".$box->getFolderName(), "checkmail_log.php");
+									continue;
 								}
+								
+								Logger::log(print_r("last_mails", true));//$hola
+								Logger::log(print_r($box->getFolderName() . " SINCE $first_mail_date_imap", true));//$hola
+								Logger::log(print_r($last_mails, true));//$hola
 
 								if (is_array($last_mails) && count($last_mails) > 0) {
 									$lastReceived = $last_mails[0];
@@ -1370,6 +1436,10 @@ class MailUtilities {
 		$imap->disconnect();
 		
 		debug_log("  total mails received: $received", "checkmail_log.php");
+		
+		$ignored = null;
+		Hook::fire('after_get_new_imap_mails', array('account' => $account), $ignored);
+		
 		return $received;
 	}
 
@@ -1442,6 +1512,8 @@ class MailUtilities {
 	function deleteMailsFromServer(MailAccount $account) {
 		$count = 0;
 		if ($account->getDelFromServer() > 0) {
+			debug_log("Account ".$account->getId()." : Start deleting mails older than ".$account->getDelFromServer()." days.", "delete_mails_from_server.log");
+			
 			$max_date = DateTimeValueLib::now();
 			$max_date->add('d', -1 * $account->getDelFromServer());
 			if ($account->getIsImap()) {
@@ -1512,12 +1584,19 @@ class MailUtilities {
 						if ($date instanceof DateTimeValue && $max_date->getTimestamp() > $date->getTimestamp()) {
 							$ok = $pop3->deleteMsg($email['msg_id']);
 							if ($ok) $count++;
+							if ($count % 100 == 0) {
+								debug_log("Account ".$account->getId()." : $count deleted. Total in account: ".count($emails).". Continue deleting...", "delete_mails_from_server.log");
+							}
+						} else {
+							debug_log("Account ".$account->getId()." : found an email not older so end the loop.", "delete_mails_from_server.log");
+							break;
 						}
 					}
 				}
 				$pop3->disconnect();
 
 			}
+			debug_log("Account ".$account->getId()." : $count mails deleted.", "delete_mails_from_server.log");
 		}
 		return $count;
 	}
@@ -1806,5 +1885,107 @@ class MailUtilities {
 		}
 		return $content;
 	}
+	
+	
+	// if there are mails in outbox -> then put a reminder
+	function check_if_outbox_has_pending_mails($usu) {
+		//$usu = logged_user();
+		$accounts = MailAccounts::instance()->getMailAccountsByUser($usu);
+		$account_ids = array();
+		foreach ($accounts as $acc) {
+			$account_ids[] = $acc->getId();
+		}
+		
+		if (count($account_ids) == 0) return;
+		
+		$accounts_sql = " AND account_id IN (".implode(',', $account_ids).")";
+		
+		$user_pg_ids = $usu->getPermissionGroupIds();
+		if (count($user_pg_ids) == 0) return;
+		
+		$permissions_sql = " AND EXISTS (SELECT sh.group_id FROM ".TABLE_PREFIX."sharing_table sh WHERE sh.object_id=o.id AND sh.group_id IN (".implode(',',$user_pg_ids)."))";
+		
+		$conditions = array("conditions" => array("`state` >= 200 AND (`state`%2 = 0) AND `archived_on`=0 AND `trashed_on`=0 $accounts_sql $permissions_sql AND `created_by_id` =".$usu->getId()));
+		$outbox_mails = MailContents::findAll($conditions);
+		if ($outbox_mails!= null){
+			if (count($outbox_mails)>=1){
+				$arguments = array("conditions" => array("`context` LIKE 'mails_in_outbox%' AND `contact_id` = ".$usu->getId().";"));
+				$exist_reminder = ObjectReminders::find($arguments);
+				if (!(count($exist_reminder)>0)){
+					$reminder = new ObjectReminder();
+						
+					$minutes = 0;
+					$reminder->setMinutesBefore($minutes);
+					$reminder->setType("reminder_popup");
+					$reminder->setContext("mails_in_outbox ".count($outbox_mails));
+					$reminder->setObject($usu);
+					$reminder->setUserId($usu->getId());
+					$reminder->setDate(DateTimeValueLib::now());
+					$reminder->save();
+				}
+			}
+		}
+	}
+	
+	
+	function get_imap_account_mailboxes($account, &$can_detect_special_folders, $imap = null) {
+
+		$has_to_disconnect = false;
+		
+		if (is_null($imap)) {
+			$has_to_disconnect = true;
+			$imap = $account->imapConnect();
+			$ret = $imap->login($account->getEmail(), MailUtilities::ENCRYPT_DECRYPT($account->getPassword()),null,false);
+			if (PEAR::isError($ret)) {
+				Logger::log_r("get_imap_account_mailboxes - LOGIN ERROR\n".print_r($ret,1));
+				return;
+			}
+		}
+		// init capabilities
+		$capabilites = $imap->cmdCapability();
+		
+		
+		$can_detect_special_folders = in_array("SPECIAL-USE", $capabilites['PARSED']['CAPABILITIES']);
+	
+		$delimiter = null;
+		$mailboxes = array();
+		
+		$mailbox_list = $imap->getMailboxes('',0,true);
+		if (is_array($mailbox_list)) {
+			foreach ($mailbox_list as $mbox) {
+				$select = true;
+				$attributes = array_var($mbox, 'ATTRIBUTES', array());
+				foreach($attributes as $att) {
+					if (strtolower($att) == "\\noselect") $select = false;
+					if (!$select) break;
+				}
+				
+				if ($select) {
+					$special_use = '';
+					foreach ($this->special_imap_folder_codes as $code) {
+						if (in_array($code, $attributes) || str_replace("\\", "", $code)==array_var($mbox, 'MAILBOX')) {
+							$special_use = $code;
+							$can_detect_special_folders = true;
+							break;
+						}
+					}
+					$mailboxes[] = array(
+						'name' => utf8_encode(array_var($mbox, 'MAILBOX')),
+						'delimiter' => array_var($mbox, 'HIERACHY_DELIMITER'),
+						'attributes' => $attributes,
+						'special_use' => $special_use,
+					);
+				}
+			}
+		}
+		
+		if ($has_to_disconnect) {
+			$imap->disconnect();
+		}
+		
+		return $mailboxes;
+	}
+	
+	
 }
 ?>
