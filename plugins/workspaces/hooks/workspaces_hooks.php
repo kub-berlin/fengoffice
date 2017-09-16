@@ -25,7 +25,7 @@ function workspaces_custom_reports_additional_columns($args, &$ret) {
 	}
 }
 
-function workspaces_total_tasks_times_csv_columns($cols, &$cols) {
+function workspaces_total_tasks_times_csv_columns($cols2, &$cols) {
 	$dimension = Dimensions::findByCode('workspaces');
 	$cols[] = $dimension->getName();
 }
