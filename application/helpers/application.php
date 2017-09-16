@@ -1513,8 +1513,8 @@ function buildTree ($nodeList , $parentField = "parent", $childField = "children
 			
 			<?php			 
 				if ( is_array(array_var($options, 'allowedDimensions')) && array_search($dimension_id, $options['allowedDimensions']) === false ){
-					continue;	 
-				}					
+					// continue;	 
+				}
 				$dimension_name = escape_character($dimension_info['dimension_name']);
 				if (!isset($id)) $id = gen_id();
 			?>

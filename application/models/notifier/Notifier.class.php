@@ -632,7 +632,7 @@ class Notifier {
 		Localization::instance()->loadSettings($locale, ROOT . '/language');
 		
 		$toemail = $user->getEmailAddress();
-		if (!$toemail) continue;
+		// if (!$toemail) continue;
 		
 		self::queueEmail(
 			null,
@@ -682,7 +682,7 @@ class Notifier {
 		Localization::instance()->loadSettings($locale, ROOT . '/language');
 		
 		$toemail = $user->getEmailAddress();
-		if (!$toemail) continue;
+		// if (!$toemail) continue;
 		
 		self::queueEmail(
 			null,
@@ -721,7 +721,7 @@ class Notifier {
 		$locale = $user->getLocale();
 		Localization::instance()->loadSettings($locale, ROOT . '/language');
 		$toemail = $user->getEmailAddress();
-		if (!$toemail) continue;
+		// if (!$toemail) continue;
 		self::queueEmail(
 			null,
 			array(self::prepareEmailAddress($toemail, $user->getObjectName())),
@@ -755,7 +755,7 @@ class Notifier {
 		$locale = $user->getLocale();
 		Localization::instance()->loadSettings($locale, ROOT . '/language');
 		$toemail = $user->getEmailAddress();
-		if (!$toemail) continue;
+		// if (!$toemail) continue;
 		self::queueEmail(
 			null,
 			array(self::prepareEmailAddress($toemail, $user->getObjectName())),
